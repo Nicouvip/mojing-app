@@ -1,10 +1,24 @@
+'use client'
+
+import { useState } from 'react'
 import { registry } from '@/lib/prompts'
 import { TemplateCard } from './card'
 import { StatsPanel } from './stats-panel'
 import { ABPanel } from './ab-panel'
+import { UsageTab } from './usage-tab'
+import { cn } from '@/lib/utils/utils'
+
+const TABS = [
+  { key: 'stats', label: '效果看板' },
+  { key: 'usage', label: '调用统计' },
+  { key: 'ab', label: 'A/B 实验' },
+] as const
+
+type TabKey = (typeof TABS)[number]['key']
 
 export default function PromptsPage() {
   const templates = registry.listActive()
+  const [activeTab, setActiveTab] = useState<TabKey>('stats')
 
   const typeLabel: Record<string, string> = {
     continue: '续写',
@@ -36,10 +50,30 @@ export default function PromptsPage() {
           ))}
         </div>
 
-        {/* 右侧面板 */}
-        <div className="space-y-6">
-          <StatsPanel />
-          <ABPanel />
+        {/* 右侧面板 — Tab 切换 */}
+        <div className="space-y-4">
+          {/* Tab 导航 */}
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            {TABS.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  'flex-1 px-3 py-2 text-xs font-medium transition-colors',
+                  activeTab === tab.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-background text-muted-foreground hover:bg-secondary'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab 内容 */}
+          {activeTab === 'stats' && <StatsPanel />}
+          {activeTab === 'usage' && <UsageTab />}
+          {activeTab === 'ab' && <ABPanel />}
         </div>
       </div>
     </div>
