@@ -18,4 +18,6 @@ export const chapters = sqliteTable("chapters", {
   order: integer("order").notNull().default(0),
   wordCount: integer("wordCount").notNull().default(0),
   deletedAt: text("deletedAt"),
+  createdAt: text("createdAt").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updatedAt").notNull().default("CURRENT_TIMESTAMP"),
 });

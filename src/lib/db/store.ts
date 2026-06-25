@@ -81,7 +81,8 @@ function setChaptersAll(c: Chapter[]) {
 
 export function getProjects(): Project[] {
   try {
-    return db.select().from(projects).all() as Project[]
+    const rows = db.select().from(projects).all()
+    return rows.map((r: any) => ({ ...r, name: r.title, genre: '都市', description: '', chapterCount: 0, totalWords: 0 })) as Project[]
   } catch {
     return [...getProjectsAll()]
   }
