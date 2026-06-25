@@ -1,7 +1,4 @@
 import type { Project, Chapter } from '@/lib/db/types'
-import { eq } from 'drizzle-orm'
-import { db } from './db'
-import { projects, chapters } from './schema'
 import { isSupabaseAvailable, supabase } from '@/lib/db/supabase-client'
 import readingTime from 'reading-time'
 
@@ -80,12 +77,7 @@ function setChaptersAll(c: Chapter[]) {
 }
 
 export function getProjects(): Project[] {
-  try {
-    const rows = db.select().from(projects).all()
-    return rows.map((r: any) => ({ ...r, name: r.title, genre: '都市', description: '', chapterCount: 0, totalWords: 0 })) as Project[]
-  } catch {
-    return [...getProjectsAll()]
-  }
+  return [...getProjectsAll()]
 }
 
 /** 获取已软删除的项目（含章节） */
@@ -99,43 +91,28 @@ export function getProject(id: string): Project | undefined {
 }
 
 export function createProject(name: string, genre: string): Project {
+  const projects = getProjectsAll(true)
   const p: Project = { id: `proj-${Date.now()}`, name, genre, description: '',
     createdAt: Date.now(), updatedAt: Date.now(), chapterCount: 1, totalWords: 0 }
-  try {
-    db.insert(projects).values({ title: name }).run()
-    const chaptersList = getChaptersAll(true)
-    chaptersList.push({ id: `ch-${Date.now()}`, projectId: p.id, title: '第一章', content: '',
-      order: 1, wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft' })
-    setChaptersAll(chaptersList)
-    return p
-  } catch {
-    // localStorage fallback
-    const projectsList = getProjectsAll(true)
-    projectsList.push(p)
-    setProjectsAll(projectsList)
-    const chaptersList = getChaptersAll(true)
-    chaptersList.push({ id: `ch-${Date.now()}`, projectId: p.id, title: '第一章', content: '',
-      order: 1, wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft' })
-    setChaptersAll(chaptersList)
-    return p
-  }
+  projects.push(p)
+  setProjectsAll(projects)
+  const chapters = getChaptersAll(true)
+  chapters.push({ id: `ch-${Date.now()}`, projectId: p.id, title: '第一章', content: '',
+    order: 1, wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft' })
+  setChaptersAll(chapters)
+  return p
 }
 
 export function deleteProject(id: string): void {
-  const projectsList = getProjectsAll(true)
-  const p = projectsList.find(pr => pr.id === id)
+  const projects = getProjectsAll(true)
+  const p = projects.find(pr => pr.id === id)
   if (!p) return
   p.deletedAt = Date.now()
-  try {
-    db.update(projects).set({ deletedAt: String(Date.now()) }).where(eq(projects.id, Number(id))).run()
-  } catch {}
-  setProjectsAll(projectsList)
-  const chaptersList = getChaptersAll(true)
-  chaptersList.filter(c => c.projectId === id).forEach(c => { c.deletedAt = Date.now() })
-  try {
-    db.update(chapters).set({ deletedAt: String(Date.now()) }).where(eq(chapters.projectId, Number(id))).run()
-  } catch {}
-  setChaptersAll(chaptersList)
+  setProjectsAll(projects)
+  // 软删除关联章节
+  const chapters = getChaptersAll(true)
+  chapters.filter(c => c.projectId === id).forEach(c => { c.deletedAt = Date.now() })
+  setChaptersAll(chapters)
 }
 
 /** 彻底删除项目（含所有章节） */
@@ -156,42 +133,18 @@ export function restoreProject(id: string): void {
   setChaptersAll(chapters)
 }
 
-export function updateProject(id: string, data: Partial<Pick<Project, 'name' | 'genre' | 'description'>>): Project | undefined {
-  const projectsList = getProjectsAll(true)
-  const p = projectsList.find(pr => pr.id === id)
-  if (!p) return undefined
-  if (data.name !== undefined) p.name = data.name
-  if (data.genre !== undefined) p.genre = data.genre
-  if (data.description !== undefined) p.description = data.description
-  p.updatedAt = Date.now()
-  try {
-    const setFields: Record<string, string | number> = { updatedAt: String(Date.now()) }
-    if (data.name !== undefined) setFields.title = data.name
-    db.update(projects).set(setFields).where(eq(projects.id, Number(id))).run()
-  } catch {}
-  setProjectsAll(projectsList)
-  return p
-}
-
 export function createChapter(projectId: string, title: string): Chapter | undefined {
   const proj = getProjectsAll().find(p => p.id === projectId)
   if (!proj) return undefined
-  const allCh = getChaptersAll(true)
+  const chapters = getChaptersAll(true)
   const ch: Chapter = {
     id: `ch-${Date.now()}`, projectId, title, content: '',
-    order: allCh.filter(c => c.projectId === projectId).length + 1,
+    order: chapters.filter(c => c.projectId === projectId).length + 1,
     wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft',
   }
-  allCh.push(ch)
-  try {
-    db.insert(chapters).values({
-      title,
-      projectId: Number(projectId),
-      order: ch.order,
-    }).run()
-  } catch {}
-  setChaptersAll(allCh)
-  proj.chapterCount = allCh.filter(c => c.projectId === projectId).length
+  chapters.push(ch)
+  setChaptersAll(chapters)
+  proj.chapterCount = chapters.filter(c => c.projectId === projectId).length
   setProjectsAll(getProjectsAll())
   return ch
 }
@@ -235,34 +188,27 @@ export function permanentDeleteChapter(id: string): void {
   setChaptersAll(getChaptersAll(true).filter(c => c.id !== id))
 }
 
-export function getChapter(id: string): Chapter | undefined {
-  return getChaptersAll().find(c => c.id === id)
-}
-
 export function getChapters(projectId: string): Chapter[] {
   return getChaptersAll().filter(c => c.projectId === projectId).sort((a, b) => a.order - b.order)
 }
 
+export function getChapter(id: string): Chapter | undefined {
+  return getChaptersAll().find(c => c.id === id)
+}
+
 export function updateChapterContent(id: string, content: string): Chapter | undefined {
-  const chaptersList = getChaptersAll()
-  const ch = chaptersList.find(c => c.id === id)
+  const chapters = getChaptersAll()
+  const ch = chapters.find(c => c.id === id)
   if (!ch) return undefined
   ch.content = content
   const plain = content.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/g, ' ')
   ch.wordCount = readingTime(plain).words
   ch.updatedAt = Date.now()
-  try {
-    db.update(chapters).set({
-      content,
-      wordCount: ch.wordCount,
-      updatedAt: String(Date.now()),
-    }).where(eq(chapters.id, Number(id))).run()
-  } catch {}
-  setChaptersAll(chaptersList)
+  setChaptersAll(chapters)
   const projects = getProjectsAll()
   const proj = projects.find(p => p.id === ch.projectId)
   if (proj) {
-    proj.totalWords = chaptersList.filter(c => c.projectId === ch.projectId).reduce((s, c) => s + c.wordCount, 0)
+    proj.totalWords = chapters.filter(c => c.projectId === ch.projectId).reduce((s, c) => s + c.wordCount, 0)
     proj.updatedAt = Date.now()
     setProjectsAll(projects)
   }
