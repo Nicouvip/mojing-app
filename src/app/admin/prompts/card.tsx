@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import type { PromptTemplate } from '@/lib/prompts'
 import { registry } from '@/lib/prompts'
-import { ChevronDown, ChevronRight, FileText, Edit3, Save, X, Power, PowerOff } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileText, Edit3, Save, X, Power, PowerOff, Clock, Undo } from 'lucide-react'
 import { cn } from '@/lib/utils/utils'
 
 const LAYER_LABELS: Record<string, string> = {
@@ -19,6 +19,8 @@ export function TemplateCard({ template, typeLabel }: { template: PromptTemplate
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState<PromptTemplate | null>(null)
   const [saved, setSaved] = useState(false)
+  const [backedUp, setBackedUp] = useState(false)
+  const [restored, setRestored] = useState(false)
 
   // Check if active
   const [active, setActive] = useState(true)
@@ -34,6 +36,22 @@ export function TemplateCard({ template, typeLabel }: { template: PromptTemplate
     setSaved(true)
     setEditing(false)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  const handleBackup = () => {
+    localStorage.setItem('mojing-backup-' + template.id, JSON.stringify(template))
+    setBackedUp(true)
+    setTimeout(() => setBackedUp(false), 2000)
+  }
+
+  const handleRestore = () => {
+    const raw = localStorage.getItem('mojing-backup-' + template.id)
+    if (!raw) return
+    try {
+      registry.register(JSON.parse(raw))
+      setRestored(true)
+      setTimeout(() => setRestored(false), 2000)
+    } catch { /* ignore corrupt data */ }
   }
 
   const toggleActive = () => {
@@ -87,9 +105,17 @@ export function TemplateCard({ template, typeLabel }: { template: PromptTemplate
             <button onClick={handleEdit} title="编辑" className="p-1 rounded hover:bg-secondary">
               <Edit3 className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
+            <button onClick={handleBackup} title="存备份" className="p-1 rounded hover:bg-secondary">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+            <button onClick={handleRestore} title="恢复" className="p-1 rounded hover:bg-secondary">
+              <Undo className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
             <button onClick={toggleActive} title={active ? '停用' : '启用'} className="p-1 rounded hover:bg-secondary">
               {active ? <PowerOff className="w-3.5 h-3.5 text-amber-500" /> : <Power className="w-3.5 h-3.5 text-emerald-500" />}
             </button>
+            {backedUp && <span className="text-[10px] text-emerald-500">已备份</span>}
+            {restored && <span className="text-[10px] text-blue-500">已恢复</span>}
           </div>
           {open ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
         </div>

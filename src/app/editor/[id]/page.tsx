@@ -770,15 +770,18 @@ export default function EditorPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setImportDlg(false)}>
           <div className="bg-white rounded-xl shadow-elevated w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
-              <h2 className="font-semibold"><Upload className="w-4 h-4 mr-1 inline" />导入确认 — {importFn || '未命名'}</h2>
+              <input className="font-semibold bg-transparent border-0 border-b border-dashed border-gray-300 focus:outline-none focus:border-primary flex-1" value={importFn} onChange={e => setImportFn(e.target.value)} />
               <button onClick={() => setImportDlg(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
             </div>
             <div className="flex items-center gap-2 px-6 py-3 border-b shrink-0">
               <span className="text-xs text-muted-foreground">拆分方式:</span>
-              {([['chapter','按章节'],['h1','按 #'],['h2','按 ##'],['h3','按 ###']] as const).map(([key, label]) => (
-                <button key={key} onClick={() => handleModeChange(key)}
-                  className={cn("px-2 py-1 rounded text-xs", importMode === key ? 'bg-primary text-white' : 'bg-secondary text-muted-foreground hover:bg-primary-light')}>{label}</button>
-              ))}
+              <select className="text-xs px-2 py-1 rounded bg-secondary border-border" value={importMode} onChange={e => handleModeChange(e.target.value as any)}>
+                <option value="auto">自动</option>
+                <option value="chapter">按章节</option>
+                <option value="h1">按 #</option>
+                <option value="h2">按 ##</option>
+                <option value="h3">按 ###</option>
+              </select>
               <span className="flex-1" />
               <span className="text-xs text-muted-foreground">共 {importParts.length} 个章节</span>
             </div>
