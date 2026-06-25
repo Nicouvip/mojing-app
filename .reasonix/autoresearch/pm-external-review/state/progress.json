@@ -1,0 +1,9 @@
+{
+  "task_id": "pm-external-review",
+  "phase": "complete",
+  "current_step": "report-written",
+  "stale_count": 0,
+  "created_at": "2025-07-15",
+  "blockers": [],
+  "summary": "13 findings cross-referenced: 9 fixed, 2 N/A, 1 still exists (mobile), 1 partial (empty state)"
+}

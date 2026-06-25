@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>墨境 · 页面编辑器</title>
+<link rel="stylesheet" href="https://unpkg.com/grapesjs/dist/css/grapes.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;display:flex}
+#sidebar{width:240px;height:100vh;background:#fff;border-right:1px solid #e5e7eb;overflow-y:auto;flex-shrink:0;font-family:sans-serif;z-index:10}
+#gjs{flex:1;height:100vh}
+.gjs-pn-devices-c{display:none !important}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div style="padding:16px;font-weight:700;font-size:15px;color:#111;border-bottom:1px solid #e5e7eb">🌙 墨境 · 后台</div>
+  <a href="/admin/pages" style="display:block;padding:10px 16px;font-size:13px;color:#555;text-decoration:none;border-bottom:1px solid #f5f5f5">🏠 返回页面列表</a>
+  <a href="/admin" style="display:block;padding:10px 16px;font-size:13px;color:#555;text-decoration:none;border-bottom:1px solid #f5f5f5">📊 数据看板</a>
+  <a href="/admin/pages" style="display:block;padding:10px 16px;font-size:13px;color:#6b8c6e;text-decoration:none;border-bottom:1px solid #f5f5f5;background:#f5faf5;font-weight:600">🎨 页面编辑器</a>
+
+  <div style="padding:12px 16px 6px;font-size:11px;color:#999;font-weight:600;text-transform:uppercase">设备切换</div>
+  <div style="padding:0 16px 8px;display:flex;flex-direction:column;gap:4px">
+    <button onclick="switchDevice('desktop')" style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;text-align:left">🖥 桌面</button>
+    <button onclick="switchDevice('tablet')" style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;text-align:left">📱 平板</button>
+    <button onclick="switchDevice('mobile')" style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;text-align:left">📱 手机</button>
+  </div>
+
+  <div style="padding:12px 16px 6px;font-size:11px;color:#999;font-weight:600;text-transform:uppercase">操作</div>
+  <div style="padding:0 16px 8px;display:flex;flex-direction:column;gap:4px">
+    <button id="saveBtn" style="background:#6b8c6e;color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;text-align:left">💾 保存</button>
+    <select id="historySelect" style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:6px 8px;font-size:11px;cursor:pointer;width:100%" onchange="restoreVersion(this.value)"><option value="">历史版本</option></select>
+    <button id="exportBtn" style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;text-align:left">📥 导出 JSON</button>
+    <button id="importBtn" style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;text-align:left">📤 导入 JSON</button>
+    <button onclick="aiHelp()" style="background:linear-gradient(135deg,#6b8c6e,#8b5cf6);color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:12px;cursor:pointer;text-align:left">🤖 AI 助手</button>
+  </div>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
+</div>
+
+<div id="gjs"></div>
+
+<script src="https://unpkg.com/grapesjs"></script>
+<script src="https://unpkg.com/grapesjs-preset-webpage"></script>
+<script src="https://unpkg.com/grapesjs-blocks-basic"></script>
+<script src="https://unpkg.com/grapesjs-navbar"></script>
+<script src="https://unpkg.com/grapesjs-style-bg"></script>
+<script src="https://unpkg.com/grapesjs-tabs"></script>
+<script src="https://unpkg.com/grapesjs-custom-code"></script>
+<script src="https://unpkg.com/grapesjs-plugin-export"></script>
+<script src="https://unpkg.com/grapesjs-component-countdown"></script>
+
+<script>
+(function(){
+var path = new URLSearchParams(window.location.search).get('path') || '/';
+var editor = grapesjs.init({
+  container:'#gjs', height:'100vh', width:'auto', storageManager:false, fromElement:false,
+  deviceManager:{devices:[{id:'desktop',name:'桌面',width:''},{id:'tablet',name:'平板',width:'768px',widthMedia:'768px'},{id:'mobile',name:'手机',width:'375px',widthMedia:'375px'}]},
+  selectorManager:{componentFirst:true},
+  plugins:['grapesjs-preset-webpage','grapesjs-blocks-basic','grapesjs-navbar','grapesjs-style-bg','grapesjs-tabs','grapesjs-custom-code','grapesjs-plugin-export','grapesjs-component-countdown'],
+  pluginsOpts:{'grapesjs-preset-webpage':{blocks:['link-block','quote','text-basic','image','video','map','countdown','form'],navbarOpts:true,countdownOpts:true,formsOpts:true,imageOpts:true},'grapesjs-navbar':{},'grapesjs-tabs':{},'grapesjs-custom-code':{},'grapesjs-plugin-export':{},'grapesjs-component-countdown':{},'grapesjs-style-bg':{},'grapesjs-blocks-basic':{}},
+  canvas:{},
+});
+
+editor.on('load',function(){
+  console.log('ready');
+
+  var doc = editor.Canvas.getDocument();
+  doc.body.style.background='#faf9f6';doc.body.style.margin='0';doc.body.style.padding='0';
+
+  var tw=doc.createElement('script');tw.src='https://cdn.tailwindcss.com';doc.head.appendChild(tw);
+
+  // 翻译
+  var tr={
+    // 面板标题
+    'Style':'样式','Styles':'样式','Settings':'属性','Layer':'图层','Layers':'图层','Blocks':'组件','Block':'组件',
+    'Components':'组件','Select':'选择','Select component':'选择组件','Select parent':'选择父级',
+    // 分类名
+    'Basic':'基础','Extra':'扩展','General':'通用','Layout':'布局','Typography':'排版',
+    'Flex':'弹性','Dimension':'尺寸','Decorations':'装饰',
+    // 组件名
+    'Link Block':'链接块','Link':'链接','Text':'文本','Text section':'段落','Image':'图片','Video':'视频',
+    'Map':'地图','Quote':'引用','Divider':'分割线','Button':'按钮','Form':'表单',
+    'Input':'输入框','Textarea':'文本域','Select':'下拉框','Checkbox':'复选框','Radio':'单选框','Label':'标签',
+    'Section':'区块','Header':'页头','Footer':'页脚','Navbar':'导航栏','Countdown':'倒计时','Grid':'网格',
+    '1 Column':'1列','2 Columns':'2列','3 Columns':'3列',
+    'Navbar Container':'导航栏容器','Navbar Menu':'导航栏菜单','Burger':'汉堡菜单','Burger Line':'汉堡线',
+    'Menu link':'菜单链接','Tab':'标签页','Tab Container':'标签容器','Tab Content':'标签内容','Tabs':'标签页组',
+    'Tab Contents':'标签内容区','Custom Code':'自定义代码','Export':'导出','Export to ZIP':'导出为ZIP',
+    // 属性面板
+    'Properties':'属性','Trait':'属性','Traits':'属性','Trait manager':'属性管理器',
+    'Value':'值','Name':'名称','Type':'类型','Placeholder':'占位符','Required':'必填',
+    'Text content':'文本内容','Inner HTML':'内部HTML','Tag name':'标签名',
+    'Class':'类名','ID':'标识','Title':'标题','Href':'链接','Target':'目标',
+    'Alt':'替代文字','Src':'图片源','Content':'内容',
+    // 样式属性
+    'Width':'宽度','Height':'高度','Min width':'最小宽','Min height':'最小高',
+    'Max width':'最大宽','Max height':'最大高','Margin':'外边距','Padding':'内边距',
+    'Font family':'字体','Font size':'字号','Font weight':'字重','Letter spacing':'字间距',
+    'Line height':'行高','Text align':'对齐','Text shadow':'文字阴影','Color':'文字色',
+    'Background':'背景','Background color':'背景色','Background image':'背景图',
+    'Background repeat':'背景重复','Background position':'背景位置','Background size':'背景尺寸',
+    'Border':'边框','Border radius':'圆角','Box shadow':'盒子阴影','Display':'显示',
+    'Position':'定位','Flex direction':'方向','Flex wrap':'换行','Justify content':'主轴对齐',
+    'Align items':'交叉对齐','Align content':'内容对齐','Align self':'自对齐','Order':'顺序',
+    'Flex basis':'基础大小','Flex grow':'放大','Flex shrink':'缩小','Top':'上','Right':'右',
+    'Bottom':'下','Left':'左','Z-index':'层级','Overflow':'溢出','Opacity':'透明度',
+    'Transform':'变换','Transition':'过渡','Cursor':'光标','Float':'浮动',
+    'Animation':'动画','Filter':'滤镜',
+    // 操作
+    'Preview':'预览','Fullscreen':'全屏','Clear canvas':'清空画布','Undo':'撤销','Redo':'重做',
+    'Delete':'删除','Duplicate':'复制','Copy':'复制','Paste':'粘贴','Save':'保存',
+    'Code':'代码','Device':'设备','Desktop':'桌面','Tablet':'平板','Mobile':'手机',
+    'open-blocks':'组件','open-sm':'样式','open-tm':'属性','open-layers':'图层',
+    'sw-visibility':'边框','export-template':'导出','canvas-clear':'清空',
+    // 组件属性
+    'src':'图片源','href':'链接地址','alt':'替代文字','target':'打开方式',
+    'controls':'控制条','autoplay':'自动播放','loop':'循环','muted':'静音',
+    'method':'提交方式','action':'提交地址','name':'名称','value':'值',
+  };
+
+  function translateAll(){
+    // 遍历所有文本节点
+    var walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,null);
+    var node;
+    while(node=walker.nextNode()){
+      var t=node.textContent;
+      if(!t||!t.trim()) continue;
+      var k=t.trim();
+      if(tr[k]){ node.textContent=tr[k]; }
+    }
+    // 遍历 title 属性
+    document.querySelectorAll('[title]').forEach(function(el){
+      var t=el.getAttribute('title')||'';
+      if(tr[t]) el.setAttribute('title',tr[t]);
+    });
+    // 遍历 placeholder
+    document.querySelectorAll('[placeholder]').forEach(function(el){
+      var t=el.getAttribute('placeholder')||'';
+      if(tr[t]) el.setAttribute('placeholder',tr[t]);
+    });
+    // 遍历 aria-label
+    document.querySelectorAll('[aria-label]').forEach(function(el){
+      var t=el.getAttribute('aria-label')||'';
+      if(tr[t]) el.setAttribute('aria-label',tr[t]);
+    });
+  }
+
+  setInterval(translateAll,600);
+
+  refreshHistory();
+  var saved=localStorage.getItem('mojing_gjs_'+path);
+  if(saved){try{editor.loadProjectData(JSON.parse(saved));}catch(e){}return;}
+  fetch(path).then(function(r){return r.text()}).then(function(html){
+    var m=html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    if(m){editor.setComponents(m[1].replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<svg[\s\S]*?<\/svg>/gi,'').trim());}
+  }).catch(function(e){});
+});
+
+// 设备切换
+window.switchDevice=function(id){
+  try {
+    editor.Devices.select(id);
+    var w = id==='tablet'?'768px':id==='mobile'?'375px':'';
+    editor.Canvas.setDimensions({width:w});
+  } catch(e) { console.log('switch err',e); }
+};
+window.aiHelp=function(){
+  var q=prompt('有什么想了解的？\n\n例如：怎么拖入新组件？弹性盒子怎么用？怎么改背景？怎么导出页面？');
+  if(!q)return;
+  var btn=document.querySelector('[onclick*=\"aiHelp\"]');btn.textContent='⏳';btn.disabled=true;
+  fetch('/api/ai/layout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:'用户问了一个关于GrapesJS网页编辑器的问题：'+q+'\n请用中文简短回答（300字内），只给操作步骤和帮助信息。',currentHtml:''})})
+  .then(function(r){return r.json()}).then(function(d){
+    if(d.html) alert(d.html);
+    else alert(d.error||'AI没返回内容');
+  }).catch(function(){alert('请求失败')}).finally(function(){btn.textContent='🤖 AI 助手';btn.disabled=false;});
+};
+
+// 版本
+var MAX=10;
+function gV(){try{return JSON.parse(localStorage.getItem('mojing_versions_'+path)||'[]')}catch(e){return[]}}
+function sV(v){localStorage.setItem('mojing_versions_'+path,JSON.stringify(v))}
+function refreshHistory(){var sel=document.getElementById('historySelect'),vs=gV();sel.innerHTML='<option value="">历史版本('+vs.length+')</option>';vs.forEach(function(v,i){sel.innerHTML+='<option value="'+i+'">'+v.name+'</option>'});}
+document.getElementById('saveBtn').onclick=function(){
+  var d=editor.getProjectData(),vs=gV(),n=prompt('备注：',new Date().toLocaleTimeString());
+  vs.unshift({name:n||'快照',data:d});if(vs.length>MAX)vs=vs.slice(0,MAX);sV(vs);
+  localStorage.setItem('mojing_gjs_'+path,JSON.stringify(d));refreshHistory();alert('已保存('+vs.length+'版本)');
+};
+window.restoreVersion=function(i){if(i==='')return;if(!confirm('恢复？'))return;var v=gV()[parseInt(i)];if(v){editor.loadProjectData(v.data);localStorage.setItem('mojing_gjs_'+path,JSON.stringify(v.data));alert('已恢复');}};
+
+// 导出导入
+document.getElementById('exportBtn').onclick=function(){var b=new Blob([JSON.stringify(editor.getProjectData(),null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='mojing-'+path.replace(/\//g,'_')+'.json';a.click();};
+document.getElementById('importBtn').onclick=function(){document.getElementById('importFile').click();};
+window.handleImport=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){try{editor.loadProjectData(JSON.parse(ev.target.result));alert('导入成功');}catch(err){alert('导入失败');}};r.readAsText(f);e.target.value='';};
+})();
+</script>
+</body>
+</html>

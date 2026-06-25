@@ -1,0 +1,11 @@
+{
+  "ts": "2025-07-15T23:30:00Z",
+  "action": "cross-reference-complete",
+  "findings": {
+    "total": 13,
+    "fixed": 9,
+    "not_applicable": 2,
+    "still_exists": 1,
+    "partial": 1
+  }
+}

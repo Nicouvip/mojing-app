@@ -1,0 +1,25 @@
+{
+  "task_id": "pm-sprint1",
+  "phase": "all-dispatched",
+  "current_step": "done-summary",
+  "stale_count": 0,
+  "created_at": "2025-07-15",
+  "last_updated": "2025-07-15",
+  "pivots": [],
+  "blockers": [],
+  "outputs": [
+    "Sprint1-迭代计划.md (v1.1 - 状态刷新版)",
+    "需求-REQ-A1~A4-*.md (4份 P0 文档，2份被标记为已完成)",
+    "需求-REQ-B1~B5-*.md (5份 P1 文档)",
+    "任务指令-TASK-A2-主题系统修复.md (唯一P0)",
+    "任务指令-TASK-B1-超时处理.md",
+    "任务指令-TASK-B2-角色面板标签.md",
+    "任务指令-TASK-B3-回收站清理.md",
+    "任务指令-TASK-B4-卷管理.md",
+    "output/决策日志.md",
+    "output/产品经理-2025-07-15-Sprint1规划.md",
+    "output/产品经理-2025-07-15-状态刷新.md",
+    "output/产品经理-2025-07-15-任务派发.md",
+    ".env.local (紧急修复)"
+  ]
+}

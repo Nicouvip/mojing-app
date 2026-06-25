@@ -1,0 +1,802 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { cn, toPlainText } from '@/lib/utils/utils'
+import { Button } from '@/components/ui/button'
+import { getProject, getChapters, getChapter, updateChapterContent, createChapter, deleteChapter, getTrash, restoreChapter, permanentDeleteChapter, createProject } from '@/lib/db/store'
+import type { Project, Chapter } from '@/lib/db/types'
+import { calcBodyDensity, checkCompliance } from '@/lib/ai/compliance'
+import { generateSimpleA8Status, generateUnblockHint } from '@/lib/prompts/builder'
+import { WritingEditor } from '@/components/writing-editor'
+import { TrashModal } from '@/components/trash-modal'
+import { ReportModal } from '@/components/report-modal'
+import { BrainstormModal } from '@/components/brainstorm-modal'
+import type { Editor } from '@tiptap/react'
+import { useTheme } from '@/lib/utils/theme-context'
+import Image from 'next/image'
+import { ArrowLeft, PanelLeft, PanelRight, Save, CheckCircle2, AlertTriangle, Maximize2, ClipboardCheck, Ellipsis, Trash2, Download, FileOutput, Upload, Shuffle, BookOpen, X, User, Lightbulb, Sparkles, BookMarked, Bot, FileText, Search, Pencil, Rocket, Zap, Sun, Sunrise, Moon, Snowflake } from 'lucide-react'
+
+export default function EditorPage() {
+  const params = useParams()
+  const router = useRouter()
+  const projectId = params.id as string
+
+  const [project, setProject] = useState<Project | null>(null)
+  const [chapters, setChapters] = useState<Chapter[]>([])
+  const [activeChapterId, setActiveChapterId] = useState<string | null>(null)
+  const [activeChapter, setActiveChapter] = useState<Chapter | null>(null)
+  const [content, setContent] = useState('')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [rightPanelOpen, setRightPanelOpen] = useState(true)
+  const [rightTab, setRightTab] = useState('plan')
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
+  const [autoSaveFlash, setAutoSaveFlash] = useState(false)
+  const [showGuide, setShowGuide] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return !localStorage.getItem('mojing_guide_seen')
+  })
+  const [guideStep, setGuideStep] = useState(0)
+  const [bodyDensity, setBodyDensity] = useState(0)
+  const [wordGoal, setWordGoal] = useState(3000)
+  const { theme, setTheme } = useTheme()
+  const [showReport, setShowReport] = useState(false)
+  const [aiInstruction, setAiInstruction] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiResult, setAiResult] = useState('')
+  const [aiMode, setAiMode] = useState<'continue' | 'polish' | 'expand'>('continue')
+  const [showBrainstorm, setShowBrainstorm] = useState(false)
+  const [bsGenre, setBsGenre] = useState('都市')
+  const [bsResult, setBsResult] = useState('')
+  const [bsLoading, setBsLoading] = useState(false)
+  const [characters, setCharacters] = useState<{name: string; description: string}[]>(() => {
+    if (typeof window === 'undefined') return []
+    try { const stored = localStorage.getItem('mojing_characters_' + projectId); return stored ? JSON.parse(stored) : [] }
+    catch { return [] }
+  })
+  const [showInspire, setShowInspire] = useState(false)
+  const [inspireGenre, setInspireGenre] = useState('都市')
+  const [inspireResult, setInspireResult] = useState('')
+  const [inspireLoading, setInspireLoading] = useState(false)
+  const [showAddChar, setShowAddChar] = useState(false)
+  const [newCharName, setNewCharName] = useState('')
+  const [newCharDesc, setNewCharDesc] = useState('')
+  const [editingCharIdx, setEditingCharIdx] = useState<number | null>(null)
+  const [showAlchemy, setShowAlchemy] = useState(false)
+  const [alchemyResult, setAlchemyResult] = useState('')
+  const [alchemyLoading, setAlchemyLoading] = useState(false)
+  const [importDlg, setImportDlg] = useState(false)
+  const [importTxt, setImportTxt] = useState('')
+  const [importFn, setImportFn] = useState('')
+  const [importMode, setImportMode] = useState<'auto'|'chapter'|'h1'|'h2'|'h3'>('auto')
+  const [importParts, setImportParts] = useState<{t:string;c:string}[]>([])
+  const [importTitleOverrides, setImportTitleOverrides] = useState<string[]>([])
+  const [importExpandedIdx, setImportExpandedIdx] = useState<number | null>(null)
+
+  const handleBrainstorm = async () => {
+    setBsLoading(true); setBsResult('')
+    try {
+      const res = await fetch('/api/ai/brainstorm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ genre: bsGenre }) })
+      const d = await res.json()
+      setBsResult(d.ideas || d.error || '失败')
+    } catch { setBsResult('请求失败') }
+    finally { setBsLoading(false) }
+  }
+
+  const handleInspire = async () => {
+    setInspireLoading(true); setInspireResult('')
+    try {
+      const res = await fetch('/api/ai/brainstorm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ genre: inspireGenre, mode: 'inspire' }) })
+      const d = await res.json()
+      setInspireResult(d.ideas || d.error || '生成失败')
+    } catch { setInspireResult('请求失败，灵感爆裂 API 暂不可用') }
+    finally { setInspireLoading(false) }
+  }
+
+  const handleAlchemy = async () => {
+    setAlchemyLoading(true); setAlchemyResult('')
+    try {
+      const res = await fetch('/api/ai/brainstorm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ genre: 'all', mode: 'alchemy' }) })
+      const d = await res.json()
+      setAlchemyResult(d.ideas || d.error || '生成失败')
+    } catch { setAlchemyResult('请求失败，书名炼金术 API 暂不可用') }
+    finally { setAlchemyLoading(false) }
+  }
+
+  const handleInsertCharacterTag = (name: string) => {
+    const el = document.querySelector('[contenteditable]') as HTMLElement | null
+    if (el) {
+      const tag = `【角色：${name}】`
+      const sel = window.getSelection()
+      if (sel && sel.rangeCount > 0 && el.contains(sel.anchorNode)) {
+        const range = sel.getRangeAt(0)
+        range.deleteContents()
+        const textNode = document.createTextNode(tag)
+        range.insertNode(textNode)
+        range.setStartAfter(textNode)
+        range.collapse(true)
+        sel.removeAllRanges()
+        sel.addRange(range)
+        el.dispatchEvent(new InputEvent('input', { bubbles: true }))
+      } else {
+        setContent(prev => prev + tag)
+      }
+    }
+  }
+
+  const handleAi = async () => {
+    setAiLoading(true); setAiResult('')
+    const endpoint = aiMode === 'continue' ? '/api/ai/continue' : aiMode === 'polish' ? '/api/ai/polish' : '/api/ai/expand'
+    const body: Record<string, string> = { instruction: aiInstruction, style: theme, chapterIndex: String(chapters.findIndex(c => c.id === activeChapterId) + 1), genre: project?.genre || '' }
+    if (aiMode === 'continue') body.context = content
+    else {
+      const sel = window.getSelection()?.toString() || ''
+      if (!sel.trim()) { setAiResult('请先在编辑器中选中一段文字'); setAiLoading(false); return }
+      body.text = sel
+    }
+    try {
+      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const data = await res.json()
+      setAiResult(data.text || data.error || '未知错误')
+    } catch { setAiResult('请求失败') }
+    finally { setAiLoading(false) }
+  }
+  const [violations, setViolations] = useState<string[]>([])
+  const [headings, setHeadings] = useState<{ level: number; text: string; pos: number }[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showMenu, setShowMenu] = useState(false)
+  const [showTrash, setShowTrash] = useState(false)
+  const [trashChapters, setTrashChapters] = useState<Chapter[]>([])
+  const [selectedTrashId, setSelectedTrashId] = useState<string | null>(null)
+  const [volumes, setVolumes] = useState<string[]>(['第一卷'])
+  const [showVolumeModal, setShowVolumeModal] = useState(false)
+  const [volumeName, setVolumeName] = useState('')
+  const [volMenuOpen, setVolMenuOpen] = useState<string | null>(null)
+  const [renamingVol, setRenamingVol] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  useEffect(() => {
+    if (typeof window !== 'undefined') try { localStorage.setItem('mojing_characters_' + projectId, JSON.stringify(characters)) } catch {}
+  }, [characters, projectId])
+  useEffect(() => {
+    if (typeof window !== 'undefined' && projectId) {
+      try { localStorage.setItem('mojing_volumes_' + projectId, JSON.stringify(volumes)) } catch {}
+    }
+  }, [volumes, projectId])
+  const [filterTab, setFilterTab] = useState('all')
+  const editorRef = useRef<Editor | null>(null)
+  const [editorVersion, setEditorVersion] = useState(0)
+  const contentRef = useRef(content)
+  contentRef.current = content
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const p = getProject(projectId)
+    if (!p) { router.push('/'); return }
+    setProject(p)
+    const chs = getChapters(projectId)
+    setChapters(chs)
+    // 加载卷数据
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('mojing_volumes_' + projectId)
+        if (stored) setVolumes(JSON.parse(stored))
+      } catch {}
+    }
+    if (chs.length > 0) {
+      const lastId = typeof window !== 'undefined' ? localStorage.getItem('mojing_last_chapter_' + projectId) : null
+      const target = lastId ? chs.find(c => c.id === lastId) : chs[0]
+      const ch = target || chs[0]
+      setActiveChapterId(ch.id); setActiveChapter(ch); setContent(ch.content || '')
+      setBodyDensity(calcBodyDensity(ch.content || ''))
+    }
+  }, [projectId, router])
+
+  useEffect(() => {
+    if (!activeChapterId) return
+    const ch = getChapter(activeChapterId)
+    if (ch) { setActiveChapter(ch); setContent(ch.content || ''); setBodyDensity(calcBodyDensity(ch.content || '')) }
+  }, [activeChapterId])
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const ch = getChapter(activeChapterId || '')
+      if (ch && contentRef.current !== ch.content) {
+        updateChapterContent(ch.id, contentRef.current)
+        setChapters(getChapters(projectId))
+        setSaveStatus('saved')
+        setAutoSaveFlash(true)
+        setTimeout(() => setAutoSaveFlash(false), 1500)
+      }
+    }, 10000)
+    return () => clearInterval(timer)
+  }, [activeChapterId])
+
+  // 点击外部关闭卷菜单
+  useEffect(() => {
+    const handleClick = () => setVolMenuOpen(null)
+    if (volMenuOpen) {
+      document.addEventListener('click', handleClick)
+      return () => document.removeEventListener('click', handleClick)
+    }
+  }, [volMenuOpen])
+
+  const handleSave = () => {
+    if (!activeChapter) return
+    setSaveStatus('saving')
+    updateChapterContent(activeChapter.id, content)
+    setBodyDensity(calcBodyDensity(content))
+    setChapters(getChapters(projectId))
+    setSaveStatus('saved')
+  }
+
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent); setSaveStatus('unsaved')
+    setBodyDensity(calcBodyDensity(newContent))
+  }
+
+  useEffect(() => {
+    const ed = editorRef.current
+    if (!ed) return
+    let lastPlain = ''
+    const handler = () => {
+      setTimeout(() => {
+        const plain = toPlainText(contentRef.current)
+        if (plain === lastPlain) return
+        lastPlain = plain
+        const paragraphs = plain.split('\n').filter(p => p.trim().length > 0)
+        const lastPara = paragraphs[paragraphs.length - 1] || ''
+        const result = checkCompliance(lastPara)
+        if (result.blockedItems.length > 0) {
+          const newV = result.blockedItems.map(item =>
+            item.type === 'forbidden_b' ? `B类禁用词: ${item.words?.join('、') || ''}` : '动作句后紧跟解释语句')
+          setViolations(prev => [...new Set([...prev, ...newV])])
+        }
+      }, 100)
+    }
+    ed.on('update', handler)
+    return () => { ed.off('update', handler) }
+  }, [editorVersion])
+
+  // ===== TXT/MD 导入工具 =====
+  const parseTxtParts = (text: string, mode: 'auto'|'chapter'|'h1'|'h2'|'h3') => {
+    const lines = text.split('\n')
+    const parts: {t:string;c:string}[] = []
+    let currentTitle = ''
+    let currentContent: string[] = []
+
+    // 自动检测最佳拆分模式
+    const detectMode = (): typeof mode => {
+      let mdCount = 0; let mdLevel = 0
+      let chCount = 0
+      for (const l of lines) {
+        const t = l.trim()
+        if (/^#{1,6} /.test(t)) { mdCount++; if (!mdLevel) mdLevel = t.match(/^(#+)/)?.[1].length || 0 }
+        else if (/^第[零一二三四五六七八九十百千万\d]+[章节部篇集]/.test(t)) chCount++
+      }
+      if (mdCount >= chCount && mdCount > 0) {
+        const level = mdLevel || 1
+        return level === 1 ? 'h1' : level === 2 ? 'h2' : 'h3'
+      }
+      if (chCount > 0) return 'chapter'
+      return 'chapter'
+    }
+
+    const resolvedMode = mode === 'auto' ? detectMode() : mode
+
+    const isTitle = (l: string) => {
+      if (resolvedMode === 'chapter') return /^第[零一二三四五六七八九十百千万\d]+[章节部篇集]/.test(l)
+      if (resolvedMode === 'h1') return /^# /.test(l)
+      if (resolvedMode === 'h2') return /^## /.test(l)
+      return /^### /.test(l)
+    }
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+      if (isTitle(trimmed)) {
+        if (currentTitle || currentContent.length > 0) {
+          parts.push({ t: currentTitle, c: currentContent.join('\n') })
+        }
+        currentTitle = trimmed.replace(/^#+\s+/, '')
+        currentContent = []
+      } else {
+        currentContent.push(trimmed)
+      }
+    }
+    if (currentTitle || currentContent.length > 0) {
+      parts.push({ t: currentTitle, c: currentContent.join('\n') })
+    }
+    if (parts.length === 0) {
+      parts.push({ t: '全文', c: text })
+    }
+    return parts
+  }
+
+  const handleTxtImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportFn(file.name.replace(/\.(txt|md)$/i, ''))
+    try {
+      const text = await file.text()
+      setImportTxt(text)
+      const parts = parseTxtParts(text, importMode)
+      setImportParts(parts)
+      setImportTitleOverrides(parts.map(p => p.t))
+      setImportDlg(true)
+    } catch {
+      // 读取失败时不作处理
+    }
+    e.target.value = ''
+  }
+
+  const handleModeChange = (mode: 'auto'|'chapter'|'h1'|'h2'|'h3') => {
+    setImportMode(mode)
+    if (importTxt) {
+      const newParts = parseTxtParts(importTxt, mode)
+      setImportParts(newParts)
+      setImportTitleOverrides(newParts.map(p => p.t))
+    }
+  }
+
+  const confirmImport = () => {
+    if (!projectId || importParts.length === 0) return
+    for (let i = 0; i < importParts.length; i++) {
+      const part = importParts[i]
+      const ch = createChapter(projectId, importTitleOverrides[i] || importFn)
+      if (ch && part.c) updateChapterContent(ch.id, part.c)
+    }
+    setChapters(getChapters(projectId))
+    setImportDlg(false)
+    setImportTxt('')
+    setImportParts([])
+    setImportTitleOverrides([])
+    setImportFn('')
+  }
+
+  if (!project) return null
+
+  return (
+    <div className="h-screen w-screen flex flex-col overflow-hidden editor-ambient">
+      {/* 隐藏的文件选择器 */}
+      <input type="file" accept=".txt,.md" ref={fileInputRef} onChange={handleTxtImport} className="hidden" />
+      {/* ===== 顶栏 ===== */}
+      <div className="h-12 px-4 flex items-center justify-between border-b border-border glass-panel shrink-0">
+        <div className="flex items-center gap-3">
+          <button onClick={() => router.push('/')} className="text-muted-foreground hover:text-foreground p-1"><ArrowLeft className="w-5 h-5" /></button>
+          <Image src="/assets/brand/mojing-logo-nav.png" alt="墨境" width={160} height={28} className="h-7 w-auto" />
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-muted-foreground hover:text-foreground"><PanelLeft className="w-5 h-5" /></button>
+          <span className="text-sm font-medium">{project.name}</span>
+          <span className="text-xs text-muted-foreground">/</span>
+          <span className="text-sm text-muted-foreground">{activeChapter?.title || '无章节'}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            {saveStatus === 'saved' && <><CheckCircle2 className={cn("w-3 h-3", autoSaveFlash ? "text-primary animate-pulse" : "text-success")} />{autoSaveFlash ? '自动已保存' : '已保存'}</>}
+            {saveStatus === 'saving' && '保存中...'}
+            {saveStatus === 'unsaved' && <><AlertTriangle className="w-3 h-3 text-warning" />未保存</>}
+          </span>
+          <Button size="sm" variant="outline" onClick={() => { setSidebarOpen(false); setRightPanelOpen(false) }} title="专注模式"><Maximize2 className="w-5 h-5" /></Button>
+          <Button size="sm" variant="outline" onClick={handleSave}><Save className="w-4 h-4 mr-1" />保存</Button>
+          <Button size="sm" className="bg-success hover:bg-success/90 text-white" onClick={() => setShowReport(true)}><ClipboardCheck className="w-5 h-5 mr-1" />章末自检</Button>
+        </div>
+      </div>
+
+      {/* ===== 主体 ===== */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* ===== 左侧栏 ===== */}
+        <div className="flex">
+          <div className={cn("transition-all duration-300", sidebarOpen ? "w-[220px]" : "w-0 overflow-hidden")}>
+            <div className="w-[220px] h-full flex flex-col border-r border-border glass-panel">
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                <h3 className="text-base font-medium truncate">{project.name}</h3>
+                <div className="relative">
+                  <button onClick={() => setShowMenu(!showMenu)} className="text-muted-foreground hover:text-foreground text-sm px-1"><Ellipsis className="w-3 h-3" /></button>
+                  {showMenu && (
+                    <div className="absolute left-6 top-0 bg-white rounded-lg shadow-elevated border border-border py-1 w-36 z-50" onMouseLeave={() => setShowMenu(false)}>
+                      <button onClick={() => { setShowMenu(false); setTrashChapters(getTrash()); setShowTrash(true) }} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><Trash2 className="w-3 h-3" /></span>回收站</button>
+                      <button onClick={() => { setShowMenu(false); fileInputRef.current?.click() }} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><Upload className="w-3 h-3" /></span>导入 TXT</button>
+                      <button onClick={() => {
+                        setShowMenu(false)
+                        const blob = new Blob([activeChapter?.title + '\n\n' + content], { type: 'text/plain;charset=utf-8' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url; a.download = (activeChapter?.title || '章节') + '.txt'; a.click()
+                        URL.revokeObjectURL(url)
+                      }} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><FileOutput className="w-3 h-3" /></span>导出 TXT</button>
+                      <button className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><Shuffle className="w-3 h-3" /></span>切换排序</button>
+                      <button className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><BookOpen className="w-3 h-3" /></span>全部章节</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="px-4 py-2 border-b border-border">
+                <input type="text" placeholder="搜索章节..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full h-7 px-3 text-xs rounded-lg border border-border bg-background outline-none focus:border-primary transition-all" />
+              </div>
+              <div className="flex gap-2 px-4 py-3 border-b border-border">
+                <button onClick={() => { const nc = createChapter(projectId, `第${chapters.length + 1}章`); if (nc) { setChapters(getChapters(projectId)); setActiveChapterId(nc.id) } }}
+                  className="text-xs px-3 py-1 rounded-full bg-primary text-white font-medium hover:bg-primary/90">+ 新建章</button>
+                <button onClick={() => { setVolumeName(`第${volumes.length + 1}卷`); setShowVolumeModal(true) }}
+                  className="text-xs px-3 py-1 rounded-full border border-border text-muted-foreground hover:bg-secondary">+ 新建卷</button>
+              </div>
+              <div className="flex gap-4 px-4 py-2 border-b border-border text-xs">
+                <button onClick={() => setFilterTab('all')} className={cn("pb-1", filterTab === 'all' ? 'text-primary font-medium border-b-2 border-primary' : 'text-muted-foreground')}>全部</button>
+                <button onClick={() => setFilterTab('draft')} className={cn("pb-1", filterTab === 'draft' ? 'text-primary font-medium border-b-2 border-primary' : 'text-muted-foreground')}>草稿</button>
+              </div>
+              <div className="flex-1 overflow-y-auto py-1">
+                {(() => {
+                  const displayChs = searchTerm ? chapters.filter(c => c.title.includes(searchTerm) || (c.content || '').includes(searchTerm)) : filterTab === 'all' ? chapters : chapters.filter(c => c.status === 'draft')
+                  const chPerVol = Math.ceil(displayChs.length / volumes.length) || 1
+                  const vols = volumes.map((v, i) => ({ name: v, chs: displayChs.slice(i * chPerVol, (i + 1) * chPerVol) }))
+                  if (displayChs.length > volumes.length * chPerVol) vols.push({ name: `第${volumes.length + 1}卷`, chs: displayChs.slice(volumes.length * chPerVol) })
+                  if (vols.length === 0) vols.push({ name: '第一卷', chs: [] })
+                  return vols.map(vol => (
+                    <div key={vol.name}>
+                      <div className="flex items-center justify-between px-4 py-1.5 text-[11px] text-muted-foreground font-medium group">
+                        {renamingVol === vol.name ? (
+                          <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && renameValue.trim()) { setVolumes(prev => prev.map(v => v === vol.name ? renameValue.trim() : v)); setRenamingVol(null) } else if (e.key === 'Escape') { setRenamingVol(null) } }}
+                            onBlur={() => setRenamingVol(null)}
+                            className="w-full px-1 py-0 text-xs rounded border border-primary bg-background outline-none" autoFocus />
+                        ) : (
+                          <span>{vol.name}</span>
+                        )}
+                        <div className="relative">
+                          <button onClick={e => { e.stopPropagation(); setVolMenuOpen(volMenuOpen === vol.name ? null : vol.name) }}
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground text-xs"><Ellipsis className="w-3 h-3" /></button>
+                          {volMenuOpen === vol.name && (
+                            <div className="absolute right-0 top-4 bg-white rounded-lg shadow-elevated border border-border py-1 w-28 z-50" onClick={e => e.stopPropagation()}>
+                              <button onClick={() => { setRenamingVol(vol.name); setRenameValue(vol.name); setVolMenuOpen(null) }}
+                                className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><Pencil className="w-3 h-3" />重命名</button>
+                              <button onClick={() => { if (window.confirm(`确认删除「${vol.name}」？`)) { setVolumes(prev => prev.filter(v => v !== vol.name)); setVolMenuOpen(null) } }}
+                                className="w-full text-left px-3 py-1.5 text-xs text-destructive hover:bg-secondary flex items-center gap-2"><Trash2 className="w-3 h-3" />删除</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {vol.chs.map(ch => (
+                        <div key={ch.id} onClick={() => { if (saveStatus === 'unsaved') handleSave(); localStorage.setItem('mojing_last_chapter_' + projectId, ch.id); setContent(ch.content || ''); setActiveChapterId(ch.id) }}
+                          className={cn("flex items-center justify-between px-4 py-1.5 text-sm cursor-pointer transition-all group", activeChapterId === ch.id ? "bg-primary-light text-primary font-medium" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}>
+                          <span className="truncate">{ch.title}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground/50">{ch.wordCount}</span>
+                            <button onClick={e => { e.stopPropagation(); deleteChapter(ch.id); setChapters(getChapters(projectId)) }}
+                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-[10px]"><X className="w-2.5 h-2.5" /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                })()}
+              </div>
+            </div>
+          </div>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="w-5 h-8 my-auto shrink-0 flex items-center justify-center border border-l-0 border-border bg-card text-muted-foreground hover:text-foreground cursor-pointer text-xs rounded-r-sm -ml-[1px]">
+            {sidebarOpen ? '‹' : '›'}
+          </button>
+        </div>
+
+        {/* ===== 中间编辑区 ===== */}
+        <div className="flex-1 flex flex-col min-w-0 glass-panel" tabIndex={-1}>
+          <div className="flex-1 overflow-y-auto" tabIndex={-1}>
+            <div className="py-10 min-h-full px-16 max-w-[720px] mx-auto" tabIndex={-1}>
+              <WritingEditor key={activeChapterId} content={content} onChange={handleContentChange} onHeadings={setHeadings} onEditorReady={(e) => { editorRef.current = e; setEditorVersion(v => v + 1) }} wordGoal={wordGoal} onWordGoalChange={setWordGoal} />
+
+              {/* ===== 底部工具栏 ===== */}
+              <div className="flex items-center justify-center gap-3 py-3 border-t border-border mt-4">
+                <button onClick={() => { localStorage.removeItem('mojing_guide_seen'); setShowGuide(true) }}
+                  className="px-4 py-1.5 rounded-lg bg-secondary text-muted-foreground text-xs hover:bg-primary-light hover:text-primary transition-colors">
+                  <BookOpen className="w-3 h-3 mr-1" />新手引导
+                </button>
+                <button onClick={() => { const hint = generateUnblockHint(); setAiResult(hint); setRightTab('ai'); setRightPanelOpen(true) }}
+                  className="px-4 py-1.5 rounded-lg bg-secondary text-muted-foreground text-xs hover:bg-primary-light hover:text-primary transition-colors">
+                  <Lightbulb className="w-3 h-3 mr-1" />卡文三板斧
+                </button>
+                <button onClick={() => setShowReport(true)}
+                  className="px-4 py-1.5 rounded-lg bg-secondary text-muted-foreground text-xs hover:bg-primary-light hover:text-primary transition-colors">
+                  <ClipboardCheck className="w-3 h-3 mr-1" />章末自检
+                </button>
+                <button onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-1.5 rounded-lg bg-secondary text-muted-foreground text-xs hover:bg-primary-light hover:text-primary transition-colors">
+                  <Upload className="w-3 h-3 mr-1" />导入 TXT
+                </button>
+              </div>
+
+              {violations.length > 0 && (
+                <button onClick={() => { setRightTab('compliance'); setRightPanelOpen(true) }}
+                  className="fixed bottom-6 right-6 z-50 w-9 h-9 rounded-full shadow-md flex items-center justify-center text-xs font-bold bg-warning text-white hover:scale-110 transition-all">
+                  {violations.length}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ===== 右侧栏 ===== */}
+        <div className="flex">
+          <div className={cn("transition-all duration-200 overflow-hidden glass-panel", rightPanelOpen ? "border-l border-border" : "w-0")} style={rightPanelOpen ? {width:'260px'} : undefined}>
+            <div className="h-full flex flex-col" style={{width:'260px'}}>
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase">
+                  {rightTab === 'plan' && '本章规划'}
+                  {rightTab === 'compliance' && '合规检测'}
+                  {rightTab === 'outline' && '大纲'}
+                  {rightTab === 'character' && '角色'}
+                  {rightTab === 'idea' && '灵感'}
+                </h3>
+                <button onClick={() => { setRightPanelOpen(false); setRightTab('') }} className="text-muted-foreground hover:text-foreground text-xs"><X className="w-3 h-3" /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {rightTab === 'plan' && activeChapter && <>
+                  <div className="bg-primary-light rounded-lg p-3 text-xs space-y-1 mb-3">
+                    <div className="font-medium text-primary">A-8 创作状态</div>
+                    <div className="text-muted-foreground font-mono text-[11px]">第{chapters.findIndex(c => c.id === activeChapterId) + 1}章 · {project.genre}</div>
+                    <div className="text-muted-foreground text-[11px]">{generateSimpleA8Status(chapters.findIndex(c => c.id === activeChapterId) + 1)}</div>
+                  </div>
+                  <div className="bg-secondary rounded-lg p-3 text-xs space-y-2">
+                    <div className="flex justify-between"><span className="text-muted-foreground">字数</span><span className="font-medium">{toPlainText(content).length}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">身体密度</span><span className={cn("font-medium", bodyDensity >= 40 && bodyDensity <= 55 ? "text-success" : "text-warning")}>{bodyDensity}%</span></div>
+                  </div>
+                  <div className="pt-3 border-t border-border space-y-1">
+                    <p className="text-[10px] text-muted-foreground">写作主题</p>
+                    <div className="flex flex-wrap gap-1">
+                      {(['light','warm','dark','cool'] as const).map(k => (
+                        <button key={k} onClick={() => setTheme(k)}
+                          className={cn("px-2 py-0.5 rounded text-[10px] transition-all", theme === k ? 'bg-primary text-white' : 'bg-secondary text-muted-foreground hover:bg-primary-light')}>{k === 'light' ? <Sun className="w-3 h-3" /> : k === 'warm' ? <Sunrise className="w-3 h-3" /> : k === 'dark' ? <Moon className="w-3 h-3" /> : <Snowflake className="w-3 h-3" />}</button>
+                      ))}
+                    </div>
+                  </div>
+                </>}
+                {rightTab === 'compliance' ? (() => {
+                  const r = checkCompliance(toPlainText(content))
+                  const items = r.blockedItems.map(it => it.type === 'forbidden_b' ? ('B类禁用词: ' + (it.words?.join(',') || '')) : '动作句后紧跟解释语句')
+                  return <div className="text-xs text-muted-foreground space-y-2">
+                    <span className="text-sm font-medium">共 {items.length} 项</span>
+                    {items.length === 0 ? <p className="text-success text-xs">暂无违规</p> : items.map((desc, i) => <div key={i} onClick={() => { const ed = editorRef.current; if (!ed) return; const w = desc.replace('B类禁用词: ', '').split(',')[0]; const docText = ed.state.doc.textContent; const idx = docText.indexOf(w); if (idx >= 0) { ed.chain().focus().setTextSelection({ from: idx, to: idx + w.length }).run(); setTimeout(() => { const sel = window.getSelection(); if (sel && sel.rangeCount > 0) { const r = sel.getRangeAt(0); const container = ed.view.dom.closest('.overflow-y-auto'); if (container) { const cr = container.getBoundingClientRect(); const rr = r.getBoundingClientRect(); container.scrollTop = container.scrollTop + rr.top - cr.top - cr.height / 3 } } }, 30) } }} className="text-warning bg-warning-light rounded px-3 py-2 text-xs cursor-pointer hover:bg-warning-light">{desc}</div>)}
+                    <p className="text-[10px] text-muted-foreground">仅供参考，改与不改由你决定</p>
+                  </div>
+                })() : null}
+                {rightTab === 'outline' && (headings.length === 0 ? <p className="text-xs text-muted-foreground">用标题格式来生成大纲<br />试试点击工具栏的"卷""章""节"</p> : <div className="text-xs space-y-0.5">{headings.map((h, i) => <div key={i} onClick={() => { const el = document.querySelector('[contenteditable]'); if (el && h.pos >= 0) { el.scrollTop = h.pos * 0.5 } }} className={cn("px-2 py-1 rounded cursor-pointer hover:bg-secondary transition-colors", h.level === 1 ? 'font-bold text-foreground' : h.level === 2 ? 'pl-4 font-medium text-muted-foreground' : 'pl-6 text-muted-foreground')}>{h.text}</div>)}</div>)}
+                {rightTab === 'character' && <div className="text-xs text-muted-foreground space-y-3">
+                  <p className="text-sm font-medium text-foreground">角色列表</p>
+                  {characters.length === 0 && !showAddChar && (
+                    <p className="text-[11px] text-muted-foreground">暂无角色，点击下方按钮添加</p>
+                  )}
+                  {characters.map((c, i) => (
+                    editingCharIdx === i ? (
+                      <div key={i} className="p-3 rounded-lg bg-primary-light space-y-2">
+                        <input value={c.name} onChange={e => setCharacters(prev => prev.map((x, j) => j === i ? {...x, name: e.target.value} : x))}
+                          className="w-full px-2 py-1 rounded border border-border bg-background text-xs" />
+                        <input value={c.description} onChange={e => setCharacters(prev => prev.map((x, j) => j === i ? {...x, description: e.target.value} : x))}
+                          placeholder="简短描述" className="w-full px-2 py-1 rounded border border-border bg-background text-[11px]" />
+                        <div className="flex gap-1 justify-end">
+                          <button onClick={() => setEditingCharIdx(null)} className="px-2 py-0.5 rounded text-[10px] bg-primary text-white">完成</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={i} className="flex items-center gap-2 group">
+                        <button onClick={() => handleInsertCharacterTag(c.name)}
+                          className="flex-1 text-left px-3 py-2 rounded-lg bg-secondary hover:bg-primary-light transition-colors">
+                          <span className="font-medium text-foreground"><User className="w-3 h-3 mr-1 inline" />{c.name}</span>
+                          {c.description ? <span className="block text-[11px] text-muted-foreground mt-0.5">{c.description}</span> : null}
+                        </button>
+                        <button onClick={() => setEditingCharIdx(i)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground text-[10px]">✎</button>
+                        <button onClick={() => setCharacters(prev => prev.filter((_, j) => j !== i))} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-[10px]"><X className="w-3 h-3" /></button>
+                      </div>
+                    )
+                  ))}
+                  {showAddChar ? (
+                    <div className="p-3 rounded-lg bg-primary-light space-y-2">
+                      <input value={newCharName} onChange={e => setNewCharName(e.target.value)} placeholder="角色名称"
+                        className="w-full px-2 py-1 rounded border border-border bg-background text-xs" autoFocus />
+                      <input value={newCharDesc} onChange={e => setNewCharDesc(e.target.value)} placeholder="简短描述（可选）"
+                        className="w-full px-2 py-1 rounded border border-border bg-background text-[11px]" />
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => { setShowAddChar(false); setNewCharName(''); setNewCharDesc('') }} className="px-2 py-0.5 rounded text-[10px] border border-border text-muted-foreground">取消</button>
+                        <button onClick={() => { if (newCharName.trim()) { setCharacters(prev => [...prev, { name: newCharName.trim(), description: newCharDesc.trim() }]); setNewCharName(''); setNewCharDesc(''); setShowAddChar(false) } }}
+                          className="px-2 py-0.5 rounded text-[10px] bg-primary text-white">添加</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowAddChar(true)}
+                      className="w-full text-center px-3 py-1.5 rounded-lg border border-dashed border-border text-muted-foreground hover:bg-secondary transition-colors text-[11px]">+ 添加角色</button>
+                  )}
+                  <p className="text-[10px] text-muted-foreground pt-2">完整人物卡功能待添加</p>
+                </div>}
+                {rightTab === 'idea' && <div className="text-xs text-muted-foreground space-y-4">
+                  <p className="text-sm font-medium text-foreground">灵感工具</p>
+                  <button onClick={() => { setShowBrainstorm(true); setRightPanelOpen(false) }} className="w-full text-left px-3 py-2 rounded-lg bg-secondary hover:bg-primary-light transition-colors"><Lightbulb className="w-3 h-3 mr-1 inline" />脑洞喷射</button>
+                  <button onClick={() => { setShowInspire(true); setRightPanelOpen(false) }} className="w-full text-left px-3 py-2 rounded-lg bg-secondary hover:bg-primary-light transition-colors"><Sparkles className="w-3 h-3 mr-1" />灵感爆裂</button>
+                  <button onClick={() => { setShowAlchemy(true); setRightPanelOpen(false) }} className="w-full text-left px-3 py-2 rounded-lg bg-secondary hover:bg-primary-light transition-colors"><BookMarked className="w-3 h-3 mr-1" />书名炼金术</button>
+                  <p className="text-[10px] text-muted-foreground pt-4">完整工具链待第二阶段实现</p>
+                </div>}
+                {rightTab === 'ai' && <div className="text-xs space-y-4">
+                  <div className="flex gap-1">
+                    {(['continue','polish','expand'] as const).map(m => (
+                      <button key={m} onClick={() => { setAiMode(m); setAiResult('') }}
+                        className={cn("flex-1 py-1 px-2 rounded text-xs transition-colors", aiMode === m ? 'bg-primary text-white' : 'bg-secondary text-muted-foreground hover:bg-primary-light')}>
+                        {m === 'continue' ? '续写' : m === 'polish' ? '润色' : '扩写'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="bg-primary-light rounded-lg p-3">
+                    <p className="font-medium text-primary mb-1">
+                      {aiMode === 'continue' ? 'AI 续写' : aiMode === 'polish' ? 'AI 润色' : 'AI 扩写'}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      {aiMode === 'continue' ? '自动读取前文上下文续写' : '选中文字后点击生成'}
+                    </p>
+                    <textarea value={aiInstruction} onChange={e => setAiInstruction(e.target.value)}
+                      placeholder={aiMode === 'continue' ? '补充要求（选填）' : '选中文 → 填要求 → 点生成'}
+                      className="w-full h-16 px-2 py-1 text-xs rounded border border-border bg-background resize-none outline-none focus:border-primary" />
+                    <button onClick={handleAi} disabled={aiLoading}
+                      className="w-full mt-2 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 disabled:opacity-50">
+                      {aiLoading ? '生成中...' : aiMode === 'continue' ? <><Bot className="w-3 h-3 mr-1 inline" />续写</> : aiMode === 'polish' ? <><Sparkles className="w-3 h-3 mr-1 inline" />润色</> : <><Pencil className="w-3 h-3 mr-1 inline" />扩写</>}
+                    </button>
+                  </div>
+                  {aiResult && (
+                    <div className="bg-secondary rounded-lg p-3">
+                      <div className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed mb-2">{aiResult}</div>
+                      <div className="flex gap-2">
+                        <button onClick={() => { const ed = editorRef.current; if (ed) ed.commands.insertContentAt(ed.state.doc.content.size, '\n' + aiResult); setAiResult('') }}
+                          className="text-[11px] px-2 py-0.5 rounded bg-primary text-white">插入正文</button>
+                        <button onClick={() => { navigator.clipboard.writeText(aiResult) }}
+                          className="text-[11px] px-2 py-0.5 rounded border border-border text-muted-foreground">复制</button>
+                        <button onClick={handleAi}
+                          className="text-[11px] px-2 py-0.5 rounded border border-border text-muted-foreground">重新生成</button>
+                      </div>
+                    </div>
+                  )}
+                </div>}
+              </div>
+            </div>
+          </div>
+          <div className="w-14 flex flex-col items-center py-2 gap-1 border-l border-border glass-panel shrink-0">
+            {([
+              { key: 'plan', icon: <ClipboardCheck className="w-5 h-5" />, label: '规划' },
+              { key: 'compliance', icon: null, label: '合规' },
+              { key: 'outline', icon: <FileText className="w-5 h-5" />, label: '大纲' },
+              { key: 'character', icon: <User className="w-5 h-5" />, label: '角色' },
+              { key: 'idea', icon: <Lightbulb className="w-5 h-5" />, label: '灵感' },
+              { key: 'ai', icon: <Bot className="w-5 h-5" />, label: 'AI' },
+            ] as const).map(({ key, icon, label }) => (
+              <button key={key} onClick={() => { const t = rightTab === key ? '' : key; setRightTab(t); setRightPanelOpen(!!t) }}
+                className={cn("w-10 h-10 rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all", rightTab === key ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-secondary')} title={label}>
+                {key === 'compliance' ? (() => { const c = checkCompliance(toPlainText(content)).blockedItems.length; return c > 0 ? <span className="w-4 h-4 rounded-full bg-warning text-white text-[9px] flex items-center justify-center font-bold">{c}</span> : <Search className="w-5 h-5" /> })() : icon}
+                <span className="text-[9px] leading-none">{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ===== 新建卷弹窗 ===== */}
+      {showVolumeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setShowVolumeModal(false)}>
+          <div className="bg-white rounded-xl shadow-elevated w-[360px] p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold mb-4">新建卷</h3>
+            <input type="text" value={volumeName} onChange={e => setVolumeName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { if (volumeName.trim()) { setVolumes(prev => [...prev, volumeName.trim()]); setShowVolumeModal(false) } } }}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm mb-4" autoFocus />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setShowVolumeModal(false)}>取消</Button>
+              <Button size="sm" onClick={() => { if (volumeName.trim()) { setVolumes(prev => [...prev, volumeName.trim()]); setShowVolumeModal(false) } }}>创建</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <TrashModal show={showTrash} onClose={() => setShowTrash(false)} trashChapters={trashChapters} selectedTrashId={selectedTrashId} onSelect={setSelectedTrashId} onRestore={(id) => { restoreChapter(id); setChapters(getChapters(projectId)); setTrashChapters(getTrash()); setSelectedTrashId(null) }} onDelete={(id) => { permanentDeleteChapter(id); setTrashChapters(getTrash()); setSelectedTrashId(null) }} />
+
+      <ReportModal show={showReport} onClose={() => setShowReport(false)} content={content} onSave={handleSave} />
+
+      <BrainstormModal show={showBrainstorm} onClose={() => setShowBrainstorm(false)} bsGenre={bsGenre} onGenreChange={setBsGenre} onGenerate={handleBrainstorm} bsLoading={bsLoading} bsResult={bsResult} />
+
+      {/* 灵感爆裂弹窗 */}
+      {showInspire && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setShowInspire(false)}>
+          <div className="bg-white rounded-xl shadow-elevated w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b"><h2 className="font-semibold"><Sparkles className="w-3 h-3 mr-1" />灵感爆裂</h2><button onClick={() => setShowInspire(false)} className="text-muted-foreground hover:text-foreground"><X className="w-3 h-3" /></button></div>
+            <div className="flex items-center gap-3 px-6 py-3 border-b">
+              <span className="text-sm text-muted-foreground">题材:</span>
+              {['都市','悬疑','玄幻','言情','科幻'].map(g => (
+                <button key={g} onClick={() => setInspireGenre(g)} className={cn("px-3 py-1 rounded-full text-xs", inspireGenre === g ? 'bg-primary text-white' : 'bg-secondary text-muted-foreground hover:bg-primary-light')}>{g}</button>
+              ))}
+              <span className="flex-1" />
+              <button onClick={handleInspire} disabled={inspireLoading} className="px-4 py-1.5 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 disabled:opacity-50">{inspireLoading ? <>爆破中...</> : <><Zap className="w-3 h-3 mr-1 inline" />爆破</>}</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {inspireResult ? <pre className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed font-mono">{inspireResult}</pre> : <div className="text-center py-10 text-muted-foreground text-sm">选择题材，点击「爆破」获取灵感火花</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 书名炼金术弹窗 */}
+      {showAlchemy && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setShowAlchemy(false)}>
+          <div className="bg-white rounded-xl shadow-elevated w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b"><h2 className="font-semibold"><BookMarked className="w-3 h-3 mr-1" />书名炼金术</h2><button onClick={() => setShowAlchemy(false)} className="text-muted-foreground hover:text-foreground"><X className="w-3 h-3" /></button></div>
+            <div className="flex items-center gap-3 px-6 py-3 border-b">
+              <span className="text-sm text-muted-foreground">全题材智能炼金</span>
+              <span className="flex-1" />
+              <button onClick={handleAlchemy} disabled={alchemyLoading} className="px-4 py-1.5 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 disabled:opacity-50">{alchemyLoading ? <>炼金中...</> : <><BookMarked className="w-3 h-3 mr-1 inline" />炼金</>}</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {alchemyResult ? <pre className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed font-mono">{alchemyResult}</pre> : <div className="text-center py-10 text-muted-foreground text-sm">点击「炼金」生成书名创意</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== 新手引导 Overlay ===== */}
+      {showGuide && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+          {/* 浮层卡片 */}
+          <div className="rounded-2xl p-8 max-w-md mx-4 text-center relative" onClick={e => e.stopPropagation()}
+            style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)', border: '2px solid rgba(107,140,110,0.3)', boxShadow: '0 16px 48px rgba(0,0,0,0.12), 0 0 0 4px rgba(107,140,110,0.08)' }}>
+            {/* 步骤圆点 */}
+            <div className="flex justify-center gap-2 mb-6">
+              {[0,1,2].map(i => (
+                <div key={i} className={`w-2 h-2 rounded-full transition-all ${i === guideStep ? 'w-6 bg-primary' : 'bg-border'}`} />
+              ))}
+            </div>
+            {/* 步骤内容 */}
+            {guideStep === 0 && <><h3 className="text-xl font-bold mb-3">此处为创作区</h3><p className="text-sm text-muted-foreground mb-2">支持 AI 续写、润色、扩写。写完按 Ctrl+S 保存。</p></>}
+            {guideStep === 1 && <><h3 className="text-xl font-bold mb-3">章节规划与角色</h3><p className="text-sm text-muted-foreground mb-2">右侧面板：章节规划、角色设定、灵感工具等辅助功能。</p></>}
+            {guideStep === 2 && <><h3 className="text-xl font-bold mb-3">保存与主题</h3><p className="text-sm text-muted-foreground mb-2">顶部可切换 4 套主题、手动保存。每 10 秒自动保存，放心写。</p></>}
+            {/* 按钮组 */}
+            <div className="flex gap-2 justify-center mt-6">
+              <button onClick={() => { localStorage.setItem('mojing_guide_seen','1'); setShowGuide(false) }}
+                className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:bg-secondary transition-colors">跳过</button>
+              {guideStep > 0 && (
+                <button onClick={() => setGuideStep(s => s - 1)}
+                  className="px-4 py-2 rounded-lg text-sm border border-border text-muted-foreground hover:bg-secondary transition-colors">上一步</button>
+              )}
+              {guideStep < 2 ? (
+                <button onClick={() => setGuideStep(s => s + 1)}
+                  className="px-4 py-2 rounded-lg text-sm bg-primary text-white hover:opacity-90 transition-opacity">下一步</button>
+              ) : (
+                <button onClick={() => { localStorage.setItem('mojing_guide_seen','1'); setShowGuide(false) }}
+                  className="px-4 py-2 rounded-lg text-sm bg-primary text-white hover:opacity-90 transition-opacity">开始写作</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== TXT 导入预览弹窗 ===== */}
+      {importDlg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setImportDlg(false)}>
+          <div className="bg-white rounded-xl shadow-elevated w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+              <h2 className="font-semibold"><Upload className="w-4 h-4 mr-1 inline" />导入确认 — {importFn || '未命名'}</h2>
+              <button onClick={() => setImportDlg(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="flex items-center gap-2 px-6 py-3 border-b shrink-0">
+              <span className="text-xs text-muted-foreground">拆分方式:</span>
+              {([['chapter','按章节'],['h1','按 #'],['h2','按 ##'],['h3','按 ###']] as const).map(([key, label]) => (
+                <button key={key} onClick={() => handleModeChange(key)}
+                  className={cn("px-2 py-1 rounded text-xs", importMode === key ? 'bg-primary text-white' : 'bg-secondary text-muted-foreground hover:bg-primary-light')}>{label}</button>
+              ))}
+              <span className="flex-1" />
+              <span className="text-xs text-muted-foreground">共 {importParts.length} 个章节</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {importParts.map((part, i) => (
+                <div key={i} className="border border-border rounded-lg p-3 hover:bg-secondary/50 transition-colors">
+                  <input className="text-sm font-medium mb-1 w-full bg-transparent border-0 border-b border-dashed border-gray-300 focus:outline-none focus:border-primary" value={importTitleOverrides[i] || `章节 ${i + 1}`} onChange={e => { const n = [...importTitleOverrides]; n[i] = e.target.value; setImportTitleOverrides(n) }} />
+                  <div className="text-xs text-muted-foreground line-clamp-2">{part.c.substring(0, 120)}{part.c.length > 120 ? '...' : ''}</div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t shrink-0">
+              <Button variant="outline" size="sm" onClick={() => setImportDlg(false)}>取消</Button>
+              <Button size="sm" onClick={confirmImport} className="bg-success hover:bg-success/90 text-white">导入 {importParts.length} 个章节</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "match": "write_file|edit_file|multi_edit",
+        "command": "cd \"D:/建网站/mojing-app\" && git diff --name-only 2>/dev/null | head -5 && git add -A 2>/dev/null && echo 'git-staged'",
+        "description": "文件修改后自动 git add（暂存但不提交）"
+      }
+    ],
+    "Stop": [
+      {
+        "command": "cd \"D:/建网站/mojing-app\" && git diff --cached --name-only 2>/dev/null | head -10",
+        "description": "角色完成任务后，显示本轮暂存的文件列表（提醒提交）"
+      }
+    ]
+  }
+}
