@@ -4,11 +4,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { cn, toPlainText } from '@/lib/utils/utils'
 import { Button } from '@/components/ui/button'
-import { getProject, getChapters, getChapter, updateChapterContent, createChapter, deleteChapter, getTrash, restoreChapter, permanentDeleteChapter, createProject } from '@/lib/db/store'
+import { getProject, getChapters, getChapter, updateChapterContent, createChapter, deleteChapter, getTrash, restoreChapter, permanentDeleteChapter, createProject, cleanExpiredChapters } from '@/lib/db/store'
 import type { Project, Chapter, Character } from '@/lib/db/types'
 import { calcBodyDensity, checkCompliance } from '@/lib/ai/compliance'
 import { generateSimpleA8Status, generateUnblockHint } from '@/lib/prompts/builder'
-import { WritingEditor } from '@/components/writing-editor'
+import { WritingEditor, type EditorHandle } from '@/components/writing-editor'
 import { TrashModal } from '@/components/trash-modal'
 import { ReportModal } from '@/components/report-modal'
 import { BrainstormModal } from '@/components/brainstorm-modal'
@@ -79,12 +79,17 @@ export default function EditorPage() {
 
   const handleBrainstorm = async () => {
     setBsLoading(true); setBsResult('')
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 40000)
     try {
-      const res = await fetch('/api/ai/brainstorm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ genre: bsGenre }) })
+      const res = await fetch('/api/ai/brainstorm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ genre: bsGenre }), signal: controller.signal })
       const d = await res.json()
       setBsResult(d.ideas || d.error || '失败')
-    } catch { setBsResult('请求失败') }
-    finally { setBsLoading(false) }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') { setBsResult('⏱️ 请求超时，请稍后重试') }
+      else { setBsResult('请求失败') }
+    }
+    finally { clearTimeout(timeoutId); setBsLoading(false) }
   }
 
   const handleInspire = async () => {
@@ -108,24 +113,8 @@ export default function EditorPage() {
   }
 
   const handleInsertCharacterTag = (name: string) => {
-    const el = document.querySelector('[contenteditable]') as HTMLElement | null
-    if (el) {
-      const tag = `【角色：${name}】`
-      const sel = window.getSelection()
-      if (sel && sel.rangeCount > 0 && el.contains(sel.anchorNode)) {
-        const range = sel.getRangeAt(0)
-        range.deleteContents()
-        const textNode = document.createTextNode(tag)
-        range.insertNode(textNode)
-        range.setStartAfter(textNode)
-        range.collapse(true)
-        sel.removeAllRanges()
-        sel.addRange(range)
-        el.dispatchEvent(new InputEvent('input', { bubbles: true }))
-      } else {
-        setContent(prev => prev + tag)
-      }
-    }
+    const tag = `【${name}】`
+    writingEditorRef.current?.insertAtCursor(tag)
   }
 
   const handleAi = async () => {
@@ -138,12 +127,17 @@ export default function EditorPage() {
       if (!sel.trim()) { setAiResult('请先在编辑器中选中一段文字'); setAiLoading(false); return }
       body.text = sel
     }
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
     try {
-      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal })
       const data = await res.json()
       setAiResult(data.text || data.error || '未知错误')
-    } catch { setAiResult('请求失败') }
-    finally { setAiLoading(false) }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') { setAiResult('⏱️ 请求超时，请稍后重试') }
+      else { setAiResult('请求失败') }
+    }
+    finally { clearTimeout(timeoutId); setAiLoading(false) }
   }
   const [violations, setViolations] = useState<string[]>([])
   const [headings, setHeadings] = useState<{ level: number; text: string; pos: number }[]>([])
@@ -168,6 +162,7 @@ export default function EditorPage() {
   }, [volumes, projectId])
   const [filterTab, setFilterTab] = useState('all')
   const editorRef = useRef<Editor | null>(null)
+  const writingEditorRef = useRef<EditorHandle>(null)
   const [editorVersion, setEditorVersion] = useState(0)
   const contentRef = useRef(content)
   contentRef.current = content
@@ -396,7 +391,7 @@ export default function EditorPage() {
                   <button onClick={() => setShowMenu(!showMenu)} className="text-muted-foreground hover:text-foreground text-sm px-1"><Ellipsis className="w-3 h-3" /></button>
                   {showMenu && (
                     <div className="absolute left-6 top-0 bg-white rounded-lg shadow-elevated border border-border py-1 w-36 z-50" onMouseLeave={() => setShowMenu(false)}>
-                      <button onClick={() => { setShowMenu(false); setTrashChapters(getTrash()); setShowTrash(true) }} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><Trash2 className="w-3 h-3" /></span>回收站</button>
+                      <button onClick={() => { setShowMenu(false); cleanExpiredChapters(); setTrashChapters(getTrash()); setShowTrash(true) }} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><Trash2 className="w-3 h-3" /></span>回收站</button>
                       <button onClick={() => { setShowMenu(false); fileInputRef.current?.click() }} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><Upload className="w-3 h-3" /></span>导入 TXT</button>
                       <button onClick={() => {
                         setShowMenu(false)
@@ -509,7 +504,7 @@ export default function EditorPage() {
         <div className="flex-1 flex flex-col min-w-0 glass-panel" tabIndex={-1}>
           <div className="flex-1 overflow-y-auto" tabIndex={-1}>
             <div className="py-10 min-h-full px-16 max-w-[720px] mx-auto" tabIndex={-1}>
-              <WritingEditor key={activeChapterId} content={content} onChange={handleContentChange} onHeadings={setHeadings} onEditorReady={(e) => { editorRef.current = e; setEditorVersion(v => v + 1) }} wordGoal={wordGoal} onWordGoalChange={setWordGoal} />
+              <WritingEditor ref={writingEditorRef} key={activeChapterId} content={content} onChange={handleContentChange} onHeadings={setHeadings} onEditorReady={(e) => { editorRef.current = e; setEditorVersion(v => v + 1) }} wordGoal={wordGoal} onWordGoalChange={setWordGoal} />
 
               {/* ===== 底部工具栏 ===== */}
               <div className="flex items-center justify-center gap-3 py-3 border-t border-border mt-4">
@@ -594,6 +589,15 @@ export default function EditorPage() {
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-foreground">角色列表</p>
                     <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{characters.length} 个角色</span>
+                  </div>
+                  {/* 快速插入标签按钮 */}
+                  <div className="flex gap-1.5">
+                    <button onClick={() => writingEditorRef.current?.insertAtCursor('【主角】')}
+                      className="flex-1 px-2 py-1.5 rounded-lg bg-primary/10 text-primary text-[11px] hover:bg-primary/20 transition-colors font-medium">👤 主角</button>
+                    <button onClick={() => writingEditorRef.current?.insertAtCursor('【反派】')}
+                      className="flex-1 px-2 py-1.5 rounded-lg bg-warning-light text-warning text-[11px] hover:bg-warning/20 transition-colors font-medium">👤 反派</button>
+                    <button onClick={() => writingEditorRef.current?.insertAtCursor('【配角】')}
+                      className="flex-1 px-2 py-1.5 rounded-lg bg-secondary text-muted-foreground text-[11px] hover:bg-secondary/80 transition-colors font-medium">👤 配角</button>
                   </div>
                   {characters.length === 0 && !showAddChar && (
                     <div className="flex flex-col items-center py-6 text-center">
@@ -742,7 +746,7 @@ export default function EditorPage() {
       {/* ===== 新建卷弹窗 ===== */}
       {showVolumeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setShowVolumeModal(false)}>
-          <div className="bg-white rounded-xl shadow-elevated w-[360px] p-6" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[20px] shadow-modal w-[360px] p-6" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold mb-4">新建卷</h3>
             <input type="text" value={volumeName} onChange={e => setVolumeName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { if (volumeName.trim()) { setVolumes(prev => [...prev, volumeName.trim()]); setShowVolumeModal(false) } } }}
@@ -764,7 +768,7 @@ export default function EditorPage() {
       {/* 灵感爆裂弹窗 */}
       {showInspire && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setShowInspire(false)}>
-          <div className="bg-white rounded-xl shadow-elevated w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[20px] shadow-modal w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b"><h2 className="font-semibold"><Sparkles className="w-3 h-3 mr-1" />灵感爆裂</h2><button onClick={() => setShowInspire(false)} className="text-muted-foreground hover:text-foreground"><X className="w-3 h-3" /></button></div>
             <div className="flex items-center gap-3 px-6 py-3 border-b">
               <span className="text-sm text-muted-foreground">题材:</span>
@@ -784,7 +788,7 @@ export default function EditorPage() {
       {/* 书名炼金术弹窗 */}
       {showAlchemy && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setShowAlchemy(false)}>
-          <div className="bg-white rounded-xl shadow-elevated w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[20px] shadow-modal w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b"><h2 className="font-semibold"><BookMarked className="w-3 h-3 mr-1" />书名炼金术</h2><button onClick={() => setShowAlchemy(false)} className="text-muted-foreground hover:text-foreground"><X className="w-3 h-3" /></button></div>
             <div className="flex items-center gap-3 px-6 py-3 border-b">
               <span className="text-sm text-muted-foreground">全题材智能炼金</span>
@@ -800,9 +804,9 @@ export default function EditorPage() {
 
       {/* ===== 新手引导 Overlay ===== */}
       {showGuide && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setShowGuide(false)}>
           {/* 浮层卡片 */}
-          <div className="rounded-2xl p-8 max-w-md mx-4 text-center relative" onClick={e => e.stopPropagation()}
+          <div className="rounded-[20px] p-6 max-w-md mx-4 text-center relative" onClick={e => e.stopPropagation()}
             style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)', border: '2px solid rgba(107,140,110,0.3)', boxShadow: '0 16px 48px rgba(0,0,0,0.12), 0 0 0 4px rgba(107,140,110,0.08)' }}>
             {/* 步骤圆点 */}
             <div className="flex justify-center gap-2 mb-6">
@@ -837,7 +841,7 @@ export default function EditorPage() {
       {/* ===== TXT 导入预览弹窗 ===== */}
       {importDlg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setImportDlg(false)}>
-          <div className="bg-white rounded-xl shadow-elevated w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[20px] shadow-modal w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
               <input className="font-semibold bg-transparent border-0 border-b border-dashed border-gray-300 focus:outline-none focus:border-primary flex-1" value={importFn} onChange={e => setImportFn(e.target.value)} />
               <button onClick={() => setImportDlg(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
@@ -854,7 +858,7 @@ export default function EditorPage() {
               <span className="flex-1" />
               <span className="text-xs text-muted-foreground">共 {importParts.length} 个章节</span>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            <div className="flex-1 overflow-y-auto p-6 space-y-2">
               {importParts.map((part, i) => (
                 <div key={i} className="border border-border rounded-lg p-3 hover:bg-secondary/50 transition-colors">
                   <input className="text-sm font-medium mb-1 w-full bg-transparent border-0 border-b border-dashed border-gray-300 focus:outline-none focus:border-primary" value={importTitleOverrides[i] || `章节 ${i + 1}`} onChange={e => { const n = [...importTitleOverrides]; n[i] = e.target.value; setImportTitleOverrides(n) }} />
@@ -873,7 +877,7 @@ export default function EditorPage() {
       {/* ===== 快捷键面板 ===== */}
       {showShortcuts && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setShowShortcuts(false)}>
-          <div className="bg-white rounded-xl shadow-elevated w-[400px] p-6" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[20px] shadow-modal w-[400px] p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold"><Keyboard className="w-4 h-4 mr-1 inline" />快捷键</h3>
               <button onClick={() => setShowShortcuts(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>

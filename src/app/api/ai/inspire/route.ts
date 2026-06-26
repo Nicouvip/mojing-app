@@ -57,10 +57,28 @@ export async function POST(req: Request) {
   try {
     if (!API_KEY) return NextResponse.json({ error: 'DEEPSEEK_API_KEY 未配置' }, { status: 500 })
 
-    const { mode = 'direct-diverge', context = '', genre = '通用' }:
-      { mode?: string; context?: string; genre?: string } = await req.json()
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: '请求体不是有效的 JSON' }, { status: 400 })
+    }
 
-    const basePrompt = MODE_PROMPTS[mode] || MODE_PROMPTS['direct-diverge']
+    const { mode = '', context = '', genre = '通用' }:
+      { mode?: string; context?: string; genre?: string } = body as any
+
+    if (typeof mode !== 'string') {
+      return NextResponse.json({ error: 'mode 必须是字符串' }, { status: 400 })
+    }
+    if (typeof context !== 'string') {
+      return NextResponse.json({ error: 'context 必须是字符串' }, { status: 400 })
+    }
+    if (typeof genre !== 'string') {
+      return NextResponse.json({ error: 'genre 必须是字符串' }, { status: 400 })
+    }
+
+    const actualMode = MODE_PROMPTS[mode] ? mode : 'direct-diverge'
+    const basePrompt = MODE_PROMPTS[actualMode]
     const prompt = `${basePrompt}\n\n当前题材：${genre}\n当前上下文：${context || '无特定上下文'}`
 
     const response = await fetchWithTimeout(API_URL, {
@@ -78,7 +96,7 @@ export async function POST(req: Request) {
     if (!response.ok) return NextResponse.json({ error: data.error?.message || 'API错误' }, { status: 500 })
 
     const text = data.choices?.[0]?.message?.content || ''
-    return NextResponse.json({ text, mode })
+    return NextResponse.json({ text, mode: actualMode })
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : '未知错误' }, { status: 500 })
   }

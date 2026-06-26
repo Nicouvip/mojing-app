@@ -216,7 +216,7 @@ export function updateChapterContent(id: string, content: string): Chapter | und
 }
 
 // ── 30天自动清理软删除数据 ──────────────────────────────
-const SEVEN_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
 /** 永久清除超过30天的软删除数据 */
 export function purgeExpiredDeletes(): void {
@@ -225,17 +225,29 @@ export function purgeExpiredDeletes(): void {
   const chapters = getChaptersAll(true)
 
   const expiredProjectIds = new Set(
-    projects.filter(p => p.deletedAt && (now - p.deletedAt) >= SEVEN_DAYS_MS).map(p => p.id)
+    projects.filter(p => p.deletedAt && (now - p.deletedAt) >= THIRTY_DAYS_MS).map(p => p.id)
   )
   const remainingProjects = projects.filter(p => !expiredProjectIds.has(p.id))
   setProjectsAll(remainingProjects)
 
   const remainingChapters = chapters.filter(c => {
-    if (c.deletedAt && (now - c.deletedAt) >= SEVEN_DAYS_MS) return false
+    if (c.deletedAt && (now - c.deletedAt) >= THIRTY_DAYS_MS) return false
     if (expiredProjectIds.has(c.projectId)) return false
     return true
   })
   setChaptersAll(remainingChapters)
+}
+
+/** 清理超过30天的已删除章节（回收站过期清理） */
+export function cleanExpiredChapters(): void {
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+  const now = Date.now()
+  const chapters = getChaptersAll(true)
+  const cleaned = chapters.filter(ch => {
+    if (!ch.deletedAt) return true
+    return (now - ch.deletedAt) < THIRTY_DAYS_MS
+  })
+  setChaptersAll(cleaned)
 }
 
 let cleanupTimer: ReturnType<typeof setInterval> | null = null
