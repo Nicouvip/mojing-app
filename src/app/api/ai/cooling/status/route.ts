@@ -1,6 +1,7 @@
 // 冷却状态 API — 包装冷却系统函数
 import { NextResponse } from 'next/server'
 import { getCoolingSnapshot, getAvailableTechniques, getCoolingViolations, createCoolingState, isCooling, validateSceneSelection } from '@/lib/ai/cooling'
+import type { SceneMethod } from '@/lib/ai/cooling'
 
 export async function GET(req: Request) {
   try {
@@ -62,8 +63,8 @@ export async function POST(req: Request) {
     let validation = null
     if (type === 'scene' && lastUsedScene) {
       validation = validateSceneSelection(
-        id as any,
-        lastUsedScene as any,
+        id as SceneMethod,
+        lastUsedScene as SceneMethod,
         state,
         chapter
       )

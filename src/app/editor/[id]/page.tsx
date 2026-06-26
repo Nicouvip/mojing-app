@@ -284,6 +284,7 @@ export default function EditorPage() {
         const t = l.trim()
         if (/^#{1,6} /.test(t)) { mdCount++; if (!mdLevel) mdLevel = t.match(/^(#+)/)?.[1].length || 0 }
         else if (/^第[零一二三四五六七八九十百千万\d]+[章节部篇集]/.test(t)) chCount++
+        else if (/^[Cc]hapter\s+\d+/i.test(t)) chCount++
       }
       if (mdCount >= chCount && mdCount > 0) {
         const level = mdLevel || 1
@@ -296,7 +297,7 @@ export default function EditorPage() {
     const resolvedMode = mode === 'auto' ? detectMode() : mode
 
     const isTitle = (l: string) => {
-      if (resolvedMode === 'chapter') return /^第[零一二三四五六七八九十百千万\d]+[章节部篇集]/.test(l)
+      if (resolvedMode === 'chapter') return /^第[零一二三四五六七八九十百千万\d]+[章节部篇集]/.test(l) || /^[Cc]hapter\s+\d+/i.test(l)
       if (resolvedMode === 'h1') return /^# /.test(l)
       if (resolvedMode === 'h2') return /^## /.test(l)
       return /^### /.test(l)
@@ -369,7 +370,7 @@ export default function EditorPage() {
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden editor-ambient">
       {/* 隐藏的文件选择器 */}
-      <input type="file" accept=".txt,.md" ref={fileInputRef} onChange={handleTxtImport} className="hidden" />
+      <input type="file" accept=".txt" ref={fileInputRef} onChange={handleTxtImport} className="hidden" />
       {/* ===== 顶栏 ===== */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-border glass-panel shrink-0">
         <div className="flex items-center gap-3">
@@ -414,6 +415,21 @@ export default function EditorPage() {
                         a.href = url; a.download = (activeChapter?.title || '章节') + '.txt'; a.click()
                         URL.revokeObjectURL(url)
                       }} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><FileOutput className="w-3 h-3" /></span>导出 TXT</button>
+                      <button onClick={() => {
+                        setShowMenu(false)
+                        // 按顺序合并所有章节
+                        const sorted = [...chapters].sort((a, b) => a.order - b.order)
+                        const lines = sorted.map((ch, i) => {
+                          const plain = ch.content ? ch.content.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/g, ' ') : ''
+                          return `=== ${ch.title} ===\n${plain}`
+                        })
+                        const fullText = lines.join('\n\n')
+                        const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url; a.download = (project?.name || '作品') + '_全本.txt'; a.click()
+                        URL.revokeObjectURL(url)
+                      }} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><Download className="w-3 h-3" /></span>全本导出</button>
                       <button onClick={() => setSortBy(prev => prev === 'title' ? 'wordCount' : prev === 'wordCount' ? 'createdAt' : 'title')} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><Shuffle className="w-3 h-3" /></span>{sortBy === 'title' ? '按标题' : sortBy === 'wordCount' ? '按字数' : '按时间'}</button>
                       <button onClick={() => setShowAllChapters(prev => !prev)} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><BookOpen className="w-3 h-3" /></span>{showAllChapters ? '按卷分组' : '全部章节'}</button>
                     </div>
@@ -889,7 +905,7 @@ export default function EditorPage() {
             </div>
             <div className="flex items-center gap-2 px-6 py-3 border-b shrink-0">
               <span className="text-xs text-muted-foreground">拆分方式:</span>
-              <select className="text-xs px-2 py-1 rounded bg-secondary border-border" value={importMode} onChange={e => handleModeChange(e.target.value as any)}>
+              <select className="text-xs px-2 py-1 rounded bg-secondary border-border" value={importMode} onChange={e => handleModeChange(e.target.value as 'auto'|'chapter'|'h1'|'h2'|'h3')}>
                 <option value="auto">自动</option>
                 <option value="chapter">按章节</option>
                 <option value="h1">按 #</option>

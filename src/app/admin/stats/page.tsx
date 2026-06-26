@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { getProjects } from '@/lib/db/store'
 import { FileText, BookOpen, Users } from 'lucide-react'
+import type { Project } from '@/lib/db/types'
+import type { ReactNode } from 'react'
 
 export default function StatsPage() {
-  const [projects, setProjects] = useState<any[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   useEffect(() => { setProjects(getProjects()) }, [])
 
   return (
@@ -21,7 +23,7 @@ export default function StatsPage() {
   )
 }
 
-function StatCard({ icon, label, value }: any) {
+function StatCard({ icon, label, value }: { icon: ReactNode; label: string; value: string | number }) {
   return (
     <Card>
       <CardContent className="p-6 flex items-center gap-4">

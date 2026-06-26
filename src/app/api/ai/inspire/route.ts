@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { fetchWithTimeout } from '@/lib/utils/fetch-with-timeout'
+import { fetchWithTimeout, FetchRetryError } from '@/lib/utils/fetch-with-timeout'
 
 const API_KEY = process.env.DEEPSEEK_API_KEY
 const API_URL = 'https://api.deepseek.com/chat/completions'
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     }
 
     const { mode = '', context = '', genre = '通用' }:
-      { mode?: string; context?: string; genre?: string } = body as any
+      { mode?: string; context?: string; genre?: string } = body as { mode?: string; context?: string; genre?: string }
 
     if (typeof mode !== 'string') {
       return NextResponse.json({ error: 'mode 必须是字符串' }, { status: 400 })
@@ -98,6 +98,8 @@ export async function POST(req: Request) {
     const text = data.choices?.[0]?.message?.content || ''
     return NextResponse.json({ text, mode: actualMode })
   } catch (e: unknown) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : '未知错误' }, { status: 500 })
+    const message = e instanceof Error ? e.message : '未知错误'
+    const retryCount = e instanceof FetchRetryError ? e.retryCount : undefined
+    return NextResponse.json({ error: message, ...(retryCount !== undefined ? { retryCount } : {}) }, { status: 500 })
   }
 }

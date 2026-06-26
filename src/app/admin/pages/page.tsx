@@ -16,12 +16,12 @@ export default function PagesAdmin() {
   const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
-    fetch('/init-pages.json').then(r => r.json()).then((d: any) => {
-      const pages = d.pages || d
-      Object.entries(pages).forEach(([k, v]: [string, any]) => {
+    fetch('/init-pages.json').then(r => r.json()).then((d: Record<string, unknown>) => {
+      const pages: Record<string, unknown> = (d.pages as Record<string, unknown>) || d
+      Object.entries(pages).forEach(([k, v]: [string, unknown]) => {
         const existing = localStorage.getItem('mojing_page_' + k)
         const newJson = JSON.stringify(v)
-        if (!existing || JSON.parse(existing).components.length < (v as any).components.length) {
+        if (!existing || JSON.parse(existing).components.length < (v as { components: unknown[] }).components.length) {
           localStorage.setItem('mojing_page_' + k, newJson)
         }
       })

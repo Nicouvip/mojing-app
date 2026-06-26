@@ -14,8 +14,8 @@ export default function BackupPage() {
       if (!res.ok) throw new Error('备份失败');
       const data = await res.json();
       alert(data.message || '备份成功');
-    } catch (e: any) {
-      alert(e.message || '备份失败');
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : '备份失败');
     } finally {
       setLoading(false);
     }

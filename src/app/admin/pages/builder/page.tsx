@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { loadPage, savePage } from '@/lib/page-builder/store'
@@ -33,10 +34,11 @@ export default function PageBuilder() {
 
   const selected = data.components.find(c => c.id === selectedId)
 
-  const handleDragEnd = (e: any) => {
+  const handleDragEnd = (e: DragEndEvent) => {
     if (!e.over || e.active.id === e.over.id) return
+    const overId = e.over.id
     const oldI = data.components.findIndex(c => c.id === e.active.id)
-    const newI = data.components.findIndex(c => c.id === e.over.id)
+    const newI = data.components.findIndex(c => c.id === overId)
     setData(p => ({ ...p, components: arrayMove(p.components, oldI, newI) }))
   }
 

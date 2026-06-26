@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { fetchWithTimeout } from '@/lib/utils/fetch-with-timeout'
+import { fetchWithTimeout, FetchRetryError } from '@/lib/utils/fetch-with-timeout'
 
 const API_KEY = process.env.DEEPSEEK_API_KEY
 const API_URL = 'https://api.deepseek.com/chat/completions'
@@ -54,6 +54,8 @@ ${currentHtml ? `需要重新设计的页面内容：\n${currentHtml.substring(0
     const text = data.choices?.[0]?.message?.content || ''
     return NextResponse.json({ html: text.trim() })
   } catch (e: unknown) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : '未知错误' }, { status: 500 })
+    const message = e instanceof Error ? e.message : '未知错误'
+    const retryCount = e instanceof FetchRetryError ? e.retryCount : undefined
+    return NextResponse.json({ error: message, ...(retryCount !== undefined ? { retryCount } : {}) }, { status: 500 })
   }
 }

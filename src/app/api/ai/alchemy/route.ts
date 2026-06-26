@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { fetchWithTimeout } from '@/lib/utils/fetch-with-timeout'
+import { fetchWithTimeout, FetchRetryError } from '@/lib/utils/fetch-with-timeout'
 
 const API_KEY = process.env.DEEPSEEK_API_KEY
 const API_URL = 'https://api.deepseek.com/chat/completions'
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       keywords?: string
       style?: string
       count?: number
-    } = body as any
+    } = body as { genre?: string; keywords?: string; style?: string; count?: number }
 
     // 校验 count 为有效正数
     const validCount = typeof count === 'number' && count > 0 && Number.isFinite(count)
@@ -129,6 +129,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ text, titles: titles.slice(0, validCount) })
   } catch (e: unknown) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : '未知错误' }, { status: 500 })
+    const message = e instanceof Error ? e.message : '未知错误'
+    const retryCount = e instanceof FetchRetryError ? e.retryCount : undefined
+    return NextResponse.json({ error: message, ...(retryCount !== undefined ? { retryCount } : {}) }, { status: 500 })
   }
 }

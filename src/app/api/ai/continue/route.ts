@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { buildPrompt } from '@/lib/prompts'
+import { fetchWithTimeout, FetchRetryError } from '@/lib/utils/fetch-with-timeout'
 
 const API_KEY = process.env.DEEPSEEK_API_KEY
 const API_URL = 'https://api.deepseek.com/chat/completions'
@@ -34,7 +35,8 @@ export async function POST(req: Request) {
       genre,
     })
 
-    const response = await fetch(API_URL, {
+    // 流式场景：fetchWithTimeout 内部重试，如果最终失败则抛出异常
+    const response = await fetchWithTimeout(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
       body: JSON.stringify({
@@ -44,7 +46,7 @@ export async function POST(req: Request) {
         temperature: params.temperature,
         stream: true,
       }),
-    })
+    }, 60_000) // 流式场景用更长的超时
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}))
@@ -108,6 +110,8 @@ export async function POST(req: Request) {
       },
     })
   } catch (e: unknown) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : '未知错误' }, { status: 500 })
+    const message = e instanceof Error ? e.message : '未知错误'
+    const retryCount = e instanceof FetchRetryError ? e.retryCount : undefined
+    return NextResponse.json({ error: message, ...(retryCount !== undefined ? { retryCount } : {}) }, { status: 500 })
   }
 }
