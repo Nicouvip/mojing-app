@@ -27,4 +27,15 @@ export interface Chapter {
   updatedAt: number
   deletedAt?: number | null
   status: 'draft' | 'writing' | 'review' | 'completed'
+  /** 所属卷 ID，空字符串表示未分类 */
+  volumeId?: string
+}
+
+export interface Volume {
+  id: string
+  projectId: string
+  name: string
+  order: number
+  createdAt: number
+  updatedAt: number
 }

@@ -1,4 +1,4 @@
-import type { Project, Chapter } from '@/lib/db/types'
+import type { Project, Chapter, Volume } from '@/lib/db/types'
 import { isSupabaseAvailable, supabase } from '@/lib/db/supabase-client'
 import readingTime from 'reading-time'
 
@@ -96,9 +96,12 @@ export function createProject(name: string, genre: string): Project {
     createdAt: Date.now(), updatedAt: Date.now(), chapterCount: 1, totalWords: 0 }
   projects.push(p)
   setProjectsAll(projects)
+  // 创建默认卷
+  const defaultVol = createVolume(p.id, '第一卷')
   const chapters = getChaptersAll(true)
   chapters.push({ id: `ch-${Date.now()}`, projectId: p.id, title: '第一章', content: '',
-    order: 1, wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft' })
+    order: 1, wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft',
+    volumeId: defaultVol.id })
   setChaptersAll(chapters)
   return p
 }
@@ -133,14 +136,17 @@ export function restoreProject(id: string): void {
   setChaptersAll(chapters)
 }
 
-export function createChapter(projectId: string, title: string): Chapter | undefined {
+export function createChapter(projectId: string, title: string, volumeId?: string): Chapter | undefined {
   const proj = getProjectsAll().find(p => p.id === projectId)
   if (!proj) return undefined
   const chapters = getChaptersAll(true)
+  // 默认归入第一个卷
+  const targetVolumeId = volumeId || ensureDefaultVolume(projectId).id
   const ch: Chapter = {
     id: `ch-${Date.now()}`, projectId, title, content: '',
     order: chapters.filter(c => c.projectId === projectId).length + 1,
     wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft',
+    volumeId: targetVolumeId,
   }
   chapters.push(ch)
   setChaptersAll(chapters)
@@ -213,6 +219,75 @@ export function updateChapterContent(id: string, content: string): Chapter | und
     setProjectsAll(projects)
   }
   return ch
+}
+
+// ── 卷管理 ──────────────────────────────────────────
+let memVolumes: Volume[] = []
+
+function getVolumesAll(): Volume[] {
+  if (isClient()) return loadClient('volumes', memVolumes)
+  return memVolumes
+}
+function setVolumesAll(v: Volume[]) {
+  memVolumes = v
+  if (isClient()) saveClient('volumes', v)
+  syncToSupabase()
+}
+
+/** 按 order 排序返回项目的卷列表 */
+export function getVolumes(projectId: string): Volume[] {
+  return getVolumesAll().filter(v => v.projectId === projectId).sort((a, b) => a.order - b.order)
+}
+
+/** 创建新卷 */
+export function createVolume(projectId: string, name: string): Volume {
+  const volumes = getVolumesAll()
+  const maxOrder = volumes.filter(v => v.projectId === projectId).reduce((max, v) => Math.max(max, v.order), 0)
+  const vol: Volume = {
+    id: `vol-${Date.now()}`,
+    projectId,
+    name: name.trim() || '未命名卷',
+    order: maxOrder + 1,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }
+  volumes.push(vol)
+  setVolumesAll(volumes)
+  return vol
+}
+
+/** 重命名卷，name 为空则恢复原名 */
+export function renameVolume(volumeId: string, name: string): void {
+  const volumes = getVolumesAll()
+  const vol = volumes.find(v => v.id === volumeId)
+  if (!vol) return
+  const trimmed = name.trim()
+  if (trimmed) vol.name = trimmed
+  vol.updatedAt = Date.now()
+  setVolumesAll(volumes)
+}
+
+/** 删除卷。非空卷不会拒绝，而是将章节移入未分类（volumeId 置空）并返回章节数 */
+export function deleteVolume(volumeId: string): { chaptersCount: number } {
+  const volumes = getVolumesAll()
+  const chapters = getChaptersAll()
+  const volChapters = chapters.filter(c => c.volumeId === volumeId && !c.deletedAt)
+  const count = volChapters.length
+  if (count > 0) {
+    volChapters.forEach(c => { c.volumeId = '' })
+    setChaptersAll(chapters)
+  }
+  setVolumesAll(volumes.filter(v => v.id !== volumeId))
+  return { chaptersCount: count }
+}
+
+/** 确保项目至少有 1 个默认卷，返回第一个卷 */
+export function ensureDefaultVolume(projectId: string): Volume {
+  const vols = getVolumes(projectId)
+  if (vols.length === 0) {
+    return createVolume(projectId, '第一卷')
+  }
+  return vols[0]
 }
 
 // ── 30天自动清理软删除数据 ──────────────────────────────

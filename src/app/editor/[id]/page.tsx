@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { cn, toPlainText } from '@/lib/utils/utils'
 import { Button } from '@/components/ui/button'
-import { getProject, getChapters, getChapter, updateChapterContent, createChapter, deleteChapter, getTrash, restoreChapter, permanentDeleteChapter, createProject, cleanExpiredChapters } from '@/lib/db/store'
-import type { Project, Chapter, Character } from '@/lib/db/types'
+import { getProject, getChapters, getChapter, updateChapterContent, createChapter, deleteChapter, getTrash, restoreChapter, permanentDeleteChapter, createProject, cleanExpiredChapters, getVolumes, createVolume, renameVolume, deleteVolume, ensureDefaultVolume } from '@/lib/db/store'
+import type { Project, Chapter, Character, Volume } from '@/lib/db/types'
 import { calcBodyDensity, checkCompliance } from '@/lib/ai/compliance'
 import { generateSimpleA8Status, generateUnblockHint } from '@/lib/prompts/builder'
 import { WritingEditor, type EditorHandle } from '@/components/writing-editor'
@@ -146,7 +146,7 @@ export default function EditorPage() {
   const [showTrash, setShowTrash] = useState(false)
   const [trashChapters, setTrashChapters] = useState<Chapter[]>([])
   const [selectedTrashId, setSelectedTrashId] = useState<string | null>(null)
-  const [volumes, setVolumes] = useState<string[]>(['第一卷'])
+  const [volumes, setVolumes] = useState<Volume[]>([])
   const [showVolumeModal, setShowVolumeModal] = useState(false)
   const [volumeName, setVolumeName] = useState('')
   const [volMenuOpen, setVolMenuOpen] = useState<string | null>(null)
@@ -155,11 +155,6 @@ export default function EditorPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') try { localStorage.setItem('mojing_characters_' + projectId, JSON.stringify(characters)) } catch {}
   }, [characters, projectId])
-  useEffect(() => {
-    if (typeof window !== 'undefined' && projectId) {
-      try { localStorage.setItem('mojing_volumes_' + projectId, JSON.stringify(volumes)) } catch {}
-    }
-  }, [volumes, projectId])
   const [filterTab, setFilterTab] = useState('all')
   const editorRef = useRef<Editor | null>(null)
   const writingEditorRef = useRef<EditorHandle>(null)
@@ -174,12 +169,30 @@ export default function EditorPage() {
     setProject(p)
     const chs = getChapters(projectId)
     setChapters(chs)
-    // 加载卷数据
+    // 加载卷数据（兼容旧 localStorage 格式）
     if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('mojing_volumes_' + projectId)
-        if (stored) setVolumes(JSON.parse(stored))
-      } catch {}
+      const storeVols = getVolumes(projectId)
+      if (storeVols.length > 0) {
+        setVolumes(storeVols)
+      } else {
+        // 尝试从旧格式迁移：mojing_volumes_{projectId}
+        try {
+          const oldData = localStorage.getItem('mojing_volumes_' + projectId)
+          if (oldData) {
+            const oldNames: string[] = JSON.parse(oldData)
+            const migrated = oldNames.map((name: string, i: number) => createVolume(projectId, name))
+            setVolumes(migrated)
+            localStorage.removeItem('mojing_volumes_' + projectId)
+          } else {
+            // 旧数据无卷信息，创建默认卷
+            const dv = ensureDefaultVolume(projectId)
+            setVolumes([dv])
+          }
+        } catch {
+          const dv = ensureDefaultVolume(projectId)
+          setVolumes([dv])
+        }
+      }
     }
     if (chs.length > 0) {
       const lastId = typeof window !== 'undefined' ? localStorage.getItem('mojing_last_chapter_' + projectId) : null
@@ -412,7 +425,11 @@ export default function EditorPage() {
                   className="w-full h-7 px-3 text-xs rounded-lg border border-border bg-background outline-none focus:border-primary transition-all" />
               </div>
               <div className="flex gap-2 px-4 py-3 border-b border-border">
-                <button onClick={() => { const nc = createChapter(projectId, `第${chapters.length + 1}章`); if (nc) { setChapters(getChapters(projectId)); setActiveChapterId(nc.id) } }}
+                <button onClick={() => {
+                  const firstVolId = volumes.length > 0 ? volumes[0].id : undefined
+                  const nc = createChapter(projectId, `第${chapters.length + 1}章`, firstVolId)
+                  if (nc) { setChapters(getChapters(projectId)); setActiveChapterId(nc.id) }
+                }}
                   className="text-xs px-3 py-1 rounded-full bg-primary text-white font-medium hover:bg-primary/90">+ 新建章</button>
                 <button onClick={() => { setVolumeName(`第${volumes.length + 1}卷`); setShowVolumeModal(true) }}
                   className="text-xs px-3 py-1 rounded-full border border-border text-muted-foreground hover:bg-secondary">+ 新建卷</button>
@@ -449,35 +466,59 @@ export default function EditorPage() {
                     </div>
                   ))
                   }
-                  const chPerVol = Math.ceil(displayChs.length / volumes.length) || 1
-                  const vols = volumes.map((v, i) => ({ name: v, chs: displayChs.slice(i * chPerVol, (i + 1) * chPerVol) }))
-                  if (displayChs.length > volumes.length * chPerVol) vols.push({ name: `第${volumes.length + 1}卷`, chs: displayChs.slice(volumes.length * chPerVol) })
-                  if (vols.length === 0) vols.push({ name: '第一卷', chs: [] })
-                  return vols.map(vol => (
-                    <div key={vol.name}>
+                  // 按 volumeId 分组
+                  const unclassifiedChs = displayChs.filter(c => !c.volumeId || c.volumeId === '')
+                  const volGroups = volumes.map(v => ({
+                    vol: v,
+                    chs: displayChs.filter(c => c.volumeId === v.id),
+                  }))
+                  const allGroups = [
+                    ...volGroups,
+                    ...(unclassifiedChs.length > 0 ? [{ vol: null, chs: unclassifiedChs }] : []),
+                  ]
+                  return allGroups.map(group => {
+                    const isUnclassified = !group.vol
+                    const vol = group.vol as Volume | null
+                    return (
+                    <div key={vol?.id || '_unclassified'}>
                       <div className="flex items-center justify-between px-4 py-1.5 text-[11px] text-muted-foreground font-medium group">
-                        {renamingVol === vol.name ? (
+                        {renamingVol === vol?.id ? (
                           <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter' && renameValue.trim()) { setVolumes(prev => prev.map(v => v === vol.name ? renameValue.trim() : v)); setRenamingVol(null) } else if (e.key === 'Escape') { setRenamingVol(null) } }}
+                            onKeyDown={e => { if (e.key === 'Enter') { if (renameValue.trim()) { renameVolume(vol.id, renameValue.trim()); setVolumes(getVolumes(projectId)); } setRenamingVol(null) } else if (e.key === 'Escape') { setRenamingVol(null) } }}
                             onBlur={() => setRenamingVol(null)}
                             className="w-full px-1 py-0 text-xs rounded border border-primary bg-background outline-none" autoFocus />
                         ) : (
-                          <span>{vol.name}</span>
+                          <span>{isUnclassified ? '📂 未分类' : vol!.name}</span>
                         )}
-                        <div className="relative">
-                          <button onClick={e => { e.stopPropagation(); setVolMenuOpen(volMenuOpen === vol.name ? null : vol.name) }}
-                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground text-xs"><Ellipsis className="w-3 h-3" /></button>
-                          {volMenuOpen === vol.name && (
-                            <div className="absolute right-0 top-4 bg-white rounded-lg shadow-elevated border border-border py-1 w-28 z-50" onClick={e => e.stopPropagation()}>
-                              <button onClick={() => { setRenamingVol(vol.name); setRenameValue(vol.name); setVolMenuOpen(null) }}
-                                className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><Pencil className="w-3 h-3" />重命名</button>
-                              <button onClick={() => { if (window.confirm(`确认删除「${vol.name}」？`)) { setVolumes(prev => prev.filter(v => v !== vol.name)); setVolMenuOpen(null) } }}
-                                className="w-full text-left px-3 py-1.5 text-xs text-destructive hover:bg-secondary flex items-center gap-2"><Trash2 className="w-3 h-3" />删除</button>
-                            </div>
-                          )}
-                        </div>
+                        {!isUnclassified && (
+                          <div className="relative">
+                            <button onClick={e => { e.stopPropagation(); setVolMenuOpen(volMenuOpen === vol!.id ? null : vol!.id) }}
+                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground text-xs"><Ellipsis className="w-3 h-3" /></button>
+                            {volMenuOpen === vol!.id && (
+                              <div className="absolute right-0 top-4 bg-white rounded-lg shadow-elevated border border-border py-1 w-28 z-50" onClick={e => e.stopPropagation()}>
+                                <button onClick={() => { setRenamingVol(vol!.id); setRenameValue(vol!.name); setVolMenuOpen(null) }}
+                                  className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><Pencil className="w-3 h-3" />✏️ 重命名</button>
+                                <button onClick={() => {
+                                  setVolMenuOpen(null)
+                                  const count = group.chs.length
+                                  if (count === 0) {
+                                    deleteVolume(vol!.id)
+                                    setVolumes(getVolumes(projectId))
+                                  } else {
+                                    if (window.confirm(`卷内有 ${count} 篇章节，删除后章节将移入未分类`)) {
+                                      deleteVolume(vol!.id)
+                                      setVolumes(getVolumes(projectId))
+                                      setChapters(getChapters(projectId))
+                                    }
+                                  }
+                                }}
+                                  className="w-full text-left px-3 py-1.5 text-xs text-destructive hover:bg-secondary flex items-center gap-2"><Trash2 className="w-3 h-3" />❌ 删除卷</button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      {vol.chs.map(ch => (
+                      {group.chs.map(ch => (
                         <div key={ch.id} onClick={() => { if (saveStatus === 'unsaved') handleSave(); localStorage.setItem('mojing_last_chapter_' + projectId, ch.id); setContent(ch.content || ''); setActiveChapterId(ch.id) }}
                           className={cn("flex items-center justify-between px-4 py-1.5 text-sm cursor-pointer transition-all group", activeChapterId === ch.id ? "bg-primary-light text-primary font-medium" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}>
                           <span className="truncate">{ch.title}</span>
@@ -489,7 +530,7 @@ export default function EditorPage() {
                         </div>
                       ))}
                     </div>
-                  ))
+                  )})
                 })()}
               </div>
             </div>
@@ -749,11 +790,11 @@ export default function EditorPage() {
           <div className="bg-white rounded-[20px] shadow-modal w-[360px] p-6" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold mb-4">新建卷</h3>
             <input type="text" value={volumeName} onChange={e => setVolumeName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { if (volumeName.trim()) { setVolumes(prev => [...prev, volumeName.trim()]); setShowVolumeModal(false) } } }}
+              onKeyDown={e => { if (e.key === 'Enter' && volumeName.trim()) { createVolume(projectId, volumeName.trim()); setVolumes(getVolumes(projectId)); setShowVolumeModal(false); setVolumeName('') } }}
               className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm mb-4" autoFocus />
             <div className="flex gap-2 justify-end">
               <Button variant="outline" size="sm" onClick={() => setShowVolumeModal(false)}>取消</Button>
-              <Button size="sm" onClick={() => { if (volumeName.trim()) { setVolumes(prev => [...prev, volumeName.trim()]); setShowVolumeModal(false) } }}>创建</Button>
+              <Button size="sm" onClick={() => { if (volumeName.trim()) { createVolume(projectId, volumeName.trim()); setVolumes(getVolumes(projectId)); setShowVolumeModal(false); setVolumeName('') } }}>创建</Button>
             </div>
           </div>
         </div>
