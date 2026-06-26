@@ -32,12 +32,79 @@ export async function POST(req: Request) {
       genre,
     })
 
-    const r = await fetchWithTimeout(URL, { method: 'POST',
+    const response = await fetchWithTimeout(URL, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${KEY}` },
-      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'user', content: prompt }], max_tokens: params.maxTokens, temperature: params.temperature }) })
-    const d = await r.json()
-    if (!r.ok) return NextResponse.json({ error: d.error?.message }, { status: 500 })
-    return NextResponse.json({ text: d.choices?.[0]?.message?.content || '' })
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: params.maxTokens,
+        temperature: params.temperature,
+        stream: true,
+      }),
+    }, 60_000)
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}))
+      return NextResponse.json({ error: errData.error?.message || 'API错误' }, { status: 500 })
+    }
+
+    const encoder = new TextEncoder()
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body?.getReader()
+        if (!reader) {
+          controller.enqueue(encoder.encode(JSON.stringify({ error: '无法读取流' })))
+          controller.close()
+          return
+        }
+
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
+
+            for (const line of lines) {
+              const trimmed = line.trim()
+              if (!trimmed || !trimmed.startsWith('data: ')) continue
+              const data = trimmed.slice(6)
+              if (data === '[DONE]') continue
+
+              try {
+                const parsed = JSON.parse(data)
+                const content = parsed.choices?.[0]?.delta?.content || ''
+                if (content) {
+                  controller.enqueue(encoder.encode(JSON.stringify({ text: content }) + '\n'))
+                }
+              } catch {
+                // skip parse errors for partial lines
+              }
+            }
+          }
+        } catch (e) {
+          controller.enqueue(encoder.encode(JSON.stringify({ error: e instanceof Error ? e.message : '流读取错误' }) + '\n'))
+        } finally {
+          reader.releaseLock()
+          controller.close()
+        }
+      },
+    })
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : '未知错误'
     const retryCount = e instanceof FetchRetryError ? e.retryCount : undefined

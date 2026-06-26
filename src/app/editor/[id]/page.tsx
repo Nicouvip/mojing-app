@@ -15,7 +15,7 @@ import { BrainstormModal } from '@/components/brainstorm-modal'
 import type { Editor } from '@tiptap/react'
 import { useTheme } from '@/lib/utils/theme-context'
 import Image from 'next/image'
-import { ArrowLeft, PanelLeft, PanelRight, Save, CheckCircle2, AlertTriangle, Maximize2, ClipboardCheck, Ellipsis, Trash2, Download, FileOutput, Upload, Shuffle, BookOpen, X, User, Lightbulb, Sparkles, BookMarked, Bot, FileText, Search, Pencil, Rocket, Zap, Sun, Sunrise, Moon, Snowflake, Keyboard, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowLeft, PanelLeft, PanelRight, Save, CheckCircle2, AlertTriangle, Maximize2, ClipboardCheck, Ellipsis, Trash2, Download, FileOutput, Upload, Shuffle, BookOpen, X, User, Lightbulb, Sparkles, BookMarked, Bot, FileText, Search, Pencil, Rocket, Zap, Sun, Sunrise, Moon, Snowflake, Keyboard, ArrowUp, ArrowDown, Printer } from 'lucide-react'
 
 export default function EditorPage() {
   const params = useParams()
@@ -164,6 +164,7 @@ export default function EditorPage() {
   const contentRef = useRef(content)
   contentRef.current = content
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const printFrameRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
     const p = getProject(projectId)
@@ -367,12 +368,52 @@ export default function EditorPage() {
     setImportFn('')
   }
 
+  // ===== PDF 导出工具 =====
+  const handleExportPDF = () => {
+    const sorted = [...chapters].sort((a, b) => a.order - b.order)
+    const lines = sorted.map((ch, i) => {
+      const plain = ch.content ? ch.content.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/g, ' ') : ''
+      return `<h2>${ch.title}</h2>\n<div class="chapter-content">${plain.replace(/\n/g, '<br/>')}</div>`
+    })
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>${project?.name || '作品'}</title>
+<style>
+  @page { margin: 2.5cm 2cm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", serif; font-size: 14px; line-height: 2; color: #333; padding: 0; max-width: 100%; }
+  .book-title { text-align: center; font-size: 24px; font-weight: bold; margin: 4cm 0 3cm; page-break-after: always; }
+  .chapter-content { text-indent: 2em; }
+  h2 { text-align: center; font-size: 20px; margin: 1.5cm 0 0.8cm; font-weight: bold; page-break-before: always; }
+  h2:first-of-type { page-break-before: auto; }
+  .footer { text-align: center; font-size: 12px; color: #999; margin-top: 2cm; }
+  @media print { .no-print { display: none; } }
+</style>
+</head>
+<body>
+  <div class="book-title">${project?.name || '作品'}</div>
+  ${lines.join('\n')}
+  <div class="footer">—— 全文完 ——</div>
+</body>
+</html>`
+    const iframe = printFrameRef.current
+    if (!iframe) return
+    iframe.srcdoc = html
+    iframe.onload = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.print()
+      }, 300)
+    }
+  }
+
   if (!project) return null
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden editor-ambient">
       {/* 隐藏的文件选择器 */}
       <input type="file" accept=".txt" ref={fileInputRef} onChange={handleTxtImport} className="hidden" />
+      {/* 隐藏的 PDF 导出 iframe */}
+      <iframe ref={printFrameRef} className="hidden" title="print-frame" />
       {/* ===== 顶栏 ===== */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-border glass-panel shrink-0">
         <div className="flex items-center gap-3">
@@ -432,6 +473,7 @@ export default function EditorPage() {
                         a.href = url; a.download = (project?.name || '作品') + '_全本.txt'; a.click()
                         URL.revokeObjectURL(url)
                       }} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><Download className="w-3 h-3" /></span>全本导出</button>
+                      <button onClick={() => { setShowMenu(false); handleExportPDF() }} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><Printer className="w-3 h-3" /></span>📄 全本PDF导出</button>
                       <button onClick={() => setSortBy(prev => prev === 'title' ? 'wordCount' : prev === 'wordCount' ? 'createdAt' : 'title')} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><Shuffle className="w-3 h-3" /></span>{sortBy === 'title' ? '按标题' : sortBy === 'wordCount' ? '按字数' : '按时间'}</button>
                       <button onClick={() => setShowAllChapters(prev => !prev)} className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2"><span><BookOpen className="w-3 h-3" /></span>{showAllChapters ? '按卷分组' : '全部章节'}</button>
                     </div>
