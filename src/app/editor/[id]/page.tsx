@@ -15,7 +15,7 @@ import { BrainstormModal } from '@/components/brainstorm-modal'
 import type { Editor } from '@tiptap/react'
 import { useTheme } from '@/lib/utils/theme-context'
 import Image from 'next/image'
-import { ArrowLeft, PanelLeft, PanelRight, Save, CheckCircle2, AlertTriangle, Maximize2, ClipboardCheck, Ellipsis, Trash2, Download, FileOutput, Upload, Shuffle, BookOpen, X, User, Lightbulb, Sparkles, BookMarked, Bot, FileText, Search, Pencil, Rocket, Zap, Sun, Sunrise, Moon, Snowflake, Keyboard } from 'lucide-react'
+import { ArrowLeft, PanelLeft, PanelRight, Save, CheckCircle2, AlertTriangle, Maximize2, ClipboardCheck, Ellipsis, Trash2, Download, FileOutput, Upload, Shuffle, BookOpen, X, User, Lightbulb, Sparkles, BookMarked, Bot, FileText, Search, Pencil, Rocket, Zap, Sun, Sunrise, Moon, Snowflake, Keyboard, ArrowUp, ArrowDown } from 'lucide-react'
 
 export default function EditorPage() {
   const params = useParams()
@@ -141,6 +141,8 @@ export default function EditorPage() {
   }
   const [violations, setViolations] = useState<string[]>([])
   const [headings, setHeadings] = useState<{ level: number; text: string; pos: number }[]>([])
+  const [editingHeadingIdx, setEditingHeadingIdx] = useState<number | null>(null)
+  const [editingHeadingText, setEditingHeadingText] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [showMenu, setShowMenu] = useState(false)
   const [showTrash, setShowTrash] = useState(false)
@@ -641,7 +643,74 @@ export default function EditorPage() {
                     <p className="text-[10px] text-muted-foreground">仅供参考，改与不改由你决定</p>
                   </div>
                 })() : null}
-                {rightTab === 'outline' && (headings.length === 0 ? <p className="text-xs text-muted-foreground">用标题格式来生成大纲<br />试试点击工具栏的"卷""章""节"</p> : <div className="text-xs space-y-0.5">{headings.map((h, i) => <div key={i} onClick={() => { const el = document.querySelector('[contenteditable]'); if (el && h.pos >= 0) { el.scrollTop = h.pos * 0.5 } }} className={cn("px-2 py-1 rounded cursor-pointer hover:bg-secondary transition-colors", h.level === 1 ? 'font-bold text-foreground' : h.level === 2 ? 'pl-4 font-medium text-muted-foreground' : 'pl-6 text-muted-foreground')}>{h.text}</div>)}</div>)}
+                {rightTab === 'outline' && <div className="text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-muted-foreground">{headings.length} 个标题</span>
+                  </div>
+                  {headings.length === 0 ? (
+                    <div className="flex flex-col items-center py-8 text-center">
+                      <FileText className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                      <p className="text-[11px] text-muted-foreground">暂无大纲，在编辑器中添加标题</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-1">试试点击工具栏的"卷""章""节"</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {headings.map((h, i) => (
+                        <div key={i} className={cn("flex items-center gap-1 px-1 py-0.5 rounded hover:bg-secondary transition-colors", h.level === 1 ? 'font-bold text-foreground' : h.level === 2 ? 'font-medium text-muted-foreground' : 'text-muted-foreground')}
+                          style={{ paddingLeft: `${(h.level - 1) * 16 + 4}px` }}>
+                          {/* 标题文本 - 点击跳转 */}
+                          {editingHeadingIdx === i ? (
+                            <input
+                              autoFocus
+                              className="flex-1 bg-background border border-primary rounded px-1 py-0 text-[11px] outline-none min-w-0"
+                              value={editingHeadingText}
+                              onChange={e => setEditingHeadingText(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && editingHeadingText.trim()) {
+                                  writingEditorRef.current?.updateHeadingText(h.pos, editingHeadingText.trim())
+                                  setEditingHeadingIdx(null)
+                                }
+                                if (e.key === 'Escape') setEditingHeadingIdx(null)
+                              }}
+                              onBlur={() => {
+                                if (editingHeadingText.trim()) {
+                                  writingEditorRef.current?.updateHeadingText(h.pos, editingHeadingText.trim())
+                                }
+                                setEditingHeadingIdx(null)
+                              }}
+                              onClick={e => e.stopPropagation()}
+                            />
+                          ) : (
+                            <span
+                              className="flex-1 truncate cursor-pointer"
+                              onClick={() => writingEditorRef.current?.scrollToHeading(h.pos)}
+                              title={h.text}
+                            >{h.text}</span>
+                          )}
+                          {/* 右侧操作按钮组：↑↓ ✏️ ❌ */}
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button onClick={(e) => { e.stopPropagation(); if (i > 0) writingEditorRef.current?.swapHeadings(headings[i - 1].pos, h.pos) }}
+                              className="p-0.5 text-muted-foreground/50 hover:text-foreground transition-colors" title="上移">
+                              <ArrowUp className="w-2.5 h-2.5" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); if (i < headings.length - 1) writingEditorRef.current?.swapHeadings(headings[i + 1].pos, h.pos) }}
+                              className="p-0.5 text-muted-foreground/50 hover:text-foreground transition-colors" title="下移">
+                              <ArrowDown className="w-2.5 h-2.5" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setEditingHeadingIdx(i); setEditingHeadingText(h.text) }}
+                              className="p-0.5 text-muted-foreground/50 hover:text-foreground transition-colors" title="编辑标题">
+                              <Pencil className="w-2.5 h-2.5" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); writingEditorRef.current?.deleteHeadingAt(h.pos) }}
+                              className="p-0.5 text-muted-foreground/50 hover:text-destructive transition-colors" title="从大纲移除">
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>}
                 {rightTab === 'character' && <div className="text-xs text-muted-foreground space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-foreground">角色列表</p>

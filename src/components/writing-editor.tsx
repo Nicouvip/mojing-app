@@ -17,6 +17,10 @@ interface Heading {
 
 export interface EditorHandle {
   insertAtCursor: (text: string) => void
+  scrollToHeading: (pos: number) => void
+  updateHeadingText: (pos: number, newText: string) => void
+  deleteHeadingAt: (pos: number) => void
+  swapHeadings: (posA: number, posB: number) => void
 }
 
 interface Props {
@@ -72,6 +76,66 @@ export const WritingEditor = forwardRef<EditorHandle, Props>(function WritingEdi
   useImperativeHandle(ref, () => ({
     insertAtCursor(text: string) {
       editor?.chain().focus().insertContent(text).run()
+    },
+    scrollToHeading(pos: number) {
+      if (!editor) return
+      editor.chain().focus().setTextSelection(pos + 1).scrollIntoView().run()
+    },
+    updateHeadingText(pos: number, newText: string) {
+      if (!editor) return
+      const node = editor.state.doc.nodeAt(pos)
+      if (!node) return
+      const from = pos + 1
+      const to = pos + node.nodeSize - 1
+      editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, newText).run()
+    },
+    deleteHeadingAt(pos: number) {
+      if (!editor) return
+      const node = editor.state.doc.nodeAt(pos)
+      if (!node) return
+      editor.chain().focus().deleteRange({ from: pos, to: pos + node.nodeSize }).run()
+    },
+    swapHeadings(posA: number, posB: number) {
+      if (!editor) return
+      const nodeA = editor.state.doc.nodeAt(posA)
+      const nodeB = editor.state.doc.nodeAt(posB)
+      if (!nodeA || !nodeB) return
+      const textA = nodeA.textContent
+      const textB = nodeB.textContent
+      // Swap text only — process the rightmost heading first to avoid position shifts
+      if (posA < posB) {
+        // Update B first (further right), then A
+        const fromB = posB + 1
+        const toB = posB + nodeB.nodeSize - 1
+        editor.chain().focus()
+          .deleteRange({ from: fromB, to: toB })
+          .insertContentAt(fromB, textA)
+          .run()
+        const nodeA2 = editor.state.doc.nodeAt(posA)
+        if (!nodeA2) return
+        const fromA = posA + 1
+        const toA = posA + nodeA2.nodeSize - 1
+        editor.chain().focus()
+          .deleteRange({ from: fromA, to: toA })
+          .insertContentAt(fromA, textB)
+          .run()
+      } else {
+        // Update A first (further right), then B
+        const fromA = posA + 1
+        const toA = posA + nodeA.nodeSize - 1
+        editor.chain().focus()
+          .deleteRange({ from: fromA, to: toA })
+          .insertContentAt(fromA, textB)
+          .run()
+        const nodeB2 = editor.state.doc.nodeAt(posB)
+        if (!nodeB2) return
+        const fromB = posB + 1
+        const toB = posB + nodeB2.nodeSize - 1
+        editor.chain().focus()
+          .deleteRange({ from: fromB, to: toB })
+          .insertContentAt(fromB, textA)
+          .run()
+      }
     },
   }), [editor])
 
