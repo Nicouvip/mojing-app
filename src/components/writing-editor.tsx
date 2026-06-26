@@ -1,7 +1,7 @@
 'use client'
 
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo, useState, forwardRef, useImperativeHandle } from 'react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Highlight from '@tiptap/extension-highlight'
@@ -15,6 +15,10 @@ interface Heading {
   level: number; text: string; pos: number
 }
 
+export interface EditorHandle {
+  insertAtCursor: (text: string) => void
+}
+
 interface Props {
   content: string; onChange: (text: string) => void
   onHeadings?: (headings: Heading[]) => void
@@ -23,12 +27,17 @@ interface Props {
   placeholder?: string
 }
 
-export function WritingEditor({ content, onChange, onHeadings, onEditorReady, wordGoal = 3000, onWordGoalChange, placeholder = '开始写作...' }: Props) {
+export const WritingEditor = forwardRef<EditorHandle, Props>(function WritingEditor({ content, onChange, onHeadings, onEditorReady, wordGoal = 3000, onWordGoalChange, placeholder = '开始写作...' }, ref) {
+  const extensions = useMemo(() => [StarterKit.configure({ heading: { levels: [1, 2, 3] } }), Placeholder.configure({ placeholder }),
+      Highlight.configure({ multicolor: true }), Underline, TextAlign.configure({ types: ['heading', 'paragraph'] }), CharacterCount.configure()], [placeholder])
+
+  const editorProps = useMemo(() => ({ attributes: { class: 'prose max-w-none outline-none min-h-[60vh] text-lg leading-8 font-serif' } }), [])
+
   const editor = useEditor({
-    extensions: [StarterKit.configure({ heading: { levels: [1, 2, 3] } }), Placeholder.configure({ placeholder }),
-      Highlight.configure({ multicolor: true }), Underline, TextAlign.configure({ types: ['heading', 'paragraph'] }), CharacterCount.configure()],
-    content, immediatelyRender: false,
-    editorProps: { attributes: { class: 'prose max-w-none outline-none min-h-[60vh] text-lg leading-8 font-serif' } },
+    extensions,
+    content,
+    immediatelyRender: false,
+    editorProps,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML())
       if (onHeadings) {
@@ -39,10 +48,37 @@ export function WritingEditor({ content, onChange, onHeadings, onEditorReady, wo
     },
   })
   const readyCalled = useRef(false)
-  useEffect(() => { if (editor && !readyCalled.current) { readyCalled.current = true; onEditorReady?.(editor) } }, [editor])
+  const prevContent = useRef(content)
+  const [inputGoal, setInputGoal] = useState(String(wordGoal))
+
+  // Sync external content → editor only when genuinely changed from outside (not from onUpdate)
+  useEffect(() => {
+    if (editor && content !== prevContent.current) {
+      prevContent.current = content
+      if (editor.getHTML() !== content) {
+        editor.commands.setContent(content)
+      }
+    }
+  }, [editor, content])
+
+  useEffect(() => {
+    if (editor && !readyCalled.current) {
+      readyCalled.current = true
+      if (content) editor.commands.setContent(content)
+      onEditorReady?.(editor)
+    }
+  }, [editor])
+
+  useImperativeHandle(ref, () => ({
+    insertAtCursor(text: string) {
+      editor?.chain().focus().insertContent(text).run()
+    },
+  }), [editor])
+
   if (!editor) return <div className="text-muted-foreground text-sm py-10 text-center">加载中...</div>
   const wc = editor.storage.characterCount?.words?.() || 0
   const act = (name: string, opts?: Record<string, unknown>) => editor.isActive(name, opts)
+  const commitGoal = () => { const n = parseInt(inputGoal, 10); if (!isNaN(n) && n > 0) onWordGoalChange?.(n); else setInputGoal(String(wordGoal)) }
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-1 pb-3 border-b border-border mb-4">
@@ -67,14 +103,15 @@ export function WritingEditor({ content, onChange, onHeadings, onEditorReady, wo
         <Btn onClick={() => editor.chain().focus().undo().run()} title="撤销"><Undo size={18} /></Btn>
         <Btn onClick={() => editor.chain().focus().redo().run()} title="重做"><Redo size={18} /></Btn>
         <span className="flex-1" />
-        <button onClick={() => onWordGoalChange?.(wordGoal + 500)} className="text-xs text-muted-foreground hover:text-foreground">+500</button>
+        <input type="number" min={1} value={inputGoal} onChange={e => setInputGoal(e.target.value)} onBlur={commitGoal} onKeyDown={e => e.key === 'Enter' && commitGoal()} className="w-16 h-6 text-xs text-center border border-border rounded bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+        <button onClick={() => { onWordGoalChange?.(wordGoal + 500); setInputGoal(String(wordGoal + 500)) }} className="text-xs text-muted-foreground hover:text-foreground">+500</button>
         <span className="text-xs text-muted-foreground">{wc}/{wordGoal}字</span>
         <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full transition-all" style={{ width: Math.min(100, (wc / wordGoal) * 100) + '%' }} /></div>
       </div>
       <div className="flex-1"><EditorContent editor={editor} /></div>
     </div>
   )
-}
+})
 
 function Btn({ onClick, active, title, children }: { onClick: () => void; active?: boolean; title: string; children: React.ReactNode }) {
   return <button onClick={onClick} title={title} className={cn("p-1 rounded transition-colors", active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground')}>{children}</button>

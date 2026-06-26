@@ -10,6 +10,12 @@ export interface Project {
   totalWords: number
 }
 
+export interface Character {
+  name: string
+  type: '主角' | '配角' | '反派' | '次要角色' | '客串'
+  description: string
+}
+
 export interface Chapter {
   id: string
   projectId: string

@@ -41,7 +41,7 @@ export async function GET() {
         { name: 'storyInfo', type: 'string', required: true, description: '故事核心信息（一句话故事/核心冲突）' },
         { name: 'genre', type: 'string', required: false, description: '题材' },
       ],
-      endpoint: '/api/ai/naming',
+      endpoint: '/api/ai/alchemy',
       hoverDemo: '输入故事核心 → 16个候选书名逐个浮现，标注爆款潜力',
     },
     {

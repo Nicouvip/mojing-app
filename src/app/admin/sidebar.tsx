@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { cn } from '@/lib/utils/utils'
-import { LayoutDashboard, Users, Settings, FileText, BarChart3, Database, ChevronRight, BookOpen, Shield, PenLine } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, FileText, BarChart3, Database, ChevronRight, BookOpen, Shield, PenLine, Building2, Video, ExternalLink } from 'lucide-react'
 
 const navItems = [
   { href: '/admin', label: '数据看板', icon: LayoutDashboard },

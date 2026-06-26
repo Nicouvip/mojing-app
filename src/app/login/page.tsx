@@ -39,15 +39,18 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* 左侧品牌区 — 苔绿渐变 */}
-      <div className="hidden md:flex w-[480px] items-center justify-center flex-col gap-6 p-12 relative overflow-hidden" style={{ background: 'radial-gradient(ellipse 60% 50% at 30% 50%, rgba(107,140,110,0.15) 0%, rgba(107,140,110,0.04) 40%, transparent 70%), linear-gradient(180deg, #fafaf9 0%, #f0ede8 100%)' }}>
+      {/* 左侧品牌区 — 苔绿渐变增强版 */}
+      <div className="hidden md:flex w-[480px] items-center justify-center flex-col gap-6 p-12 relative overflow-hidden" style={{ background: 'radial-gradient(ellipse 70% 60% at 25% 45%, rgba(107,140,110,0.35) 0%, rgba(107,140,110,0.12) 35%, transparent 70%), linear-gradient(160deg, #5f7d62 0%, #7a9b7d 25%, #9ab898 50%, #d4d6c4 80%, #e8e4d8 100%)' }}>
+        {/* 苔绿色光晕装饰 */}
+        <div className="absolute top-1/4 -left-12 w-48 h-48 rounded-full" style={{ background: 'radial-gradient(circle, rgba(107,140,110,0.20) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+        <div className="absolute bottom-1/3 -right-8 w-36 h-36 rounded-full" style={{ background: 'radial-gradient(circle, rgba(138,170,125,0.15) 0%, transparent 70%)', filter: 'blur(30px)' }} />
         <Image src="/assets/brand/mojing-logo-main.png" alt="墨境" width={200} height={100} priority />
-        <p className="text-muted-foreground text-sm text-center max-w-xs">沉浸式小说写作工具<br />安静、专业、有温度</p>
+        <p className="text-muted-foreground text-sm text-center max-w-xs" style={{ color: 'rgba(47,69,54,0.85)' }}>沉浸式小说写作工具<br />安静、专业、有温度</p>
       </div>
 
-      {/* 右侧表单卡片 — 毛玻璃 */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-sm glass-panel rounded-2xl shadow-modal p-8 space-y-6">
+      {/* 右侧表单卡片 — 苔绿玻璃态增强版 */}
+      <div className="flex-1 flex items-center justify-center p-8" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(107,140,110,0.10) 0%, rgba(107,140,110,0.04) 40%, transparent 70%), linear-gradient(180deg, rgba(248,249,235,0.5) 0%, rgba(248,249,251,1) 100%)' }}>
+        <div className="w-full max-w-sm p-8 space-y-6 rounded-2xl" style={{ background: 'linear-gradient(145deg, rgba(107,140,110,0.25) 0%, rgba(107,140,110,0.10) 100%)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(107,140,110,0.30)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 40px rgba(107,140,110,0.22), 0 0 80px rgba(107,140,110,0.08)' }}>
           {/* 移动端 Logo */}
           <div className="md:hidden text-center">
             <Image src="/assets/brand/mojing-logo-nav.png" alt="墨境" width={160} height={36} className="mx-auto mb-4" />

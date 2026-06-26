@@ -215,10 +215,10 @@ export function updateChapterContent(id: string, content: string): Chapter | und
   return ch
 }
 
-// ── 7天自动清理软删除数据 ──────────────────────────────
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+// ── 30天自动清理软删除数据 ──────────────────────────────
+const SEVEN_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
-/** 永久清除超过7天的软删除数据 */
+/** 永久清除超过30天的软删除数据 */
 export function purgeExpiredDeletes(): void {
   const now = Date.now()
   const projects = getProjectsAll(true)

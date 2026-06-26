@@ -1,0 +1,2 @@
+src/app/editor/[id]/page.tsx(193,69): error TS1005: ';' expected.
+src/app/editor/[id]/page.tsx(868,1): error TS1005: '}' expected.

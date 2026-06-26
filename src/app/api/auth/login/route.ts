@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { verifyPassword } from '@/lib/db/auth-store'
+import { getSupabase } from '@/lib/db/supabase'
 
 export async function POST(req: Request) {
   try {
@@ -9,18 +9,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '邮箱和密码不能为空' }, { status: 400 })
     }
 
-    const user = await verifyPassword(email, password)
-    if (!user) {
+    const supabase = getSupabase()
+    if (!supabase) {
+      return NextResponse.json({ error: '认证服务不可用' }, { status: 503 })
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (error) {
       return NextResponse.json({ error: '邮箱或密码错误' }, { status: 401 })
     }
 
-    // Mock token（生产必须用 JWT / NextAuth session）
-    const token = Buffer.from(`${email}:${Date.now()}`).toString('base64')
+    const { session, user } = data
 
     return NextResponse.json({
       success: true,
-      token,
-      user: { email: user.email, createdAt: user.createdAt },
+      token: session?.access_token ?? '',
+      user: { id: user.id, email: user.email!, name: user.user_metadata?.name ?? email.split('@')[0], createdAt: new Date(user.created_at).getTime() },
     })
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : '未知错误' }, { status: 500 })
