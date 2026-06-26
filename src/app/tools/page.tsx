@@ -6,7 +6,7 @@ import { PenLine, ShieldCheck, BookOpen, Zap, Lightbulb, FileSearch, Rocket, Bra
 
 const tools = [
   // ── 创作前 ──
-  { icon: <Lightbulb className="w-6 h-6" />, title: '脑洞喷射', desc: '零门槛脑洞生成器。选一个流派，AI 在 10 秒内给你 5 个让人眼前一亮的故事开篇。', phase: '创作前', color: 'text-orange-600 bg-orange-50', featured: true },
+  { icon: <Lightbulb className="w-6 h-6" />, title: '脑洞喷射', desc: '零门槛脑洞生成器。选一个流派，AI 在 10 秒内给你 5 个让人眼前一亮的故事开篇。', phase: '创作前', color: 'text-warning bg-warning-light', featured: true },
   { icon: <BookOpen className="w-6 h-6" />, title: '书名炼金术', desc: '智能书名策划。输入关键词、风格偏好，AI 生成 20+ 个精选书名，附带数据分析。', phase: '创作前', color: 'text-blue-600 bg-blue-50', featured: true },
   { icon: <Brain className="w-6 h-6" />, title: '灵感爆裂', desc: '深度创意发散引擎。从一个核心设定出发，延展出完整的故事脉络、人物关系和世界观雏形。', phase: '创作前', color: 'text-pink-600 bg-pink-50' },
   { icon: <Combine className="w-6 h-6" />, title: '世界观生成', desc: '构建完整的故事世界：年代、地理、势力、规则、科技树——给几个关键词，AI 帮你搭框架。', phase: '创作前', color: 'text-cyan-600 bg-cyan-50' },
@@ -14,7 +14,7 @@ const tools = [
   // ── 创作中 ──
   { icon: <PenLine className="w-6 h-6" />, title: 'AI 续写', desc: '基于前文语境智能续写。支持人称锁定、风格控制、多轮迭代——写不下去就交给 AI。', phase: '创作中', color: 'text-primary bg-primary-light', featured: true },
   { icon: <Wand2 className="w-6 h-6" />, title: 'AI 润色', desc: '文风优化与表达升级。平淡的句子变惊艳，啰嗦的段落变精炼。支持仿写名家风格。', phase: '创作中', color: 'text-purple-600 bg-purple-50', featured: true },
-  { icon: <Zap className="w-6 h-6" />, title: 'AI 扩写', desc: '从一句到一段的细节展开。"他推开门" → 三百字的环境描写+心理活动+感官渲染。', phase: '创作中', color: 'text-amber-600 bg-amber-50' },
+  { icon: <Zap className="w-6 h-6" />, title: 'AI 扩写', desc: '从一句到一段的细节展开。"他推开门" → 三百字的环境描写+心理活动+感官渲染。', phase: '创作中', color: 'text-warning bg-warning-light' },
   { icon: <Search className="w-6 h-6" />, title: 'AI 补全', desc: '写作中途卡壳？AI 分析上下文，自动推荐 3 个合理的续写方向，选一个继续。', phase: '创作中', color: 'text-indigo-600 bg-indigo-50' },
   { icon: <MessageSquare className="w-6 h-6" />, title: '对话生成', desc: '根据角色性格和场景，自动生成符合人设的对话。避免"全员一个说话风格"的尴尬。', phase: '创作中', color: 'text-teal-600 bg-teal-50' },
 

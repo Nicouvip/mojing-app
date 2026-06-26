@@ -16,7 +16,7 @@ const featureGroups: FeatureGroup[] = [
     items: [
       { icon: <PenLine className="w-7 h-7" />, title: 'AI 续写', desc: '基于前文语境自动续写，支持风格控制、人称锁定、多轮迭代。给三句话，还你三千字。', color: 'bg-primary-light text-primary', tag: '核心' },
       { icon: <Wand2 className="w-7 h-7" />, title: 'AI 润色', desc: '文风优化与表达升级。从平淡到惊艳，一键提升文字质感，支持仿写名家风格。', color: 'bg-purple-50 text-purple-600', tag: '热门' },
-      { icon: <Sparkles className="w-7 h-7" />, title: 'AI 扩写', desc: '从一句到一段的细节展开。把"他推开门"变成三百字的氛围渲染。', color: 'bg-amber-50 text-amber-600' },
+      { icon: <Sparkles className="w-7 h-7" />, title: 'AI 扩写', desc: '从一句到一段的细节展开。把"他推开门"变成三百字的氛围渲染。', color: 'bg-warning-light text-warning' },
       { icon: <Search className="w-7 h-7" />, title: 'AI 补全', desc: '写作途中突然跑偏？让 AI 分析上下文，自动补全合理的情节走向。', color: 'bg-blue-50 text-blue-600' },
     ],
   },
@@ -33,8 +33,8 @@ const featureGroups: FeatureGroup[] = [
     title: '创作管理',
     desc: '长篇写作不是一蹴而就，我们帮你管好每一个细节',
     items: [
-      { icon: <BookOpen className="w-7 h-7" />, title: '人设管理', desc: '人物卡牌系统 + 关系图谱。姓名、性格、外貌、背景、成长弧线一目了然，长篇多角色也不 OOC。', color: 'bg-amber-50 text-amber-600', tag: '核心' },
-      { icon: <Brain className="w-7 h-7" />, title: '灵感工具', desc: '脑洞喷射 + 书名炼金术 + 灵感爆裂。三大创意引擎，卡文时的救命稻草。', color: 'bg-orange-50 text-orange-600' },
+      { icon: <BookOpen className="w-7 h-7" />, title: '人设管理', desc: '人物卡牌系统 + 关系图谱。姓名、性格、外貌、背景、成长弧线一目了然，长篇多角色也不 OOC。', color: 'bg-warning-light text-warning', tag: '核心' },
+      { icon: <Brain className="w-7 h-7" />, title: '灵感工具', desc: '脑洞喷射 + 书名炼金术 + 灵感爆裂。三大创意引擎，卡文时的救命稻草。', color: 'bg-warning-light text-warning' },
       { icon: <Users className="w-7 h-7" />, title: '世界观库', desc: '构建你的故事世界：地理、势力、年代、规则——所有设定都沉淀下来，永不丢失。', color: 'bg-rose-50 text-rose-600' },
     ],
   },

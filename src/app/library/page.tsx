@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { Users, Globe, Bookmark, Package, Search, Plus, ChevronRight } from 'lucide-react'
 
 const categories = [
-  { icon: <Users className="w-5 h-5" />, title: '人物素材', count: 0, href: '/library/characters', color: 'text-amber-600 bg-amber-50' },
+  { icon: <Users className="w-5 h-5" />, title: '人物素材', count: 0, href: '/library/characters', color: 'text-warning bg-warning-light' },
   { icon: <Globe className="w-5 h-5" />, title: '世界观设定', count: 0, href: '/library/world', color: 'text-blue-600 bg-blue-50' },
   { icon: <Bookmark className="w-5 h-5" />, title: '桥段金句', count: 0, href: '/library/bits', color: 'text-purple-600 bg-purple-50' },
   { icon: <Package className="w-5 h-5" />, title: '官方素材包', count: 0, href: '/library/packs', color: 'text-green-600 bg-green-50' },
