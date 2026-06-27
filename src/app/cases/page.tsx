@@ -1,8 +1,9 @@
 'use client'
 import { useState, useMemo } from 'react'
+import { ArrowRight, Search, BookOpen, TrendingUp, Star, Clock, Sparkles, BookMarked, ChevronDown, ChevronUp } from 'lucide-react'
+import Navbar from '@/components/navbar'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Search, BookOpen, TrendingUp, Star, Clock, Sparkles, BookMarked, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface CaseStudy {
   id: number
@@ -129,15 +130,7 @@ export default function CasesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 h-14 px-6 flex items-center justify-between glass-panel border-b border-border">
-        <div className="flex items-center gap-6">
-          <Link href="/"><Image src="/assets/brand/mojing-logo-nav.png" alt="墨境" width={160} height={36} className="h-9 w-auto" priority /></Link>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Link href="/" className="px-3 py-1.5 rounded-lg hover:bg-secondary hover:text-foreground transition-colors">首页</Link>
-            <Link href="/cases" className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-medium">写作案例</Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* 头部 */}

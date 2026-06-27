@@ -1,8 +1,7 @@
 'use client'
 import { useState } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
 import { PenLine, ShieldCheck, BookOpen, Zap, Lightbulb, FileSearch, Rocket, Brain, Wand2, Search, MessageSquare, Combine, BookMarked, Star } from 'lucide-react'
+import Navbar from '@/components/navbar'
 
 const tools = [
   // ── 创作前 ──
@@ -31,15 +30,7 @@ export default function ToolsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 h-14 px-6 flex items-center justify-between glass-panel border-b border-border">
-        <div className="flex items-center gap-6">
-          <Link href="/dashboard"><Image src="/assets/brand/mojing-logo-nav.png" alt="墨境" width={160} height={36} className="h-9 w-auto" priority /></Link>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Link href="/dashboard" className="px-3 py-1.5 rounded-lg hover:bg-secondary hover:text-foreground transition-colors">工作台</Link>
-            <Link href="/tools" className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-medium">工具广场</Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-10">

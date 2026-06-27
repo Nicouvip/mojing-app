@@ -1,9 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
 import { ArrowRight, Clock, BookText, Sparkles } from 'lucide-react'
+import Navbar from '@/components/navbar'
 
 const templates = [
   { id: 1, title: '都市异能开局', genre: '都市', desc: '主角在都市生活中觉醒异能，从日常切入超凡。适合快节奏、代入感强的开篇。', words: '3,000', difficulty: '入门', chapters: '3-5', icon: 'C' },
@@ -45,15 +44,7 @@ export default function TemplatesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 h-14 px-6 flex items-center justify-between glass-panel border-b border-border">
-        <div className="flex items-center gap-6">
-          <Link href="/"><Image src="/assets/brand/mojing-logo-nav.png" alt="墨境" width={160} height={36} className="h-9 w-auto" priority /></Link>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Link href="/" className="px-3 py-1.5 rounded-lg hover:bg-secondary hover:text-foreground transition-colors">首页</Link>
-            <Link href="/templates" className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-medium">模板中心</Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">

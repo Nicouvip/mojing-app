@@ -1,7 +1,8 @@
 'use client'
+import { Users, Globe, Bookmark, Package, Search, Plus, ChevronRight } from 'lucide-react'
+import Navbar from '@/components/navbar'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Users, Globe, Bookmark, Package, Search, Plus, ChevronRight } from 'lucide-react'
 
 const categories = [
   { icon: <Users className="w-5 h-5" />, title: '人物素材', count: 0, href: '/library/characters', color: 'text-warning bg-warning-light' },
@@ -13,15 +14,7 @@ const categories = [
 export default function LibraryPage() {
   return (
     <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 h-14 px-6 flex items-center justify-between glass-panel border-b border-border">
-        <div className="flex items-center gap-6">
-          <Link href="/dashboard"><Image src="/assets/brand/mojing-logo-nav.png" alt="墨境" width={160} height={36} className="h-9 w-auto" priority /></Link>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Link href="/dashboard" className="px-3 py-1.5 rounded-lg hover:bg-secondary hover:text-foreground transition-colors">工作台</Link>
-            <Link href="/library" className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-medium">素材库</Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
       <div className="max-w-7xl mx-auto px-6 py-8">
         <h1 className="text-3xl font-bold mb-2">素材库</h1>
         <p className="text-muted-foreground mb-8">你的创作资产中心，所有人物、世界观、桥段都沉淀在这里</p>

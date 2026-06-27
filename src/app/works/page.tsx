@@ -1,12 +1,11 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { getProjects, deleteProject } from '@/lib/db/store'
 import type { Project } from '@/lib/db/types'
 import { Plus, Trash2, ArrowRight, BookOpen, LayoutGrid, List, Search, Clock, BookMarked, FileText } from 'lucide-react'
+import Navbar from '@/components/navbar'
 
 const GENRE_OPTIONS = ['全部', '都市', '悬疑', '玄幻', '言情', '科幻', '仙侠', '灵异']
 const SORT_OPTIONS = [
@@ -64,20 +63,15 @@ export default function WorksPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 h-14 px-6 flex items-center justify-between glass-panel border-b border-border">
-        <div className="flex items-center gap-6">
-          <Link href="/dashboard"><Image src="/assets/brand/mojing-logo-nav.png" alt="墨境" width={160} height={36} className="h-9 w-auto" priority /></Link>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Link href="/dashboard" className="px-3 py-1.5 rounded-lg hover:bg-secondary hover:text-foreground transition-colors">工作台</Link>
-            <Link href="/works" className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-medium">我的作品</Link>
+      <Navbar
+        extraRight={
+          <div className="flex items-center gap-2">
+            <button onClick={() => setView('grid')} className={`p-1.5 rounded-lg ${view === 'grid' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}><LayoutGrid size={16} /></button>
+            <button onClick={() => setView('list')} className={`p-1.5 rounded-lg ${view === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}><List size={16} /></button>
+            <Button size="sm" onClick={() => router.push('/')}><Plus size={16} className="mr-1" />新建</Button>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setView('grid')} className={`p-1.5 rounded-lg ${view === 'grid' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}><LayoutGrid size={16} /></button>
-          <button onClick={() => setView('list')} className={`p-1.5 rounded-lg ${view === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}><List size={16} /></button>
-          <Button size="sm" onClick={() => router.push('/')}><Plus size={16} className="mr-1" />新建</Button>
-        </div>
-      </nav>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* 头部统计 */}

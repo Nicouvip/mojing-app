@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
 import { cn } from '@/lib/utils/utils'
 import { Button } from '@/components/ui/button'
 import { getProjects } from '@/lib/db/store'
 import type { Project } from '@/lib/db/types'
 import { BookOpen, Sparkles, ShieldCheck, Library, ChevronRight, PenLine, Plus, ArrowRight, Circle, Flame, Clock, User, LayoutGrid } from 'lucide-react'
+import Link from 'next/link'
+import Navbar from '@/components/navbar'
 
 const COVER_COLORS = ['#6b8c6e', '#d4cfc4', '#e5e7eb']
 const GENRE_MAP: Record<string, string> = {
@@ -42,23 +42,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* ===== 顶栏 ===== */}
-      <nav className="sticky top-0 z-50 h-14 px-6 flex items-center justify-between glass-panel border-b border-border">
-        <div className="flex items-center gap-6">
-          <Link href="/dashboard">
-            <Image src="/assets/brand/mojing-logo-nav.png" alt="墨境" width={160} height={36} className="h-9 w-auto" priority />
-          </Link>
-          <div className="flex items-center gap-1 text-sm">
-            <Link href="/dashboard" className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-medium">工作台</Link>
-            <Link href="/tools" className="px-3 py-1.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">工具广场</Link>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/account" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <User className="w-4 h-4" />个人中心
-          </Link>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* ===== 主体 ===== */}
       <div className="max-w-7xl mx-auto px-6 py-8">

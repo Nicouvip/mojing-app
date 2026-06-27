@@ -12,6 +12,7 @@ import { loadPage } from '@/lib/page-builder/store'
 import { PageRenderer } from '@/lib/page-builder/renderer'
 import type { Project } from '@/lib/db/types'
 import { Plus, BookOpen, Trash2, ArrowRight, PenLine, Sparkles, Shield, Route, Send, Star, Sun, Sunrise, Moon, Snowflake, Menu, X } from 'lucide-react'
+import Navbar from '@/components/navbar'
 
 export default function HomePage() {
   const router = useRouter()

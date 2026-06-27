@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import Link from 'next/link'
 import { getProjects } from '@/lib/db/store'
 import type { Project } from '@/lib/db/types'
 import { Sparkles, PenLine, ChevronRight } from 'lucide-react'
 import { BrainstormModal } from '@/components/brainstorm-modal'
+import Navbar from '@/components/navbar'
 
 export default function DeskPage() {
   const router = useRouter()
@@ -36,19 +35,16 @@ export default function DeskPage() {
 
   return (
     <div className="min-h-screen bg-background font-serif">
-      {/* ===== 顶栏 ===== */}
-      <nav className="sticky top-0 z-50 h-14 px-6 flex items-center justify-between glass-panel border-b border-border">
-        <div className="flex items-center gap-6">
-          <Image src="/assets/brand/mojing-logo-nav.png" alt="墨境" width={160} height={36} className="h-9 w-auto" priority />
-          <span className="text-sm font-medium text-foreground">书桌式</span>
-          <div className="w-32 h-2 bg-primary-light rounded-full overflow-hidden">
-            <div className="h-full bg-primary rounded-full transition-all duration-700 ease-out" style={{ width: `${progress}%` }} />
-          </div>
+      <Navbar />
+
+      {/* ===== 进度条 ===== */}
+      <div className="max-w-7xl mx-auto px-6 pt-4 flex items-center gap-3">
+        <span className="text-sm font-medium text-foreground">书桌式</span>
+        <div className="flex-1 max-w-xs h-2 bg-primary-light rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full transition-all duration-700 ease-out" style={{ width: `${progress}%` }} />
         </div>
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← 工作台</Link>
-        </div>
-      </nav>
+        <span className="text-xs text-muted-foreground">{todayDone}/{todayTarget}</span>
+      </div>
 
       {/* ===== 主体 ===== */}
       <div className="max-w-7xl mx-auto px-6 py-12">
