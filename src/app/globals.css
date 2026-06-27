@@ -451,7 +451,7 @@ textarea:focus-visible {
 }
 
 /* 弹窗卡片的苔绿色调边框光 */
-.rounded-\\[20px\\].shadow-modal {
+.shadow-modal:where([class*="rounded-2xl"],[class*="rounded-\[20px\]"]) {
   border: 1px solid rgba(107,140,110,0.08);
 }
 
@@ -663,4 +663,23 @@ textarea:focus-visible {
 @keyframes desk-breathe {
   0%, 100% { opacity: 0.6; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.02); }
+}
+
+/* 纸张纹理 - 编辑器写作区 */
+.ProseMirror {
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 1.5em,
+    rgba(0,0,0,0.03) 1.5em,
+    rgba(0,0,0,0.03) 1.51em
+  );
+  background-attachment: local;
+}
+.dark .ProseMirror {
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 1.5em,
+    rgba(255,255,255,0.04) 1.5em,
+    rgba(255,255,255,0.04) 1.51em
+  );
 }

@@ -37,6 +37,7 @@ export default function EditorPage() {
     return !localStorage.getItem('mojing_guide_seen')
   })
   const [guideStep, setGuideStep] = useState(0)
+  const [onboardingStep, setOnboardingStep] = useState<number>(() => typeof window !== 'undefined' && !localStorage.getItem('mojing_onboarded') ? 0 : -1)
   const [bodyDensity, setBodyDensity] = useState(0)
   const [wordGoal, setWordGoal] = useState(3000)
   const { theme, setTheme } = useTheme()
@@ -160,6 +161,10 @@ export default function EditorPage() {
   const [filterTab, setFilterTab] = useState('all')
   const editorRef = useRef<Editor | null>(null)
   const writingEditorRef = useRef<EditorHandle>(null)
+  const leftSidebarRef = useRef<HTMLDivElement>(null)
+  const editorAreaRef = useRef<HTMLDivElement>(null)
+  const rightPanelRef = useRef<HTMLDivElement>(null)
+  const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null)
   const [editorVersion, setEditorVersion] = useState(0)
   const contentRef = useRef(content)
   contentRef.current = content
@@ -211,6 +216,27 @@ export default function EditorPage() {
     const ch = getChapter(activeChapterId)
     if (ch) { setActiveChapter(ch); setContent(ch.content || ''); setBodyDensity(calcBodyDensity(toPlainText(ch.content || ''))) }
   }, [activeChapterId])
+
+  // 新手引导 spotlight 定位
+  useEffect(() => {
+    if (!showGuide) { setSpotlightRect(null); return }
+    let el: HTMLElement | null = null
+    if (guideStep === 0) el = leftSidebarRef.current
+    else if (guideStep === 1) el = editorAreaRef.current
+    else if (guideStep === 2) el = rightPanelRef.current
+    if (el) {
+      const rect = el.getBoundingClientRect()
+      setSpotlightRect(rect)
+    }
+    const onResize = () => {
+      if (guideStep === 0) el = leftSidebarRef.current
+      else if (guideStep === 1) el = editorAreaRef.current
+      else if (guideStep === 2) el = rightPanelRef.current
+      if (el) setSpotlightRect(el.getBoundingClientRect())
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [guideStep, showGuide])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -368,32 +394,216 @@ export default function EditorPage() {
     setImportFn('')
   }
 
-  // ===== PDF 导出工具 =====
+  // ===== 📄 强化全本PDF导出 =====
   const handleExportPDF = () => {
     const sorted = [...chapters].sort((a, b) => a.order - b.order)
-    const lines = sorted.map((ch, i) => {
-      const plain = ch.content ? ch.content.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/g, ' ') : ''
-      return `<h2>${ch.title}</h2>\n<div class="chapter-content">${plain.replace(/\n/g, '<br/>')}</div>`
+    const projectName = project?.name || '作品'
+
+    // 按卷分组
+    const volMap = new Map<string, Chapter[]>()
+    const volOrder: { id: string; name: string }[] = []
+    volumes.forEach(v => { volMap.set(v.id, []); volOrder.push({ id: v.id, name: v.name }) })
+    const unclassified: Chapter[] = []
+    sorted.forEach(ch => {
+      if (ch.volumeId && volMap.has(ch.volumeId)) { volMap.get(ch.volumeId)!.push(ch) }
+      else { unclassified.push(ch) }
     })
+
+    // 生成目录
+    let tocItems = ''
+    let chapterIdx = 1
+    volOrder.forEach(v => {
+      const chs = volMap.get(v.id) || []
+      if (chs.length === 0) return
+      tocItems += `<div class="toc-vol">${v.name}</div>\n`
+      chs.forEach(ch => {
+        const plainTitle = ch.title.replace(/<[^>]*>/g, '').trim()
+        tocItems += `<div class="toc-ch"><span class="toc-ch-num">第${chapterIdx}章</span><span class="toc-ch-title">${plainTitle}</span></div>\n`
+        chapterIdx++
+      })
+    })
+    if (unclassified.length > 0) {
+      tocItems += `<div class="toc-vol">📂 未分类</div>\n`
+      unclassified.forEach(ch => {
+        const plainTitle = ch.title.replace(/<[^>]*>/g, '').trim()
+        tocItems += `<div class="toc-ch"><span class="toc-ch-num">第${chapterIdx}章</span><span class="toc-ch-title">${plainTitle}</span></div>\n`
+        chapterIdx++
+      })
+    }
+
+    // 生成正文
+    let bodyParts = ''
+    chapterIdx = 1
+    const renderChapters = (chs: Chapter[]) => {
+      chs.forEach((ch, i) => {
+        const plainTitle = ch.title.replace(/<[^>]*>/g, '').trim()
+        const plain = ch.content
+          ? ch.content.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/g, ' ')
+          : ''
+        const paragraphs = plain
+          .split(/\n+/)
+          .filter(p => p.trim())
+          .map(p => `<p>${p.trim()}</p>`)
+          .join('\n')
+        bodyParts += `<div class="chapter-wrapper">
+  <div class="chapter-number">第${chapterIdx}章</div>
+  <h2 class="chapter-title">${plainTitle}</h2>
+  <div class="chapter-body">${paragraphs}</div>
+</div>\n`
+        chapterIdx++
+      })
+    }
+    volOrder.forEach(v => {
+      const chs = volMap.get(v.id) || []
+      if (chs.length === 0) return
+      renderChapters(chs)
+    })
+    if (unclassified.length > 0) renderChapters(unclassified)
+
+    const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
+
     const html = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>${project?.name || '作品'}</title>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>${projectName}</title>
 <style>
-  @page { margin: 2.5cm 2cm; }
+  @page { margin: 2.8cm 2.5cm 3cm; size: A4; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", serif; font-size: 14px; line-height: 2; color: #333; padding: 0; max-width: 100%; }
-  .book-title { text-align: center; font-size: 24px; font-weight: bold; margin: 4cm 0 3cm; page-break-after: always; }
-  .chapter-content { text-indent: 2em; }
-  h2 { text-align: center; font-size: 20px; margin: 1.5cm 0 0.8cm; font-weight: bold; page-break-before: always; }
-  h2:first-of-type { page-break-before: auto; }
-  .footer { text-align: center; font-size: 12px; color: #999; margin-top: 2cm; }
-  @media print { .no-print { display: none; } }
+  body {
+    font-family: "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+    font-size: 12pt;
+    line-height: 2;
+    color: #1a1a1a;
+    text-align: justify;
+  }
+
+  /* ===== 封面 ===== */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 90vh;
+    page-break-after: always;
+    text-align: center;
+  }
+  .cover-title {
+    font-size: 32pt;
+    font-weight: 700;
+    letter-spacing: 4px;
+    margin-bottom: 1.5cm;
+    color: #000;
+  }
+  .cover-sub {
+    font-size: 14pt;
+    color: #666;
+    letter-spacing: 2px;
+  }
+  .cover-meta {
+    margin-top: 3cm;
+    font-size: 11pt;
+    color: #888;
+  }
+
+  /* ===== 目录 ===== */
+  .toc-page {
+    page-break-after: always;
+    padding: 1cm 0;
+  }
+  .toc-heading {
+    text-align: center;
+    font-size: 18pt;
+    font-weight: 700;
+    margin-bottom: 1.5cm;
+    letter-spacing: 2px;
+  }
+  .toc-vol {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #6b8c6e;
+    margin: 0.8cm 0 0.3cm;
+    padding-left: 0.5cm;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 0.15cm;
+  }
+  .toc-ch {
+    display: flex;
+    gap: 1em;
+    padding: 0.2cm 0.5cm 0.2cm 1cm;
+    font-size: 11pt;
+    line-height: 1.6;
+  }
+  .toc-ch-num {
+    color: #999;
+    min-width: 4em;
+  }
+  .toc-ch-title {
+    flex: 1;
+  }
+
+  /* ===== 章节 ===== */
+  .chapter-wrapper {
+    page-break-before: always;
+  }
+  .chapter-wrapper:first-of-type {
+    page-break-before: auto;
+  }
+  .chapter-number {
+    text-align: center;
+    font-size: 11pt;
+    color: #999;
+    margin: 1.5cm 0 0.3cm;
+  }
+  .chapter-title {
+    text-align: center;
+    font-size: 20pt;
+    font-weight: 700;
+    margin: 0 0 1.2cm;
+    letter-spacing: 1px;
+    line-height: 1.4;
+  }
+  .chapter-body p {
+    text-indent: 2em;
+    margin: 0;
+    line-height: 2;
+    orphans: 2;
+    widows: 2;
+  }
+
+  /* ===== 结尾 ===== */
+  .the-end {
+    text-align: center;
+    font-size: 14pt;
+    color: #999;
+    margin: 4cm 0;
+    letter-spacing: 4px;
+    page-break-before: always;
+  }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
 </style>
 </head>
 <body>
-  <div class="book-title">${project?.name || '作品'}</div>
-  ${lines.join('\n')}
-  <div class="footer">—— 全文完 ——</div>
+
+  <!-- 封面 -->
+  <div class="cover">
+    <div class="cover-title">${projectName}</div>
+    <div class="cover-sub">—— 全本精排版 ——</div>
+    <div class="cover-meta">导出日期：${today}</div>
+  </div>
+
+  <!-- 目录 -->
+  <div class="toc-page">
+    <div class="toc-heading">目 录</div>
+    ${tocItems}
+  </div>
+
+  <!-- 正文 -->
+  ${bodyParts}
+
+  <div class="the-end">—— 全文完 ——</div>
+
 </body>
 </html>`
     const iframe = printFrameRef.current
@@ -402,7 +612,7 @@ export default function EditorPage() {
     iframe.onload = () => {
       setTimeout(() => {
         iframe.contentWindow?.print()
-      }, 300)
+      }, 350)
     }
   }
 
@@ -971,36 +1181,49 @@ export default function EditorPage() {
       )}
 
       {/* ===== 新手引导 Overlay ===== */}
-      {showGuide && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={() => setShowGuide(false)}>
-          {/* 浮层卡片 */}
-          <div className="rounded-[20px] p-6 max-w-md mx-4 text-center relative" onClick={e => e.stopPropagation()}
-            style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)', border: '2px solid rgba(107,140,110,0.3)', boxShadow: '0 16px 48px rgba(0,0,0,0.12), 0 0 0 4px rgba(107,140,110,0.08)' }}>
-            {/* 步骤圆点 */}
+      {onboardingStep >= 0 && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => { setOnboardingStep(-1); localStorage.setItem('mojing_onboarded', 'true') }}>
+          <div className="bg-white rounded-[20px] shadow-modal max-w-md mx-4 p-8 text-center" onClick={e => e.stopPropagation()}>
+            {/* 步骤指示器 */}
             <div className="flex justify-center gap-2 mb-6">
               {[0,1,2].map(i => (
-                <div key={i} className={`w-2 h-2 rounded-full transition-all ${i === guideStep ? 'w-6 bg-primary' : 'bg-border'}`} />
+                <div key={i} className={`h-2 rounded-full transition-all duration-300 ${i === onboardingStep ? 'w-8 bg-[#6B8C6E]' : 'w-2 bg-gray-200'}`} />
               ))}
             </div>
             {/* 步骤内容 */}
-            {guideStep === 0 && <><h3 className="text-xl font-bold mb-3">此处为创作区</h3><p className="text-sm text-muted-foreground mb-2">支持 AI 续写、润色、扩写。写完按 Ctrl+S 保存。</p></>}
-            {guideStep === 1 && <><h3 className="text-xl font-bold mb-3">章节规划与角色</h3><p className="text-sm text-muted-foreground mb-2">右侧面板：章节规划、角色设定、灵感工具等辅助功能。</p></>}
-            {guideStep === 2 && <><h3 className="text-xl font-bold mb-3">保存与主题</h3><p className="text-sm text-muted-foreground mb-2">顶部可切换 4 套主题、手动保存。每 10 秒自动保存，放心写。</p></>}
+            {onboardingStep === 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold">欢迎来到墨境！</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">左侧是你的章节列表，在这里管理你的作品结构。</p>
+              </div>
+            )}
+            {onboardingStep === 1 && (
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold">创作中心</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">中间是编辑区域，在这里创作你的故事。支持富文本格式、字数统计和合规检测。</p>
+              </div>
+            )}
+            {onboardingStep === 2 && (
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold">AI 工具箱</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">右侧是AI工具箱——续写、润色、脑洞喷射，让你的创作如虎添翼。</p>
+              </div>
+            )}
             {/* 按钮组 */}
-            <div className="flex gap-2 justify-center mt-6">
-              <button onClick={() => { localStorage.setItem('mojing_guide_seen','1'); setShowGuide(false) }}
-                className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:bg-secondary transition-colors">跳过</button>
-              {guideStep > 0 && (
-                <button onClick={() => setGuideStep(s => s - 1)}
-                  className="px-4 py-2 rounded-lg text-sm border border-border text-muted-foreground hover:bg-secondary transition-colors">上一步</button>
-              )}
-              {guideStep < 2 ? (
-                <button onClick={() => setGuideStep(s => s + 1)}
-                  className="px-4 py-2 rounded-lg text-sm bg-primary text-white hover:opacity-90 transition-opacity">下一步</button>
-              ) : (
-                <button onClick={() => { localStorage.setItem('mojing_guide_seen','1'); setShowGuide(false) }}
-                  className="px-4 py-2 rounded-lg text-sm bg-primary text-white hover:opacity-90 transition-opacity">开始写作</button>
-              )}
+            <div className="flex gap-3 justify-center mt-8">
+              <button onClick={() => { setOnboardingStep(-1); localStorage.setItem('mojing_onboarded', 'true') }}
+                className="px-5 py-2 rounded-lg text-sm text-gray-400 hover:text-gray-600 transition-colors">跳过</button>
+              <button onClick={() => {
+                if (onboardingStep < 2) {
+                  setOnboardingStep(s => s + 1)
+                } else {
+                  setOnboardingStep(-1)
+                  localStorage.setItem('mojing_onboarded', 'true')
+                }
+              }}
+                className="px-5 py-2 rounded-lg text-sm bg-[#6B8C6E] text-white hover:bg-[#5a7a5e] transition-colors">
+                {onboardingStep === 2 ? '开始写作' : '下一步'}
+              </button>
             </div>
           </div>
         </div>
