@@ -1,0 +1,42 @@
+# ─── 墨境项目根 .gitignore ───
+
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+.next/
+
+# production
+out/
+build/
+
+# misc
+.DS_Store
+*.pem
+*.log
+
+# env
+.env
+.env.local
+.env.*.local
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# vercel
+.vercel
+
+# IDE
+.vscode/
+.idea/
+
+# playwright
+.playwright-cli/
+
+# kun canvas
+.kun-canvas/
+
+# os junk
+Thumbs.db
