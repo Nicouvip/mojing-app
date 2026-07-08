@@ -22,16 +22,35 @@ const SCENE_MAP: Record<SceneMethod, { label: string; desc: string }> = {
   S6: { label: '爆发', desc: '情感/事件爆发' },
 }
 
-const ENDING_MAP: Record<EndingType, string> = {
-  E1: '意外', E2: '升华', E3: '悬疑', E4: '反转',
-  E5: '余味', E6: '意象', E7: '对话', E8: '动作',
-  E9: '环境', E10: '情感', E11: '闪回', E12: '预兆',
+const ENDING_MAP: Record<EndingType, { label: string; desc: string }> = {
+  E1: { label: '意外', desc: '出人意料的转折收尾' },
+  E2: { label: '升华', desc: '主题/情感升华' },
+  E3: { label: '悬疑', desc: '留下悬念' },
+  E4: { label: '反转', desc: '剧情反转' },
+  E5: { label: '余味', desc: '余韵悠长的收尾' },
+  E6: { label: '意象', desc: '以意象收尾' },
+  E7: { label: '对话', desc: '以对话结束' },
+  E8: { label: '动作', desc: '以动作场景收尾' },
+  E9: { label: '环境', desc: '环境描写收尾' },
+  E10: { label: '情感', desc: '情感高潮后收束' },
+  E11: { label: '闪回', desc: '闪回/回忆收尾' },
+  E12: { label: '预兆', desc: '为下一章埋下预兆' },
 }
 
-const HOOK_MAP: Record<HookType, string> = {
-  H01: '对话钩', H02: '动作钩', H03: '环境钩', H04: '物品钩',
-  H05: '情感钩', H06: '悬念钩', H07: '时间钩', H08: '人物钩',
-  H09: '秘密钩', H10: '决定钩', H11: '预警钩', H12: '意象钩', H13: '转折钩',
+const HOOK_MAP: Record<HookType, { label: string; desc: string }> = {
+  H01: { label: '对话钩', desc: '对话中埋钩' },
+  H02: { label: '动作钩', desc: '动作中设悬念' },
+  H03: { label: '环境钩', desc: '环境暗示' },
+  H04: { label: '物品钩', desc: '关键物品' },
+  H05: { label: '情感钩', desc: '情绪牵引' },
+  H06: { label: '悬念钩', desc: '直接设悬' },
+  H07: { label: '时间钩', desc: '时间紧迫感' },
+  H08: { label: '人物钩', desc: '人物关系伏笔' },
+  H09: { label: '秘密钩', desc: '隐藏的秘密' },
+  H10: { label: '决定钩', desc: '关键决定' },
+  H11: { label: '预警钩', desc: '危险预兆' },
+  H12: { label: '意象钩', desc: '意象象征' },
+  H13: { label: '转折钩', desc: '剧情转折点' },
 }
 
 const SCENE_IDS: SceneMethod[] = ['S1','S2','S3','S4','S5','S6']
@@ -115,7 +134,7 @@ export function CoolingMatrix({ currentChapter }: CoolingMatrixProps) {
                   }`}>
                     <span className={c ? '' : 'text-[#6a8a6a]'}>{c ? '◐' : '●'}</span>
                     <span className="font-medium">{id}</span>
-                    <span className="text-muted-foreground">{ENDING_MAP[id]}</span>
+                    <span className="text-muted-foreground">{ENDING_MAP[id].label}</span>
                   </div>
                 )
               })}
@@ -133,7 +152,7 @@ export function CoolingMatrix({ currentChapter }: CoolingMatrixProps) {
                   }`}>
                     <span className={c ? '' : 'text-[#6a8a6a]'}>{c ? '◐' : '●'}</span>
                     <span className="font-medium">{id}</span>
-                    <span className="text-muted-foreground">{HOOK_MAP[id]}</span>
+                    <span className="text-muted-foreground">{HOOK_MAP[id].label}</span>
                   </div>
                 )
               })}
