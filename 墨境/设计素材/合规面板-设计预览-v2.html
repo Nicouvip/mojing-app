@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>合规面板 · 设计预览 v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #1a1814;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: 'Inter', 'PingFang SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 32px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Editor Wrapper ── */
+.editor-wrap {
+  width: 900px;
+  background: #f5f2ed;
+  border-radius: 16px;
+  overflow: visible;
+  box-shadow:
+    0 24px 80px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(255,255,255,0.04);
+  position: relative;
+  display: flex;
+}
+
+.editor-main {
+  flex: 1;
+  padding: 48px 56px;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 15px;
+  line-height: 2;
+  color: #1a1814;
+  min-height: 520px;
+  position: relative;
+}
+.editor-main h2 {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(26,24,20,0.25);
+  margin-bottom: 24px;
+  text-indent: 0;
+}
+.editor-main p {
+  text-indent: 2em;
+  margin-bottom: 0.6em;
+}
+.editor-main .meta-bar {
+  display: flex;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(26,24,20,0.06);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: rgba(26,24,20,0.35);
+}
+.editor-main .meta-bar span { text-indent: 0; }
+
+/* ── Collapsed Tab ── */
+.panel-tab {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 92px;
+  background: linear-gradient(180deg, #c4956a 0%, #b8895a 100%);
+  border-radius: 10px 0 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  font-size: 18px;
+  transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
+  z-index: 20;
+  box-shadow: -2px 0 16px rgba(196,149,106,0.2);
+  border: none;
+  outline: none;
+  letter-spacing: 0;
+}
+.panel-tab:focus-visible {
+  outline: 2px solid #c4956a;
+  outline-offset: 2px;
+}
+.panel-tab .tab-icon {
+  line-height: 1;
+  transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
+}
+.panel-tab:hover {
+  width: 40px;
+  box-shadow: -4px 0 24px rgba(196,149,106,0.35);
+}
+.panel-tab:hover .tab-icon {
+  transform: scale(1.1);
+}
+.panel-tab .tooltip {
+  position: absolute;
+  right: 44px;
+  background: rgba(26,24,20,0.85);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 400;
+  padding: 5px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateX(4px);
+  font-family: 'Inter', sans-serif;
+}
+.panel-tab:hover .tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
+.panel-tab.open {
+  right: 300px;
+  border-radius: 10px 0 0 10px;
+  box-shadow: -2px 0 16px rgba(196,149,106,0.15);
+}
+
+/* ── Sliding Panel ── */
+.panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 300px;
+  height: 100%;
+  background: rgba(245,242,237,0.97);
+  backdrop-filter: blur(24px) saturate(1.1);
+  -webkit-backdrop-filter: blur(24px) saturate(1.1);
+  border-radius: 12px 0 0 12px;
+  box-shadow: -4px 0 32px rgba(26,24,20,0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 15;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
+}
+.panel.open {
+  transform: translateX(0);
+}
+
+/* ── Panel Header ── */
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 20px 12px;
+  flex-shrink: 0;
+}
+.panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #1a1814;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-title .brand-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #c4956a;
+  border-radius: 50%;
+}
+.panel-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(26,24,20,0.25);
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+.panel-close:hover {
+  background: rgba(26,24,20,0.06);
+  color: #1a1814;
+}
+.panel-close:focus-visible {
+  outline: 2px solid #c4956a;
+  outline-offset: 2px;
+}
+
+/* ── Panel Body ── */
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 12px 20px;
+}
+.panel-body::-webkit-scrollbar {
+  width: 3px;
+}
+.panel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.panel-body::-webkit-scrollbar-thumb {
+  background: rgba(26,24,20,0.08);
+  border-radius: 2px;
+}
+
+/* ── Category Item ── */
+.category {
+  background: #fff;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(26,24,20,0.03);
+  border: 1px solid rgba(26,24,20,0.04);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+.category:hover {
+  box-shadow: 0 2px 8px rgba(26,24,20,0.06);
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s ease;
+  gap: 8px;
+}
+.category-header:hover {
+  background: rgba(196,149,106,0.03);
+}
+.category-header:focus-visible {
+  outline: 2px solid #c4956a;
+  outline-offset: -2px;
+  border-radius: 10px;
+}
+
+.category-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.category-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.category-icon.gold {
+  background: rgba(196,149,106,0.1);
+}
+.category-icon.red {
+  background: rgba(176,96,96,0.08);
+}
+.category-icon.purple {
+  background: rgba(140,120,180,0.1);
+}
+.category-icon.green {
+  background: rgba(106,138,106,0.08);
+}
+
+.category-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1814;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.badge-num {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c4956a;
+  font-variant-numeric: tabular-nums;
+}
+.badge-num.warn {
+  color: #b06060;
+}
+.badge-arrow {
+  font-size: 10px;
+  color: rgba(26,24,20,0.2);
+  transition: transform 0.25s cubic-bezier(0.22,1,0.36,1);
+}
+.badge-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* ── Category Detail ── */
+.category-detail {
+  max-height: 0;
+  overflow: hidden;
+  transition:
+    max-height 0.3s cubic-bezier(0.22,1,0.36,1),
+    padding 0.3s cubic-bezier(0.22,1,0.36,1);
+  padding: 0 14px;
+}
+.category-detail.open {
+  max-height: 320px;
+  padding: 4px 14px 14px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(26,24,20,0.04);
+  gap: 12px;
+}
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  color: rgba(26,24,20,0.5);
+  font-weight: 400;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.detail-value {
+  font-weight: 500;
+  color: #1a1814;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Dots ── */
+.detail-value .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.detail-value .dot.green {
+  background: #6a8a6a;
+  box-shadow: 0 0 0 1px rgba(106,138,106,0.2);
+}
+.detail-value .dot.red {
+  background: #b06060;
+  box-shadow: 0 0 0 1px rgba(176,96,96,0.2);
+}
+.detail-value .dot.yellow {
+  background: #b8a060;
+  box-shadow: 0 0 0 1px rgba(184,160,96,0.2);
+}
+
+/* ── Progress Bar ── */
+.progress-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(26,24,20,0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.22,1,0.36,1);
+}
+.progress-fill.gold {
+  background: linear-gradient(90deg, #c4956a, #d4a57a);
+}
+.progress-fill.green {
+  background: linear-gradient(90deg, #6a8a6a, #8aaa8a);
+}
+.progress-fill.warn {
+  background: linear-gradient(90deg, #b8a060, #c8b070);
+}
+.progress-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: #1a1814;
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Scene states ── */
+.scene-row {
+  font-size: 13px;
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.scene-active {
+  color: #c4956a;
+}
+.scene-partial {
+  color: #b8a060;
+}
+.scene-inactive {
+  color: rgba(26,24,20,0.15);
+}
+
+/* ── Foreshadowing / snippets ── */
+.detail-value .foreshadow-item {
+  font-size: 11px;
+  color: rgba(26,24,20,0.5);
+}
+.detail-value .foreshadow-dot {
+  color: #c4956a;
+}
+
+/* ── Instructions ── */
+.instructions {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(26,24,20,0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: hsla(0,0%,100%,0.65);
+  padding: 9px 22px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .panel-tab,
+  .panel-tab .tab-icon,
+  .category-detail,
+  .badge-arrow,
+  .progress-fill,
+  .category-header:hover,
+  .panel-close,
+  .category {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+  .panel-tab:hover .tooltip {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+  .editor-wrap {
+    width: 100%;
+    max-width: 900px;
+  }
+  .editor-main {
+    padding: 32px 28px;
+  }
+}
+@media (max-width: 640px) {
+  body {
+    padding: 12px;
+  }
+  .editor-main {
+    padding: 24px 20px;
+    font-size: 14px;
+    min-height: 400px;
+  }
+  .panel-tab.open {
+    right: calc(100% - 36px);
+  }
+  .panel {
+    width: calc(100% - 36px);
+    border-radius: 12px 0 0 12px;
+  }
+  .panel-tab.open {
+    right: calc(100% - 36px);
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="editor-wrap">
+  <!-- Editor content -->
+  <div class="editor-main">
+    <h2>当前章节 · 江城暮色</h2>
+    <p>银杏树在十月的午后投下斑驳的影子。她走过花店门口时，那些被阳光滤过的轮廓就落在她浅色的外套上，像某种安静的印记。</p>
+    <p>"不用包起来。"她对店主说，拿起那枝白菊。手指触到花茎的瞬间，凉意沿着指腹蔓延。她想起母亲曾说过，菊花的味道是秋天最诚实的气味。这话是什么意思呢？当时没有细问。现在想问，已经找不到人问了。</p>
+    <p>走廊尽头的钟敲了三下。她低头数了数找零——四块五。硬币在掌心握了一会儿才放进兜里。远处传来公交车进站的声音，那种熟悉的、湿漉漉的刹车声。她往前走，步子不快不慢，仿佛知道这条路的每一个缝隙。</p>
+    <p>有风从巷口灌进来，吹起她的发梢。她侧过头眯了一下眼。就在那一瞬间，她看见走廊尽头站着一个人。隔着几十米的距离，看不清面容，只看到一个轮廓——站得很直，像是在等她。</p>
+    <div class="meta-bar">
+      <span>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px">
+          <path d="M9 2L12 5L6 11L2 12L3 8L9 2Z" />
+          <path d="M2 12L5.5 10.5" />
+        </svg>
+        2,412 字
+      </span>
+      <span>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px">
+          <circle cx="7" cy="7" r="5.5" />
+          <circle cx="7" cy="7" r="2.5" />
+          <circle cx="7" cy="7" r="0.8" fill="currentColor" stroke="none" />
+        </svg>
+        第5章 · 修改稿
+      </span>
+      <span>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px">
+          <circle cx="7" cy="7" r="5.5" />
+          <path d="M7 4V7.5L9.5 9" />
+        </svg>
+        上次编辑 2分钟前
+      </span>
+    </div>
+  </div>
+
+  <!-- Collapsed Tab -->
+  <button class="panel-tab" id="panelTab" onclick="togglePanel()" aria-label="展开合规面板" tabindex="0">
+    <span class="tab-icon">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 16V9" />
+        <path d="M7 16V5" />
+        <path d="M11 16V8" />
+        <path d="M15 16V11" />
+      </svg>
+    </span>
+    <span class="tooltip">合规</span>
+  </button>
+
+  <!-- Panel -->
+  <aside class="panel" id="panel" role="complementary" aria-label="合规面板">
+    <!-- Header -->
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="brand-dot"></span>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 1V4" />
+          <path d="M10 3L8 5" />
+          <path d="M13 7H10" />
+          <path d="M10 11L8 9" />
+          <path d="M7 13V10" />
+          <path d="M4 11L6 9" />
+          <path d="M1 7H4" />
+          <path d="M4 3L6 5" />
+        </svg>
+        合规面板
+      </div>
+      <button class="panel-close" onclick="togglePanel()" aria-label="收起面板">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3L11 11" />
+          <path d="M11 3L3 11" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="panel-body">
+
+      <!-- Category 1: 核心指标 -->
+      <div class="category" role="region" aria-label="核心指标">
+        <div class="category-header" onclick="toggleDetail(this)" tabindex="0" role="button" aria-expanded="false" onkeydown="if(event.key==='Enter'||event.key===' ')event.preventDefault(),toggleDetail(this)">
+          <div class="category-left">
+            <div class="category-icon gold">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 16V9" />
+                <path d="M7 16V5" />
+                <path d="M11 16V8" />
+                <path d="M15 16V11" />
+              </svg>
+            </div>
+            <span class="category-name">核心指标</span>
+          </div>
+          <div class="category-badge">
+            <span class="badge-num">41%</span>
+            <span class="badge-arrow">▼</span>
+          </div>
+        </div>
+        <div class="category-detail">
+          <div class="detail-row">
+            <span class="detail-label">身体密度</span>
+            <div class="progress-group">
+              <div class="progress-bar"><div class="progress-fill gold" style="width:41%"></div></div>
+              <span class="progress-value">41%</span>
+            </div>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">冲突强度</span>
+            <div class="progress-group">
+              <div class="progress-bar"><div class="progress-fill gold" style="width:30%"></div></div>
+              <span class="progress-value">L2</span>
+            </div>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">已有字数</span>
+            <span class="detail-value">2,412</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">对话占比</span>
+            <span class="detail-value">32%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category 2: 合规检测 -->
+      <div class="category" role="region" aria-label="合规检测">
+        <div class="category-header" onclick="toggleDetail(this)" tabindex="0" role="button" aria-expanded="false" onkeydown="if(event.key==='Enter'||event.key===' ')event.preventDefault(),toggleDetail(this)">
+          <div class="category-left">
+            <div class="category-icon red">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 2.5L16 5V10C16 13.5 13.5 16.5 10 18C6.5 16.5 4 13.5 4 10V5L10 2.5Z" />
+                <path d="M7.5 10.5L9 12L12.5 8.5" />
+              </svg>
+            </div>
+            <span class="category-name">合规检测</span>
+          </div>
+          <div class="category-badge">
+            <span class="badge-num warn">1</span>
+            <span class="badge-arrow">▼</span>
+          </div>
+        </div>
+        <div class="category-detail">
+          <div class="detail-row">
+            <span class="detail-label">A类 · 递进判断句</span>
+            <span class="detail-value"><span class="dot green"></span>0/1</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">B类 · 常规禁用词</span>
+            <span class="detail-value"><span class="dot red"></span>1段</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">C类 · 连接词</span>
+            <span class="detail-value"><span class="dot yellow"></span>3次</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">动作后解释</span>
+            <span class="detail-value"><span class="dot green"></span>0次</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category 3: 创作引擎 -->
+      <div class="category" role="region" aria-label="创作引擎">
+        <div class="category-header" onclick="toggleDetail(this)" tabindex="0" role="button" aria-expanded="false" onkeydown="if(event.key==='Enter'||event.key===' ')event.preventDefault(),toggleDetail(this)">
+          <div class="category-left">
+            <div class="category-icon purple">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 17L14 7" />
+                <path d="M16 5L15 6" />
+                <path d="M7 3L7.5 5" />
+                <path d="M3 7L5 6.5" />
+                <path d="M5 3L6.5 5.5" />
+              </svg>
+            </div>
+            <span class="category-name">创作引擎</span>
+          </div>
+          <div class="category-badge">
+            <span class="badge-num">S2◐</span>
+            <span class="badge-arrow">▼</span>
+          </div>
+        </div>
+        <div class="category-detail">
+          <div class="detail-row">
+            <span class="detail-label">场景方法</span>
+            <span class="detail-value scene-row">
+              <span class="scene-active">S1●</span>
+              <span class="scene-active">S2●</span>
+              <span class="scene-partial">S3◐</span>
+              <span class="scene-inactive">S4○</span>
+              <span class="scene-inactive">S5○</span>
+              <span class="scene-inactive">S6○</span>
+            </span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">感官通道</span>
+            <span class="detail-value scene-row">
+              <span class="scene-active">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 7C1 7 3 2.5 7 2.5C11 2.5 13 7 13 7C13 7 11 11.5 7 11.5C3 11.5 1 7 1 7Z" />
+                  <circle cx="7" cy="7" r="2" />
+                </svg>
+                <span style="font-size:10px;margin-left:1px">✓</span>
+              </span>
+              <span class="scene-inactive">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M7 4V2C7 1.5 6.5 1 6 1C5.5 1 5 1.5 5 2V6" />
+                  <path d="M5 6V3C5 2.5 4.5 2 4 2C3.5 2 3 2.5 3 3V7.5C3 9.5 4.5 12 7 12H9C10.5 12 12 10.5 12 9V7.5C12 6.5 11.5 6 10.5 6C10 6 9.5 6.5 9.5 7" />
+                </svg>
+                <span style="font-size:10px;margin-left:1px">○</span>
+              </span>
+              <span class="scene-partial">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 5C10 2.5 8.5 1 6.5 1C4.5 1 3 2.5 3 5C3 7 4.5 8 5 8.5C5.5 9 5.5 10 5.5 11" />
+                  <path d="M5.5 11C5.5 11.5 6 12 6.5 12C7 12 7.5 11.5 7.5 11" />
+                  <path d="M8 7.5C9 7 10 6 10 5" />
+                </svg>
+                <span style="font-size:10px;margin-left:1px">◐</span>
+              </span>
+              <span class="scene-inactive">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 9C5 9 7 11 9 9" />
+                  <path d="M5 9C4.5 7 6 4 7 3C8 4 9.5 7 9 9" />
+                </svg>
+                <span style="font-size:10px;margin-left:1px">○</span>
+              </span>
+              <span class="scene-inactive">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 8.5C3 8.5 5 11.5 7 11.5C9 11.5 11 8.5 11 8.5" />
+                </svg>
+                <span style="font-size:10px;margin-left:1px">○</span>
+              </span>
+            </span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">当前风格</span>
+            <span class="detail-value">冷峻白描</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category 4: 伏笔与角色 -->
+      <div class="category" role="region" aria-label="伏笔与角色">
+        <div class="category-header" onclick="toggleDetail(this)" tabindex="0" role="button" aria-expanded="false" onkeydown="if(event.key==='Enter'||event.key===' ')event.preventDefault(),toggleDetail(this)">
+          <div class="category-left">
+            <div class="category-icon green">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 3.5H10V16.5H4C3.5 16.5 3 16 3 15.5V4.5C3 4 3.5 3.5 4 3.5Z" />
+                <path d="M10 3.5H16C16.5 3.5 17 4 17 4.5V15.5C17 16 16.5 16.5 16 16.5H10V3.5Z" />
+                <path d="M10 4V16" />
+              </svg>
+            </div>
+            <span class="category-name">伏笔与角色</span>
+          </div>
+          <div class="category-badge">
+            <span class="badge-num">3</span>
+            <span class="badge-arrow">▼</span>
+          </div>
+        </div>
+        <div class="category-detail">
+          <div class="detail-row">
+            <span class="detail-label">活跃伏笔</span>
+            <span class="detail-value">3条</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label" style="padding-left:16px">银杏叶</span>
+            <span class="detail-value"><span class="foreshadow-dot">◉</span></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label" style="padding-left:16px">橡皮鸭</span>
+            <span class="detail-value"><span class="foreshadow-dot">◉</span></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label" style="padding-left:16px">走廊尽头</span>
+            <span class="detail-value"><span class="foreshadow-dot">◉</span></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">角色在场</span>
+            <span class="detail-value">2 / 5</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+</div>
+
+<div class="instructions">
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px">
+    <path d="M2 2L6 12L8 8.5L11.5 11L12.5 10L9 7.5L12 6L2 2Z" />
+  </svg>
+  点击铜金标签展开面板 · 点分类标题展开详情 · 点
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin:0 2px">
+    <path d="M3 3L11 11" />
+    <path d="M11 3L3 11" />
+  </svg>
+  收起
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const panel = document.getElementById('panel');
+  const tab = document.getElementById('panelTab');
+  let isOpen = false;
+
+  window.togglePanel = function() {
+    isOpen = !isOpen;
+    panel.classList.toggle('open', isOpen);
+    tab.classList.toggle('open', isOpen);
+    tab.setAttribute('aria-label', isOpen ? '收起合规面板' : '展开合规面板');
+
+    // Animate progress bars on open if category is already expanded
+    if (isOpen) {
+      document.querySelectorAll('.category-detail.open').forEach(function(detail) {
+        detail.querySelectorAll('.progress-fill').forEach(function(fill) {
+          var w = fill.style.width;
+          fill.style.width = '0%';
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              fill.style.width = w;
+            });
+          });
+        });
+      });
+    }
+  };
+
+  window.toggleDetail = function(headerEl) {
+    if (!headerEl) return;
+    var category = headerEl.closest('.category');
+    if (!category) return;
+    var detail = category.querySelector('.category-detail');
+    var arrow = category.querySelector('.badge-arrow');
+    var btn = headerEl.closest('[role="button"]') || headerEl;
+    var isNowOpen = !detail.classList.contains('open');
+
+    detail.classList.toggle('open', isNowOpen);
+    if (arrow) arrow.classList.toggle('open', isNowOpen);
+    btn.setAttribute('aria-expanded', isNowOpen);
+
+    // Animate progress bars inside just-expanded detail
+    if (isNowOpen) {
+      detail.querySelectorAll('.progress-fill').forEach(function(fill) {
+        var w = fill.style.width;
+        fill.style.width = '0%';
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            fill.style.width = w;
+          });
+        });
+      });
+    }
+  };
+
+  // Close panel on Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && isOpen) {
+      togglePanel();
+      tab.focus();
+    }
+  });
+
+  // Set initial ARIA
+  tab.setAttribute('aria-label', '展开合规面板');
+  document.querySelectorAll('.category-header').forEach(function(h) {
+    h.setAttribute('aria-expanded', 'false');
+  });
+})();
+</script>
+
+</body>
+</html>
