@@ -15,7 +15,8 @@ import { BrainstormModal } from '@/components/brainstorm-modal'
 import type { Editor } from '@tiptap/react'
 import { useTheme } from '@/lib/utils/theme-context'
 import Image from 'next/image'
-import { ArrowLeft, PanelLeft, PanelRight, Save, CheckCircle2, AlertTriangle, Maximize2, ClipboardCheck, Ellipsis, Trash2, Download, FileOutput, Upload, Shuffle, BookOpen, X, User, Lightbulb, Sparkles, BookMarked, Bot, FileText, Search, Pencil, Rocket, Zap, Sun, Sunrise, Moon, Snowflake, Keyboard, ArrowUp, ArrowDown, Printer } from 'lucide-react'
+import { ArrowLeft, PanelLeft, PanelRight, Save, CheckCircle2, AlertTriangle, Maximize2, ClipboardCheck, Ellipsis, Trash2, Download, FileOutput, Upload, Shuffle, BookOpen, X, User, Lightbulb, Sparkles, BookMarked, Bot, FileText, Search, Pencil, Rocket, Zap, Sun, Sunrise, Moon, Snowflake, Keyboard, ArrowUp, ArrowDown, Printer, Activity } from 'lucide-react'
+import { CompliancePanel } from '@/components/compliance-panel/compliance-panel'
 
 export default function EditorPage() {
   const params = useParams()
@@ -1320,6 +1321,9 @@ export default function EditorPage() {
           </div>
         </div>
       )}
+
+      {/* ===== 合规面板 ===== */}
+      <CompliancePanel editorContent={content} open={true} onToggle={() => {}} />
     </div>
   )
 }
