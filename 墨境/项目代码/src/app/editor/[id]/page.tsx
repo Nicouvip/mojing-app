@@ -17,6 +17,7 @@ import { useTheme } from '@/lib/utils/theme-context'
 import Image from 'next/image'
 import { ArrowLeft, PanelLeft, PanelRight, Save, CheckCircle2, AlertTriangle, Maximize2, ClipboardCheck, Ellipsis, Trash2, Download, FileOutput, Upload, Shuffle, BookOpen, X, User, Lightbulb, Sparkles, BookMarked, Bot, FileText, Search, Pencil, Rocket, Zap, Sun, Sunrise, Moon, Snowflake, Keyboard, ArrowUp, ArrowDown, Printer, Activity } from 'lucide-react'
 import { CompliancePanel } from '@/components/compliance-panel/compliance-panel'
+import { CoolingMatrix } from '@/components/cooling-matrix'
 
 export default function EditorPage() {
   const params = useParams()
