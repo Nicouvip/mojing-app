@@ -1,0 +1,685 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: #f8f9fb;
+  --color-foreground: #0f172a;
+  --color-primary: #6b8c6e;
+  --color-primary-foreground: #ffffff;
+  --color-primary-light: #eef4ef;
+  --color-primary-hover: #5a7a5d;
+  --color-secondary: #f0f2f5;
+  --color-secondary-foreground: #0f172a;
+  --color-muted: #f0f2f5;
+  --color-muted-foreground: #64748b;
+  --color-accent: #d1fae5;
+  --color-accent-foreground: #10b981;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-warning: #f59e0b;
+  --color-warning-light: #fef3c7;
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+  --color-ai-accent: #8b5cf6;
+  --color-ai-accent-light: #ede9fe;
+  --color-border: #e2e8f0;
+  --color-input: #e2e8f0;
+  --color-ring: rgba(107,140,110,0.3);
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+  --color-overlay: rgba(0,0,0,0.3);
+  --color-sidebar: rgba(248,249,251,0.85);
+  --color-sidebar-foreground: #1e293b;
+  --color-sidebar-hover: rgba(0,0,0,0.04);
+  --color-sidebar-active: rgba(107,140,110,0.08);
+
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.05);
+  --shadow-elevated: 0 8px 20px rgba(0,0,0,0.06);
+  --shadow-hover: 0 8px 20px rgba(0,0,0,0.06);
+  --shadow-modal: 0 12px 32px rgba(0,0,0,0.08);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --font-sans: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+  --font-serif: 'Noto Serif SC', 'Songti SC', 'SimSun', ui-serif,
+    Georgia, Cambria, 'Times New Roman', Times, serif;
+}
+
+:root {
+  --gradient-primary: linear-gradient(135deg, #6b8c6e 0%, #5a7a5d 50%, #8b5cf6 100%);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.05);
+  --shadow-elevated: 0 8px 20px rgba(0,0,0,0.06);
+  --shadow-hover: 0 8px 20px rgba(0,0,0,0.06);
+  --shadow-modal: 0 12px 32px rgba(0,0,0,0.08);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    letter-spacing: 0.01em;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ===== 纸张纹理 ===== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+}
+.dark body::before {
+  opacity: 0.12;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+}
+
+
+/* 去掉编辑器聚焦黑边 */
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+
+/* ===== TipTap 小说排版 ===== */
+.ProseMirror {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.8;
+  letter-spacing: 0.005em;
+  padding: 3rem 5rem;
+  min-height: 80vh;
+}
+.ProseMirror h1 {
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: -0.5px;
+  margin: 2rem 0 1.5rem;
+  line-height: 1.4;
+}
+.ProseMirror h2 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  margin: 1.5rem 0 1rem;
+  line-height: 1.5;
+}
+.ProseMirror h3 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 1.2rem 0 0.8rem;
+}
+.ProseMirror p {
+  text-indent: 2em;
+  margin: 0.8rem 0;
+}
+.ProseMirror blockquote {
+  border-left: 3px solid #d1d5db;
+  padding-left: 1em;
+  color: #6b7280;
+  font-style: italic;
+}
+.ProseMirror mark {
+  background: #fef08a;
+  padding: 0 4px;
+  border-radius: 2px;
+}
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #d1d5db;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+
+/* ===== 滚动条美化 ===== */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(107,140,110,0.2);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107,140,110,0.35);
+}
+
+/* ===== 🌙 暗夜主题 ===== */
+.dark {
+  --color-background: #1a1f2e;
+  --color-foreground: #f1f5f9;
+  --color-card: #1e293b;
+  --color-card-foreground: #f1f5f9;
+  --color-popover: #1e293b;
+  --color-popover-foreground: #f1f5f9;
+  --color-primary: #8aac8d;
+  --color-primary-foreground: #ffffff;
+  --color-primary-light: rgba(138,172,141,0.12);
+  --color-primary-hover: #6b8c6e;
+  --color-secondary: #1e293b;
+  --color-secondary-foreground: #f1f5f9;
+  --color-muted: #1e293b;
+  --color-muted-foreground: #94a3b8;
+  --color-accent: rgba(16,185,129,0.12);
+  --color-accent-foreground: #34d399;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-warning: #f59e0b;
+  --color-warning-light: rgba(245,158,11,0.15);
+  --color-success: #10b981;
+  --color-success-light: rgba(16,185,129,0.12);
+  --color-ai-accent: #a78bfa;
+  --color-ai-accent-light: rgba(167,139,250,0.12);
+  --color-border: rgba(255,255,255,0.06);
+  --color-input: rgba(255,255,255,0.08);
+  --color-ring: rgba(138,172,141,0.35);
+  --color-overlay: rgba(0,0,0,0.5);
+  --color-sidebar: #1a1f2e;
+  --color-sidebar-foreground: #f1f5f9;
+  --color-sidebar-hover: rgba(255,255,255,0.05);
+  --color-sidebar-active: rgba(138,172,141,0.12);
+}
+
+.dark .ProseMirror { color: var(--color-foreground); }
+.dark .ProseMirror mark { background: rgba(138,172,141,0.25); }
+.dark .ProseMirror blockquote {
+  border-left-color: var(--color-border);
+  color: var(--color-muted-foreground);
+}
+.dark .ProseMirror p.is-editor-empty:first-child::before {
+  color: hsl(215 20.2% 50%);
+}
+.dark .ProseMirror ::selection {
+  background: hsl(217.2 32.6% 30%);
+  color: var(--color-foreground);
+}
+.dark .ProseMirror { caret-color: var(--color-foreground); }
+
+.dark ::-webkit-scrollbar-thumb { background: hsl(215 20% 30%); }
+.dark ::-webkit-scrollbar-thumb:hover { background: hsl(215 20% 40%); }
+
+/* ===== 玻璃拟态 + 渐变环境光 ===== */
+/* 玻璃拟态面板 — 升级版：顶部高光线 + 暗色适配 */
+.glass-panel {
+  position: relative;
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(229,231,235,0.8);
+  box-shadow: 0 2px 8px rgba(107,140,110,0.04);
+}
+/* 顶部高光线 — 渐变显得更自然 */
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,0.35) 15%,
+    rgba(255,255,255,0.55) 50%,
+    rgba(255,255,255,0.35) 85%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+  border-radius: inherit;
+}
+/* 暗色主题玻璃面板 */
+.dark .glass-panel {
+  background: rgba(26,31,46,0.78);
+  border-color: rgba(255,255,255,0.06);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.dark .glass-panel::before {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,0.06) 15%,
+    rgba(255,255,255,0.10) 50%,
+    rgba(255,255,255,0.06) 85%,
+    transparent 100%
+  );
+}
+/* 保留旧类名兼容 */
+.glass-panel-dark {
+  background: rgba(26,31,46,0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* 暗色渐变环境光 — 编辑器背景用 */
+.editor-ambient {
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(107,140,110,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(139,92,246,0.03) 0%, transparent 70%),
+    var(--color-background);
+}
+.dark .editor-ambient {
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(138,172,141,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(167,139,250,0.04) 0%, transparent 70%),
+    var(--color-background);
+}
+.theme-warm .editor-ambient {
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(107,140,110,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(251,191,36,0.03) 0%, transparent 70%),
+    var(--color-background);
+}
+.theme-cool .editor-ambient {
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(107,140,110,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(96,165,250,0.03) 0%, transparent 70%),
+    var(--color-background);
+}
+
+/* 暗色主题阴影：白色发光 */
+.dark {
+  --shadow-card: 0 2px 8px rgba(255,255,255,0.04);
+  --shadow-elevated: 0 8px 20px rgba(255,255,255,0.04);
+  --shadow-hover: 0 8px 20px rgba(255,255,255,0.04);
+  --shadow-modal: 0 12px 32px rgba(255,255,255,0.06);
+}
+
+/* ===== 🌅 暖光主题 ===== */
+.theme-warm {
+  --color-background: hsl(40 30% 96%);
+  --color-foreground: hsl(30 40% 20%);
+  --color-card: hsl(40 25% 94%);
+  --color-card-foreground: hsl(30 40% 20%);
+  --color-popover: hsl(40 25% 94%);
+  --color-popover-foreground: hsl(30 40% 20%);
+  --color-primary: hsl(130 20% 48%);
+  --color-primary-foreground: #ffffff;
+  --color-primary-light: hsl(130 25% 93%);
+  --color-primary-hover: hsl(130 20% 40%);
+  --color-secondary: hsl(35 25% 88%);
+  --color-secondary-foreground: hsl(30 40% 20%);
+  --color-muted: hsl(40 20% 90%);
+  --color-muted-foreground: hsl(30 15% 48%);
+  --color-accent: hsl(155 40% 88%);
+  --color-accent-foreground: hsl(155 50% 35%);
+  --color-destructive: hsl(0 60% 50%);
+  --color-destructive-foreground: #ffffff;
+  --color-warning: hsl(35 80% 55%);
+  --color-warning-light: hsl(40 80% 92%);
+  --color-success: hsl(155 50% 42%);
+  --color-success-light: hsl(155 40% 88%);
+  --color-ai-accent: hsl(270 50% 60%);
+  --color-ai-accent-light: hsl(270 40% 94%);
+  --color-border: hsl(35 20% 85%);
+  --color-input: hsl(35 20% 85%);
+  --color-ring: hsl(130 20% 48%);
+  --color-overlay: rgba(60,40,20,0.3);
+  --color-sidebar: hsl(40 28% 92%);
+  --color-sidebar-foreground: hsl(30 40% 20%);
+  --color-sidebar-hover: hsl(35 20% 88%);
+  --color-sidebar-active: hsl(130 20% 90%);
+}
+
+.theme-warm .ProseMirror { color: var(--color-foreground); }
+.theme-warm .ProseMirror mark { background: rgba(251, 191, 36, 0.35); }
+.theme-warm .ProseMirror blockquote {
+  border-left-color: var(--color-border);
+  color: var(--color-muted-foreground);
+}
+.theme-warm .ProseMirror p.is-editor-empty:first-child::before {
+  color: hsl(35 15% 65%);
+}
+.theme-warm .ProseMirror ::selection {
+  background: hsl(35 30% 80%);
+  color: var(--color-foreground);
+}
+.theme-warm .ProseMirror { caret-color: var(--color-foreground); }
+
+.theme-warm ::-webkit-scrollbar-thumb { background: hsl(35 20% 70%); }
+.theme-warm ::-webkit-scrollbar-thumb:hover { background: hsl(35 20% 60%); }
+
+/* ===== ❄️ 冷光主题 ===== */
+.theme-cool {
+  --color-background: hsl(210 20% 94%);
+  --color-foreground: hsl(215 30% 20%);
+  --color-card: hsl(210 15% 96%);
+  --color-card-foreground: hsl(215 30% 20%);
+  --color-popover: hsl(210 15% 96%);
+  --color-popover-foreground: hsl(215 30% 20%);
+  --color-primary: hsl(130 15% 48%);
+  --color-primary-foreground: #ffffff;
+  --color-primary-light: hsl(130 18% 92%);
+  --color-primary-hover: hsl(130 15% 40%);
+  --color-secondary: hsl(210 15% 85%);
+  --color-secondary-foreground: hsl(215 30% 20%);
+  --color-muted: hsl(210 12% 88%);
+  --color-muted-foreground: hsl(215 12% 52%);
+  --color-accent: hsl(170 30% 88%);
+  --color-accent-foreground: hsl(170 50% 32%);
+  --color-destructive: hsl(0 60% 52%);
+  --color-destructive-foreground: #ffffff;
+  --color-warning: hsl(40 80% 52%);
+  --color-warning-light: hsl(40 60% 90%);
+  --color-success: hsl(160 50% 42%);
+  --color-success-light: hsl(160 35% 88%);
+  --color-ai-accent: hsl(260 50% 62%);
+  --color-ai-accent-light: hsl(260 35% 93%);
+  --color-border: hsl(210 15% 82%);
+  --color-input: hsl(210 15% 82%);
+  --color-ring: hsl(130 15% 48%);
+  --color-overlay: rgba(20,30,50,0.3);
+  --color-sidebar: hsl(210 18% 90%);
+  --color-sidebar-foreground: hsl(215 30% 20%);
+  --color-sidebar-hover: hsl(210 15% 86%);
+  --color-sidebar-active: hsl(130 18% 90%);
+}
+
+.theme-cool .ProseMirror { color: var(--color-foreground); }
+.theme-cool .ProseMirror mark { background: rgba(147, 197, 253, 0.4); }
+.theme-cool .ProseMirror blockquote {
+  border-left-color: var(--color-border);
+  color: var(--color-muted-foreground);
+}
+.theme-cool .ProseMirror p.is-editor-empty:first-child::before {
+  color: hsl(215 12% 65%);
+}
+.theme-cool .ProseMirror ::selection {
+  background: hsl(210 20% 78%);
+  color: var(--color-foreground);
+}
+.theme-cool .ProseMirror { caret-color: var(--color-foreground); }
+
+.theme-cool ::-webkit-scrollbar-thumb { background: hsl(210 15% 70%); }
+.theme-cool ::-webkit-scrollbar-thumb:hover { background: hsl(210 15% 60%); }
+
+
+/* ===== 编辑器视觉精修 — 墨迹未干 ===== */
+
+/* 章节列表层级缩进 */
+[class*="w-[220px]"] .overflow-y-auto > div > div > div:not(:first-child) {
+  padding-left: 1.25rem; /* 子章节缩进 */
+}
+
+/* 章节 hover 微动效 */
+[class*="w-[220px]"] .overflow-y-auto .cursor-pointer {
+  transition: all 0.15s ease;
+}
+[class*="w-[220px]"] .overflow-y-auto .cursor-pointer:hover {
+  translate: 2px 0; /* hover 微右移 */
+}
+
+/* 右侧图标栏 — 活跃态光圈 */
+.w-14 .rounded-lg.bg-primary {
+  box-shadow: 0 0 12px rgba(107,140,110,0.3);
+}
+/* 图标栏按钮 hover 微放大 */
+.w-14 .rounded-lg {
+  transition: all 0.15s ease;
+}
+.w-14 .rounded-lg:hover:not(.bg-primary) {
+  transform: scale(1.1);
+  color: var(--color-foreground);
+}
+
+/* 顶栏品牌点缀 — 左侧苔绿渐变线 */
+[class*="h-12 px-4"]:first-of-type {
+  border-bottom-width: 1px;
+  border-image: linear-gradient(to right, rgba(107,140,110,0.3), transparent) 1;
+}
+
+/* 弹窗卡片的苔绿色调边框光 */
+.shadow-modal:where([class*="rounded-2xl"],[class*="rounded-\[20px\]"]) {
+  border: 1px solid rgba(107,140,110,0.08);
+}
+
+/* 滚动条品牌色 */
+::-webkit-scrollbar-thumb {
+  background: rgba(107,140,110,0.2);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107,140,110,0.35);
+}
+
+/* ProseMirror 引用块改用苔绿色调 */
+.ProseMirror blockquote {
+  border-left-color: var(--color-primary-light);
+  color: var(--color-muted-foreground);
+  background: linear-gradient(to right, rgba(107,140,110,0.03), transparent);
+  padding: 0.5em 1em;
+  border-radius: 0 4px 4px 0;
+}
+
+/* ProseMirror 高亮改为苔绿色调 */
+.ProseMirror mark {
+  background: rgba(107,140,110,0.15);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+/* ProseMirror 占位文字用苔绿色调 */
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: rgba(107,140,110,0.3);
+}
+
+
+/* ===== 主题切换按钮视觉强化 ===== */
+.theme-warm button.bg-secondary { border-bottom: 2px solid transparent; }
+.theme-warm button.bg-primary { box-shadow: inset 0 -2px 0 var(--color-warning); }
+.dark button.bg-primary { box-shadow: inset 0 -2px 0 var(--color-primary); }
+.theme-cool button.bg-primary { box-shadow: inset 0 -2px 0 var(--color-primary); }
+
+/* 合规检测违规项：hover 和颜色用语义色 */
+.text-amber-600.bg-amber-50 {
+  color: var(--color-warning);
+  background-color: var(--color-warning-light);
+}
+.text-amber-600.bg-amber-50:hover {
+  background-color: color-mix(in srgb, var(--color-warning-light) 80%, transparent);
+}
+
+
+/* ===== 动画节奏分层 ===== */
+/* 侧栏展开/折叠：300ms ease-out */
+.transition-all.duration-200 {
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* 右侧面板展开/折叠：200ms ease-out（保持原值，已是最佳节奏） */
+/* 编辑区：不跟 transition，跟随父容器（无需额外规则） */
+
+
+/* ===== 侧栏激活章节左侧绿色竖线 ===== */
+/* 目标：active 章节（bg-primary-light + text-primary）加左侧绿色竖条 */
+.bg-primary-light.text-primary.font-medium:not(h3) {
+  border-left: 2px solid var(--color-primary);
+  padding-left: 0.75rem; /* pl-3，抵消 border 占位 */
+}
+
+
+/* ===== 空状态 BookOpen 图标增强 ===== */
+/* 目标：opacity-20 → opacity-40 + 微妙脉冲动画 */
+.w-16.h-16.opacity-20 {
+  opacity: 0.4;
+  animation: gentle-pulse 3s ease-in-out infinite;
+}
+@keyframes gentle-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(1.03); }
+}
+
+
+/* ===== /account 用户中心样式 ===== */
+
+/* Tab 导航 */
+.acc-nav-item {
+  @apply flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground transition-all duration-150;
+}
+.acc-nav-item:hover {
+  @apply bg-sidebar-hover text-foreground;
+}
+.acc-nav-item.active {
+  @apply bg-primary-light text-primary font-medium;
+  border-left: 3px solid var(--color-primary);
+  padding-left: calc(1rem - 3px);
+}
+
+/* 欢迎区 */
+.acc-welcome {
+  @apply bg-card border border-border rounded-xl p-5 shadow-sm;
+}
+
+/* 作品列表空态 */
+.acc-empty {
+  @apply text-center py-16 text-muted-foreground;
+}
+
+/* AI 用量条 */
+.acc-usage-bar {
+  @apply w-full h-2.5 bg-secondary rounded-full overflow-hidden;
+}
+.acc-usage-bar-fill {
+  @apply h-full rounded-full transition-all duration-500;
+}
+.acc-usage-bar-fill.normal { @apply bg-primary; }
+.acc-usage-bar-fill.warning { @apply bg-warning; }
+.acc-usage-bar-fill.danger { @apply bg-destructive; }
+
+/* 会员套餐卡片 */
+.acc-plan-card {
+  @apply flex-1 bg-card border border-border rounded-2xl p-6 transition-all duration-200;
+}
+.acc-plan-card:hover {
+  @apply shadow-hover;
+  transform: translateY(-2px);
+}
+.acc-plan-card.featured {
+  @apply border-2 border-primary relative;
+}
+
+/* 推荐标签（浮动在卡片上方） */
+.acc-plan-badge {
+  @apply absolute -top-3 left-1/2 -translate-x-1/2;
+  @apply bg-primary text-white text-xs px-4 py-1 rounded-full font-medium;
+}
+
+/* 套餐价格 */
+.acc-plan-price {
+  @apply text-3xl font-bold text-foreground;
+}
+
+/* 套餐功能列表 */
+.acc-plan-features {
+  @apply space-y-3 mt-5 text-sm;
+}
+
+/* 设置表单区块 */
+.acc-section {
+  @apply bg-card border border-border rounded-xl p-5 space-y-4;
+}
+.acc-section-title {
+  @apply text-base font-semibold text-foreground mb-4;
+}
+
+/* 数据管理警告条 */
+.acc-warning-banner {
+  @apply bg-warning-light border border-warning/20 rounded-xl p-4 text-sm text-warning;
+}
+
+/* 危险操作按钮 */
+.acc-danger-btn {
+  @apply px-5 py-2 rounded-lg border border-destructive text-destructive text-sm transition-colors;
+}
+.acc-danger-btn:hover {
+  @apply bg-destructive/10;
+}
+
+/* ===== 弹窗入场动效 ===== */
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.modal-enter { animation: modal-in 300ms ease-out; }
+
+/* ===== 书桌式工作台 ===== */
+.book-stage { perspective: 1600px; perspective-origin: center center; }
+.book-item { position: absolute; bottom: 0; transform-origin: bottom center; transition: all 0.35s cubic-bezier(0.22,1,0.36,1); cursor: pointer; border-left: 3px solid rgba(0,0,0,0.08); background: linear-gradient(90deg, #fff 0%, #f8fafc 100%); box-shadow: 2px 4px 12px rgba(0,0,0,0.08), inset 0 0 20px rgba(255,255,255,0.5); }
+.book-item.primary { background: linear-gradient(90deg, #6b8c6e 0%, #7a9b7d 100%); border-left-color: rgba(0,0,0,0.15); color: white; }
+.book-item.dark { background: linear-gradient(90deg, #557058 0%, #6b8c6e 100%); border-left-color: rgba(0,0,0,0.2); color: white; }
+.book-item:hover { transform: translateY(-14px) rotateY(0deg) !important; box-shadow: 0 24px 48px rgba(107,140,110,0.25); z-index: 20; }
+
+/* ===== /desk 书桌式工作台 ===== */
+
+/* 书架透视容器 */
+.book-perspective {
+  perspective: 1200px;
+  perspective-origin: center bottom;
+}
+
+/* 书名 hover 浮现 */
+.book-title-float {
+  pointer-events: none;
+}
+
+/* 层叠书页 */
+.stack-page {
+  position: absolute;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+/* 进度条动画 */
+.progress-animate {
+  animation: progressFill 1.2s ease-out forwards;
+}
+@keyframes progressFill {
+  from { width: 0; }
+}
+
+/* 空态呼吸动画 */
+@keyframes desk-breathe {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+/* 纸张纹理 - 编辑器写作区 */
+.ProseMirror {
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 1.5em,
+    rgba(0,0,0,0.03) 1.5em,
+    rgba(0,0,0,0.03) 1.51em
+  );
+  background-attachment: local;
+}
+.dark .ProseMirror {
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 1.5em,
+    rgba(255,255,255,0.04) 1.5em,
+    rgba(255,255,255,0.04) 1.51em
+  );
+}

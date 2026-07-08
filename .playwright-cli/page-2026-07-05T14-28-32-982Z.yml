@@ -1,0 +1,44 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e391]:
+    - generic [ref=e395] [cursor=pointer]:
+      - img "星月写作" [ref=e397]
+      - generic [ref=e398]: 星月写作
+    - generic [ref=e401]:
+      - heading "登录" [ref=e402]:
+        - heading "登录" [ref=e403]
+      - generic [ref=e405]:
+        - generic [ref=e410]:
+          - generic [ref=e414] [cursor=pointer]: 微信登录 / 注册
+          - generic [ref=e419] [cursor=pointer]: 账号密码
+        - generic [ref=e423]:
+          - img [ref=e428]
+          - paragraph [ref=e430]: 请使用微信扫描二维码登录 / 注册
+          - generic [ref=e432]:
+            - text: 登录/注册即同意
+            - generic [ref=e433] [cursor=pointer]: 用户协议
+            - generic [ref=e434]: 和
+            - generic [ref=e435] [cursor=pointer]: 隐私政策
+    - generic [ref=e438]:
+      - generic [ref=e439]: © 2026 保定智语科技有限公司
+      - link "冀ICP备2024086783号-1" [ref=e441] [cursor=pointer]:
+        - /url: https://beian.miit.gov.cn/
+      - link "冀公网安备13060602001729号" [ref=e443] [cursor=pointer]:
+        - /url: https://beian.mps.gov.cn/#/query/webSearch?code=13060602001729
+      - link "网信算备130606798030301250017号" [ref=e445] [cursor=pointer]:
+        - /url: https://www.cac.gov.cn/2025-07/14/c_1754207718303963.htm
+      - link "冀B2-20250351" [ref=e447] [cursor=pointer]:
+        - /url: https://cdn.xingyuexiezuo.com/beian/icp_beian.jpeg
+  - iframe [ref=e390]:
+    - generic [ref=f1e2]:
+      - generic [ref=f1e4]:
+        - generic [ref=f1e5]: 安全验证
+        - generic:
+          - img [ref=f1e8]
+          - generic [ref=f1e13]: 返回
+      - generic:
+        - option
+      - generic [ref=f1e14]:
+        - generic [ref=f1e17]: 拖动下方滑块完成拼图
+        - generic [ref=f1e22]:
+          - img "feedback" [ref=f1e25] [cursor=pointer]
+          - img "refresh" [ref=f1e28] [cursor=pointer]
