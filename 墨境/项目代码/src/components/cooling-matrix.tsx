@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import {
-  createCoolingState,
   isCooling,
+  type CoolingState,
   type SceneMethod,
   type EndingType,
   type HookType,
@@ -11,6 +11,8 @@ import {
 
 interface CoolingMatrixProps {
   currentChapter: number
+  /** 来自引擎的真实冷却状态；undefined 时显示空态提示 */
+  coolingState?: CoolingState
 }
 
 const SCENE_MAP: Record<SceneMethod, { label: string; desc: string }> = {
@@ -57,28 +59,19 @@ const SCENE_IDS: SceneMethod[] = ['S1','S2','S3','S4','S5','S6']
 const ENDING_IDS: EndingType[] = ['E1','E2','E3','E4','E5','E6','E7','E8','E9','E10','E11','E12']
 const HOOK_IDS: HookType[] = ['H01','H02','H03','H04','H05','H06','H07','H08','H09','H10','H11','H12','H13']
 
-export function CoolingMatrix({ currentChapter }: CoolingMatrixProps) {
+export function CoolingMatrix({ currentChapter, coolingState }: CoolingMatrixProps) {
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<'scene' | 'ending' | 'hook'>('scene')
 
-  // 模拟数据（后续接真实引擎）
-  const state = useMemo(() => {
-    const s = createCoolingState()
-    s.scenes.S1 = [currentChapter - 2]
-    s.scenes.S4 = [currentChapter - 1]
-    s.endings.E3 = [currentChapter - 1]
-    s.hooks.H07 = [currentChapter - 3]
-    return s
-  }, [currentChapter])
-
   const cooling = (type: 'scene' | 'ending' | 'hook', id: string) =>
-    isCooling(state, type, id, currentChapter)
+    !!coolingState && isCooling(coolingState, type, id, currentChapter)
 
   return (
     <div className="border-t border-border">
       <button
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        aria-label={open ? '收起冷却矩阵' : '展开冷却矩阵'}
       >
         <span className="flex items-center gap-1.5">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="10" cy="10" r="6.5" /><path d="M10 6V10.5L13 12" /><path d="M4 15.5L5 14" /><path d="M15 5L16 4.5" /><path d="M8 5L9 7" /><path d="M12 5L11 7" /></svg>
@@ -93,6 +86,7 @@ export function CoolingMatrix({ currentChapter }: CoolingMatrixProps) {
           <div className="flex gap-1">
             {(['scene','ending','hook'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
+                aria-label={t === 'scene' ? '场景方法' : t === 'ending' ? '章末收束' : '钩子类型'}
                 className={`px-2 py-1 text-[10px] rounded-md transition-colors ${
                   tab === t ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:text-foreground'
                 }`}
@@ -102,8 +96,15 @@ export function CoolingMatrix({ currentChapter }: CoolingMatrixProps) {
             ))}
           </div>
 
+          {/* 空态提示：未连接引擎 */}
+          {!coolingState && (
+            <div className="py-6 text-center text-xs text-muted-foreground/50">
+              连接引擎后生效
+            </div>
+          )}
+
           {/* 场景 S1-S6 */}
-          {tab === 'scene' && (
+          {coolingState && tab === 'scene' && (
             <div className="space-y-0.5">
               {SCENE_IDS.map(id => {
                 const c = cooling('scene', id)
@@ -124,7 +125,7 @@ export function CoolingMatrix({ currentChapter }: CoolingMatrixProps) {
           )}
 
           {/* 收束 E1-E12 */}
-          {tab === 'ending' && (
+          {coolingState && tab === 'ending' && (
             <div className="grid grid-cols-2 gap-0.5">
               {ENDING_IDS.map(id => {
                 const c = cooling('ending', id)
@@ -142,7 +143,7 @@ export function CoolingMatrix({ currentChapter }: CoolingMatrixProps) {
           )}
 
           {/* 钩子 H01-H13 */}
-          {tab === 'hook' && (
+          {coolingState && tab === 'hook' && (
             <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
               {HOOK_IDS.map(id => {
                 const c = cooling('hook', id)

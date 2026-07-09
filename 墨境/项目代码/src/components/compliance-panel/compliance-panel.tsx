@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import type { CompliancePanelData } from './use-compliance-data'
-import { computePanelData, emptyPanelData } from './use-compliance-data'
+import { computePanelData } from './use-compliance-data'
 
 interface CompliancePanelProps {
   /** 编辑器当前文本（实时传入） */
@@ -71,16 +71,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 }
 
 export function CompliancePanel({ editorContent, open, onToggle }: CompliancePanelProps) {
-  const [data, setData] = useState<CompliancePanelData>(emptyPanelData)
-
-  // 实时计算
-  useEffect(() => {
-    if (!editorContent) return
-    const timer = requestAnimationFrame(() => {
-      setData(computePanelData(editorContent))
-    })
-    return () => cancelAnimationFrame(timer)
-  }, [editorContent])
+  const data = useMemo(() => computePanelData(editorContent || ''), [editorContent])
 
   // ESC 关闭
   useEffect(() => {
@@ -128,8 +119,8 @@ export function CompliancePanel({ editorContent, open, onToggle }: CompliancePan
         <div className="flex h-full w-[300px] flex-col overflow-y-auto px-4 py-5">
           {/* 面板头部 */}
           <div className="mb-3 flex items-center justify-between border-b border-[rgba(26,24,20,0.06)] pb-3">
-            <h3 className="text-[13px] font-semibold tracking-[0.05em] text-[#1a1814]">
-              创 作 合 规
+            <h3 className="text-[13px] font-semibold text-[#1a1814]" style={{ letterSpacing: '0.05em' }}>
+              创作合规
             </h3>
             <button onClick={onToggle} className="text-[rgba(26,24,20,0.3)] transition-colors hover:text-[#1a1814]" aria-label="关闭面板">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

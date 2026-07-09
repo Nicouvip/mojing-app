@@ -1,7 +1,5 @@
 'use client'
 
-import { useMemo } from 'react'
-
 export type WorkflowStage = 'plan' | 'write' | 'review' | 'deliver'
 
 interface WorkflowBarProps {
@@ -18,20 +16,17 @@ const STAGES: { id: WorkflowStage; label: string }[] = [
   { id: 'deliver', label: '交付' },
 ]
 
-const STAGE_ORDER: WorkflowStage[] = ['plan', 'write', 'review', 'deliver']
-
 export function WorkflowBar({ currentStage, onStageChange, wordCount, bodyDensity }: WorkflowBarProps) {
-  const currentIdx = STAGE_ORDER.indexOf(currentStage)
+  const currentIdx = STAGES.findIndex(s => s.id === currentStage)
 
   return (
     <div className="flex items-center justify-between border-t border-border bg-background px-6 py-2.5 text-xs">
       {/* 左侧：阶段按钮 */}
       <div className="flex items-center gap-0">
         {STAGES.map((s, i) => {
-          const idx = STAGE_ORDER.indexOf(s.id)
-          const isDone = idx < currentIdx
+          const isDone = i < currentIdx
           const isCurrent = s.id === currentStage
-          const isPending = idx > currentIdx
+          const isPending = i > currentIdx
 
           return (
             <div key={s.id} className="flex items-center">
@@ -45,6 +40,8 @@ export function WorkflowBar({ currentStage, onStageChange, wordCount, bodyDensit
                     : 'text-muted-foreground/30 cursor-not-allowed'
                 }`}
                 disabled={isPending}
+                aria-label={`${s.label}阶段`}
+                title={isPending ? '请先完成上一阶段' : `${s.label}阶段`}
               >
                 <span className="text-[11px]">
                   {isDone ? '✓' : isCurrent ? '●' : '○'}
