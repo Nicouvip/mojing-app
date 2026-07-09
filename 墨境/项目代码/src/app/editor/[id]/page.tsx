@@ -18,6 +18,7 @@ import Image from 'next/image'
 import { ArrowLeft, PanelLeft, PanelRight, Save, CheckCircle2, AlertTriangle, Maximize2, ClipboardCheck, Ellipsis, Trash2, Download, FileOutput, Upload, Shuffle, BookOpen, X, User, Lightbulb, Sparkles, BookMarked, Bot, FileText, Search, Pencil, Rocket, Zap, Sun, Sunrise, Moon, Snowflake, Keyboard, ArrowUp, ArrowDown, Printer, Activity } from 'lucide-react'
 import { CompliancePanel } from '@/components/compliance-panel/compliance-panel'
 import { CoolingMatrix } from '@/components/cooling-matrix'
+import { WorkflowBar } from '@/components/workflow-bar'
 
 export default function EditorPage() {
   const params = useParams()
@@ -79,6 +80,7 @@ export default function EditorPage() {
   const [importExpandedIdx, setImportExpandedIdx] = useState<number | null>(null)
   const [sortBy, setSortBy] = useState<'title' | 'wordCount' | 'createdAt'>('title')
   const [showAllChapters, setShowAllChapters] = useState(false)
+  const [workflowStage, setWorkflowStage] = useState<'plan' | 'write' | 'review' | 'deliver'>('write')
 
   const handleBrainstorm = async () => {
     setBsLoading(true); setBsResult('')
@@ -1322,6 +1324,14 @@ export default function EditorPage() {
           </div>
         </div>
       )}
+
+      {/* ===== 底部工作流 ===== */}
+      <WorkflowBar
+        currentStage={workflowStage}
+        onStageChange={setWorkflowStage}
+        wordCount={bodyDensity > 0 ? parseInt(content.replace(/\s/g,'').length.toString()) || 2400 : 2400}
+        bodyDensity={bodyDensity}
+      />
 
       {/* ===== 合规面板 ===== */}
       <CompliancePanel editorContent={content} open={true} onToggle={() => {}} />
