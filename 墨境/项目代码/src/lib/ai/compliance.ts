@@ -449,7 +449,7 @@ function checkPostActionExplanation(text: string): ParagraphCheckItem {
     id: 4,
     name: '动作后解释',
     status: 'pass',
-    isBlocking: true,
+    isBlocking: false,
     detail: '通过',
   }
 }
@@ -1381,4 +1381,44 @@ function checkPC_SenseSwitchLimit(text: string): PolishCheckItem {
     status: violations > 0 ? 'warning' : 'pass',
     detail: violations > 0 ? `${violations}段感官描写超过2种` : '通过',
   }
+}
+
+/**
+ * 根据检测报告生成一句话自然语言总结（面向用户）
+ * 用于章末自检弹窗顶部
+ */
+export function generateChapterSummary(report: ChapterCheckReport): string {
+  const { score, compliant, wordCount, bodyDensity, bodyDensityStatus, openingHook } = report
+  const parts: string[] = []
+
+  if (score >= 4 && compliant) {
+    parts.push('总体不错！')
+    if (openingHook) parts.push('开头悬念到位，')
+    if (bodyDensityStatus === '合理') parts.push('身体密度在黄金区间，')
+    else if (bodyDensityStatus === '偏低') parts.push('身体密度偏低——建议多用动作代替心理描写，')
+    else parts.push('身体密度偏高——可适当加入少量心理描写调节，')
+
+    const failItems = report.items.filter(i => i.status === 'fail')
+    const warnItems = report.items.filter(i => i.status === 'warning')
+    if (failItems.length === 0 && warnItems.length <= 2) {
+      parts.push('整体质量不错，可以直接进入下一章。')
+    } else if (failItems.length > 0) {
+      parts.push(`有 ${failItems.length} 个地方需要修改，改完会更好。`)
+    } else {
+      parts.push('有几个小地方可以优化，建议看一眼。')
+    }
+  } else if (score >= 3) {
+    parts.push('有几个地方需要注意：')
+    const issues: string[] = []
+    if (!openingHook) issues.push('开头的55字缺少冲突或悬念')
+    if (bodyDensityStatus === '偏低') issues.push('身体密度偏低，情绪靠"说"不靠"演"')
+    if (bodyDensityStatus === '偏高') issues.push('身体密度偏高，全是动作缺少心理调节')
+    const failItems = report.items.filter(i => i.status === 'fail')
+    if (failItems.length > 0) issues.push(`${failItems.length} 项需要修改`)
+    parts.push(issues.join('；') + '。建议修改后重新检测。')
+  } else {
+    parts.push('这一章存在明显问题，建议逐项修改后重新检测。')
+  }
+
+  return parts.join('')
 }

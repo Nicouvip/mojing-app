@@ -6,12 +6,14 @@ import { TemplateCard } from './card'
 import { StatsPanel } from './stats-panel'
 import { ABPanel } from './ab-panel'
 import { UsageTab } from './usage-tab'
+import { DeepCheckPanel } from './deep-check-panel'
 import { cn } from '@/lib/utils/utils'
 
 const TABS = [
   { key: 'stats', label: '效果看板' },
   { key: 'usage', label: '调用统计' },
   { key: 'ab', label: 'A/B 实验' },
+  { key: 'deep', label: '深度检测' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -74,6 +76,7 @@ export default function PromptsPage() {
           {activeTab === 'stats' && <StatsPanel />}
           {activeTab === 'usage' && <UsageTab />}
           {activeTab === 'ab' && <ABPanel />}
+          {activeTab === 'deep' && <DeepCheckPanel />}
         </div>
       </div>
     </div>

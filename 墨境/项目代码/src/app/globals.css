@@ -2,7 +2,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
+@theme {
   --color-background: #161514;
   --color-foreground: #e8e6e1;
   --color-primary: #c4956a;
@@ -38,7 +38,7 @@
   --shadow-elevated: 0 8px 20px rgba(0,0,0,0.3);
   --shadow-hover: 0 4px 12px rgba(196,149,106,0.15);
   --shadow-modal: 0 12px 32px rgba(0,0,0,0.4);
-eground: #0f172a;
+  --color-foreground: #0f172a;
   --color-primary: #6b8c6e;
   --color-primary-foreground: #ffffff;
   --color-primary-light: #eef4ef;
@@ -685,6 +685,15 @@ h1 + p, h2 + p { text-indent: 0; }
 }
 @keyframes progressFill {
   from { width: 0; }
+}
+
+/* AI 分析进度条 — 左右滑动，不依赖百分比 */
+@keyframes progress-indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+.animate-progress-indeterminate {
+  animation: progress-indeterminate 1.8s ease-in-out infinite;
 }
 
 /* 空态呼吸动画 */

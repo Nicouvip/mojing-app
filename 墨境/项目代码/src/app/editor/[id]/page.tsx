@@ -12,13 +12,16 @@ import { WritingEditor, type EditorHandle } from '@/components/writing-editor'
 import { TrashModal } from '@/components/trash-modal'
 import { ReportModal } from '@/components/report-modal'
 import { BrainstormModal } from '@/components/brainstorm-modal'
+import { getChapterReport } from '@/lib/ai/report-store'
 import type { Editor } from '@tiptap/react'
 import { useTheme } from '@/lib/utils/theme-context'
 import Image from 'next/image'
 import { ArrowLeft, PanelLeft, PanelRight, Save, CheckCircle2, AlertTriangle, Maximize2, ClipboardCheck, Ellipsis, Trash2, Download, FileOutput, Upload, Shuffle, BookOpen, X, User, Lightbulb, Sparkles, BookMarked, Bot, FileText, Search, Pencil, Rocket, Zap, Sun, Sunrise, Moon, Snowflake, Keyboard, ArrowUp, ArrowDown, Printer, Activity } from 'lucide-react'
+import { QualitySidebar } from '@/components/quality-sidebar'
 import { CompliancePanel } from '@/components/compliance-panel/compliance-panel'
 import { CoolingMatrix } from '@/components/cooling-matrix'
 import { WorkflowBar } from '@/components/workflow-bar'
+import { EditorOnboarding } from './editor-onboarding'
 
 export default function EditorPage() {
   const params = useParams()
@@ -32,6 +35,7 @@ export default function EditorPage() {
   const [content, setContent] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
+  const [qualitySidebarOpen, setQualitySidebarOpen] = useState(false)
   const [rightTab, setRightTab] = useState('plan')
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
   const [autoSaveFlash, setAutoSaveFlash] = useState(false)
@@ -39,6 +43,8 @@ export default function EditorPage() {
     if (typeof window === 'undefined') return false
     return !localStorage.getItem('mojing_guide_seen')
   })
+  const [showQualityMenu, setShowQualityMenu] = useState(false)
+  const [complianceOpen, setComplianceOpen] = useState(true)
   const [guideStep, setGuideStep] = useState(0)
   const [onboardingStep, setOnboardingStep] = useState<number>(() => typeof window !== 'undefined' && !localStorage.getItem('mojing_onboarded') ? 0 : -1)
   const [bodyDensity, setBodyDensity] = useState(0)
@@ -671,7 +677,27 @@ export default function EditorPage() {
           </span>
           <Button size="sm" variant="outline" onClick={() => { setSidebarOpen(false); setRightPanelOpen(false) }} title="专注模式"><Maximize2 className="w-5 h-5" /></Button>
           <Button size="sm" variant="outline" onClick={handleSave}><Save className="w-4 h-4 mr-1" />保存</Button>
-          <Button size="sm" className="bg-success hover:bg-success/90 text-white" onClick={() => setShowReport(true)}><ClipboardCheck className="w-5 h-5 mr-1" />章末自检</Button>
+          <div className="relative">
+            <Button size="sm" className="bg-success hover:bg-success/90 text-white" onClick={() => setShowQualityMenu(!showQualityMenu)}>
+              <ClipboardCheck className="w-5 h-5 mr-1" />质量 ▾
+            </Button>
+            {showQualityMenu && (
+              <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-elevated border border-border py-1 w-36 z-50" onMouseLeave={() => setShowQualityMenu(false)}>
+                <button onClick={() => { setShowQualityMenu(false); setQualitySidebarOpen(true) }}
+                  className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2">
+                  实时检测
+                </button>
+                <button onClick={() => { setShowQualityMenu(false); setShowReport(true) }}
+                  className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2">
+                  章末自检
+                </button>
+                <button onClick={() => { setShowQualityMenu(false); router.push(`/quality-check/${projectId}`) }}
+                  className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary flex items-center gap-2">
+                  质量趋势
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -756,6 +782,7 @@ export default function EditorPage() {
                           className={cn("flex items-center justify-between px-4 py-1.5 text-sm cursor-pointer transition-all group", activeChapterId === ch.id ? "bg-primary-light text-primary font-medium" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}>
                           <span className="truncate">{ch.title}</span>
                           <div className="flex items-center gap-1">
+                            {(()=>{try{const r=getChapterReport(projectId,ch.id);if(!r)return null;const c=r.score>=4?"text-emerald-500":r.score>=3?"text-amber-500":"text-destructive";return<span className={`text-[10px] font-bold ${c} mr-0.5`}>{r.score}</span>}catch{return null}})()}
                             <span className="text-[10px] text-muted-foreground/50">{ch.wordCount}</span>
                             <button onClick={e => { e.stopPropagation(); deleteChapter(ch.id); setChapters(getChapters(projectId)) }}
                               className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-[10px]"><X className="w-2.5 h-2.5" /></button>
@@ -822,6 +849,7 @@ export default function EditorPage() {
                           className={cn("flex items-center justify-between px-4 py-1.5 text-sm cursor-pointer transition-all group", activeChapterId === ch.id ? "bg-primary-light text-primary font-medium" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}>
                           <span className="truncate">{ch.title}</span>
                           <div className="flex items-center gap-1">
+                            {(()=>{try{const r=getChapterReport(projectId,ch.id);if(!r)return null;const c=r.score>=4?"text-emerald-500":r.score>=3?"text-amber-500":"text-destructive";return<span className={`text-[10px] font-bold ${c} mr-0.5`}>{r.score}</span>}catch{return null}})()}
                             <span className="text-[10px] text-muted-foreground/50">{ch.wordCount}</span>
                             <button onClick={e => { e.stopPropagation(); deleteChapter(ch.id); setChapters(getChapters(projectId)) }}
                               className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-[10px]"><X className="w-2.5 h-2.5" /></button>
@@ -871,7 +899,7 @@ export default function EditorPage() {
               </div>
 
               {violations.length > 0 && (
-                <button onClick={() => { setRightTab('compliance'); setRightPanelOpen(true) }}
+                <button onClick={() => setQualitySidebarOpen(true)}
                   className="fixed bottom-6 right-6 z-50 w-9 h-9 rounded-full shadow-md flex items-center justify-center text-xs font-bold bg-warning text-white hover:scale-110 transition-all">
                   {violations.length}
                 </button>
@@ -880,14 +908,24 @@ export default function EditorPage() {
           </div>
         </div>
 
-        {/* ===== 右侧栏 ===== */}
+        {/* ===== 右侧区域 ===== */}
         <div className="flex">
+          {/* 质量侧栏 - 新增 */}
+          <QualitySidebar
+            content={content}
+            editorRef={editorRef as React.RefObject<Editor | null>}
+            open={qualitySidebarOpen}
+            onClose={() => setQualitySidebarOpen(false)}
+            onOpenReport={() => { setShowReport(true); setQualitySidebarOpen(false) }}
+            onOpenDashboard={() => { router.push(`/quality-check/${projectId}`); setQualitySidebarOpen(false) }}
+          />
+
+          {/* TAB侧栏 - 原有的（plan/outline/character/idea/ai） */}
           <div className={cn("transition-all duration-200 overflow-hidden glass-panel", rightPanelOpen ? "border-l border-border" : "w-0")} style={rightPanelOpen ? {width:'260px'} : undefined}>
             <div className="h-full flex flex-col" style={{width:'260px'}}>
               <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase">
                   {rightTab === 'plan' && '本章规划'}
-                  {rightTab === 'compliance' && '合规检测'}
                   {rightTab === 'outline' && '大纲'}
                   {rightTab === 'character' && '角色'}
                   {rightTab === 'idea' && '灵感'}
@@ -915,15 +953,6 @@ export default function EditorPage() {
                     </div>
                   </div>
                 </>}
-                {rightTab === 'compliance' ? (() => {
-                  const r = checkCompliance(toPlainText(content))
-                  const items = r.blockedItems.map(it => it.type === 'forbidden_b' ? ('B类禁用词: ' + (it.words?.join(',') || '')) : '动作句后紧跟解释语句')
-                  return <div className="text-xs text-muted-foreground space-y-2">
-                    <span className="text-sm font-medium">共 {items.length} 项</span>
-                    {items.length === 0 ? <p className="text-success text-xs">暂无违规</p> : items.map((desc, i) => <div key={i} onClick={() => { const ed = editorRef.current; if (!ed) return; const w = desc.replace('B类禁用词: ', '').split(',')[0]; const docText = ed.state.doc.textContent; const idx = docText.indexOf(w); if (idx >= 0) { ed.chain().focus().setTextSelection({ from: idx, to: idx + w.length }).run(); setTimeout(() => { const sel = window.getSelection(); if (sel && sel.rangeCount > 0) { const r = sel.getRangeAt(0); const container = ed.view.dom.closest('.overflow-y-auto'); if (container) { const cr = container.getBoundingClientRect(); const rr = r.getBoundingClientRect(); container.scrollTop = container.scrollTop + rr.top - cr.top - cr.height / 3 } } }, 30) } }} className="text-warning bg-warning-light rounded px-3 py-2 text-xs cursor-pointer hover:bg-warning-light">{desc}</div>)}
-                    <p className="text-[10px] text-muted-foreground">仅供参考，改与不改由你决定</p>
-                  </div>
-                })() : null}
                 {rightTab === 'outline' && <div className="text-xs text-muted-foreground">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-muted-foreground">{headings.length} 个标题</span>
@@ -1168,7 +1197,8 @@ export default function EditorPage() {
 
       <TrashModal show={showTrash} onClose={() => setShowTrash(false)} trashChapters={trashChapters} selectedTrashId={selectedTrashId} onSelect={setSelectedTrashId} onRestore={(id) => { restoreChapter(id); setChapters(getChapters(projectId)); setTrashChapters(getTrash()); setSelectedTrashId(null) }} onDelete={(id) => { permanentDeleteChapter(id); setTrashChapters(getTrash()); setSelectedTrashId(null) }} />
 
-      <ReportModal show={showReport} onClose={() => setShowReport(false)} content={content} onSave={handleSave} />
+      <ReportModal show={showReport} onClose={() => setShowReport(false)} content={content} onSave={handleSave} genre={project.genre}
+        projectId={projectId} chapterId={activeChapterId || ''} chapterTitle={activeChapter?.title || ''} chapterOrder={activeChapter?.order || 0} />
 
       <BrainstormModal show={showBrainstorm} onClose={() => setShowBrainstorm(false)} bsGenre={bsGenre} onGenreChange={setBsGenre} onGenerate={handleBrainstorm} bsLoading={bsLoading} bsResult={bsResult} />
 
@@ -1209,54 +1239,7 @@ export default function EditorPage() {
         </div>
       )}
 
-      {/* ===== 新手引导 Overlay ===== */}
-      {onboardingStep >= 0 && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => { setOnboardingStep(-1); localStorage.setItem('mojing_onboarded', 'true') }}>
-          <div className="bg-white rounded-[20px] shadow-modal max-w-md mx-4 p-8 text-center" onClick={e => e.stopPropagation()}>
-            {/* 步骤指示器 */}
-            <div className="flex justify-center gap-2 mb-6">
-              {[0,1,2].map(i => (
-                <div key={i} className={`h-2 rounded-full transition-all duration-300 ${i === onboardingStep ? 'w-8 bg-[#6B8C6E]' : 'w-2 bg-gray-200'}`} />
-              ))}
-            </div>
-            {/* 步骤内容 */}
-            {onboardingStep === 0 && (
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold">欢迎来到墨境！</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">左侧是你的章节列表，在这里管理你的作品结构。</p>
-              </div>
-            )}
-            {onboardingStep === 1 && (
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold">创作中心</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">中间是编辑区域，在这里创作你的故事。支持富文本格式、字数统计和合规检测。</p>
-              </div>
-            )}
-            {onboardingStep === 2 && (
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold">AI 工具箱</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">右侧是AI工具箱——续写、润色、脑洞喷射，让你的创作如虎添翼。</p>
-              </div>
-            )}
-            {/* 按钮组 */}
-            <div className="flex gap-3 justify-center mt-8">
-              <button onClick={() => { setOnboardingStep(-1); localStorage.setItem('mojing_onboarded', 'true') }}
-                className="px-5 py-2 rounded-lg text-sm text-gray-400 hover:text-gray-600 transition-colors">跳过</button>
-              <button onClick={() => {
-                if (onboardingStep < 2) {
-                  setOnboardingStep(s => s + 1)
-                } else {
-                  setOnboardingStep(-1)
-                  localStorage.setItem('mojing_onboarded', 'true')
-                }
-              }}
-                className="px-5 py-2 rounded-lg text-sm bg-[#6B8C6E] text-white hover:bg-[#5a7a5e] transition-colors">
-                {onboardingStep === 2 ? '开始写作' : '下一步'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {onboardingStep >= 0 && <EditorOnboarding step={onboardingStep} onClose={() => { setOnboardingStep(-1); localStorage.setItem('mojing_onboarded', 'true') }} onNext={() => { setOnboardingStep(prev => { const next = prev + 1; return next > 2 ? -1 : next }) }} />}
 
       {/* ===== TXT 导入预览弹窗 ===== */}
       {importDlg && (
@@ -1334,7 +1317,7 @@ export default function EditorPage() {
       />
 
       {/* ===== 合规面板 ===== */}
-      <CompliancePanel editorContent={content} open={true} onToggle={() => {}} />
+      <CompliancePanel editorContent={content} open={complianceOpen} onToggle={() => setComplianceOpen(!complianceOpen)} />
     </div>
   )
 }

@@ -40,3 +40,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 mcp/vision-server.py
+.mojing_ai_usage.json

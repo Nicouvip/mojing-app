@@ -1,14 +1,21 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { getProjects } from '@/lib/db/store'
+import { getProjects, getChapters } from '@/lib/db/store'
+import { getAllChapterReports } from '@/lib/ai/report-store'
 import { FileText, BookOpen, Users } from 'lucide-react'
 import type { Project } from '@/lib/db/types'
 import type { ReactNode } from 'react'
 
 export default function StatsPage() {
   const [projects, setProjects] = useState<Project[]>([])
-  useEffect(() => { setProjects(getProjects()) }, [])
+  const [totalChs, setTotalChs] = useState(0)
+  const [totalWords, setTotalWords] = useState(0)
+  const [reportCount, setReportCount] = useState(0)
+  useEffect(() => { const ps = getProjects(); setProjects(ps)
+    let chs = 0; let wds = 0; ps.forEach(p => { const ch = getChapters(p.id); chs += ch.length; wds += ch.reduce((s,c)=>s+(c.wordCount||0),0) }); setTotalChs(chs); setTotalWords(wds)
+    let rpts = 0; ps.forEach(p => { const rs = getAllChapterReports(p.id); rpts += rs.length }); setReportCount(rpts)
+  }, [])
 
   return (
     <div className="p-6">
