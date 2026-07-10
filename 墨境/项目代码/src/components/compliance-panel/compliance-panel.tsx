@@ -98,7 +98,7 @@ export function CompliancePanel({ editorContent, open, onToggle }: CompliancePan
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 16V9" /><path d="M7 16V5" /><path d="M11 16V8" /><path d="M15 16V11" />
           </svg>
-          <span className="absolute right-10 hidden rounded bg-[rgba(26,24,20,0.8)] px-2.5 py-1 text-xs text-white group-hover:block whitespace-nowrap">
+          <span className="absolute right-10 hidden rounded bg-[rgba(232,230,225,0.15)] px-2.5 py-1 text-xs text-white group-hover:block whitespace-nowrap">
             合规面板
           </span>
         </button>
@@ -106,11 +106,11 @@ export function CompliancePanel({ editorContent, open, onToggle }: CompliancePan
 
       {/* 面板 */}
       <div
-        className={`absolute right-0 top-0 h-full z-20 overflow-hidden transition-all duration-300 border-l border-[rgba(26,24,20,0.06)] ${
+        className={`absolute right-0 top-0 h-full z-20 overflow-hidden transition-all duration-300 border-l border-[rgba(232,230,225,0.08)] ${
           open ? 'w-[300px]' : 'w-0'
         }`}
         style={{
-          background: 'rgba(245,242,237,0.97)',
+          background: 'rgba(28,27,26,0.97)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           transitionTimingFunction: 'cubic-bezier(0.22,1,0.36,1)',
@@ -118,11 +118,11 @@ export function CompliancePanel({ editorContent, open, onToggle }: CompliancePan
       >
         <div className="flex h-full w-[300px] flex-col overflow-y-auto px-4 py-5">
           {/* 面板头部 */}
-          <div className="mb-3 flex items-center justify-between border-b border-[rgba(26,24,20,0.06)] pb-3">
-            <h3 className="text-[13px] font-semibold text-[#1a1814]" style={{ letterSpacing: '0.05em' }}>
+          <div className="mb-3 flex items-center justify-between border-b border-[rgba(232,230,225,0.08)] pb-3">
+            <h3 className="text-[13px] font-semibold text-[#e8e6e1]" style={{ letterSpacing: '0.05em' }}>
               创作合规
             </h3>
-            <button onClick={onToggle} className="text-[rgba(26,24,20,0.3)] transition-colors hover:text-[#1a1814]" aria-label="关闭面板">
+            <button onClick={onToggle} className="text-[rgba(232,230,225,0.25)] transition-colors hover:text-[#e8e6e1]" aria-label="关闭面板">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 3L11 11" /><path d="M11 3L3 11" />
               </svg>
@@ -153,8 +153,8 @@ export function CompliancePanel({ editorContent, open, onToggle }: CompliancePan
 
           {/* 创作引擎 */}
           <CategorySection icon={CATEGORY_ICONS.engine} iconClass="purple" title="创作引擎" badge={engine.scenes.find(s => s.status === 'available')?.id || '—'}>
-            <div className="mb-1 text-xs text-[rgba(26,24,20,0.5)]">场景方法</div>
-            <div className="mb-2 flex flex-wrap gap-1 text-xs text-[#1a1814]">
+            <div className="mb-1 text-xs text-[rgba(232,230,225,0.45)]">场景方法</div>
+            <div className="mb-2 flex flex-wrap gap-1 text-xs text-[#e8e6e1]">
               {engine.scenes.map(s => (
                 <span key={s.id} className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 ${
                   s.status === 'available' ? 'bg-[rgba(196,149,106,0.1)] font-medium text-[#c4956a]' :
@@ -164,10 +164,10 @@ export function CompliancePanel({ editorContent, open, onToggle }: CompliancePan
                 </span>
               ))}
             </div>
-            <div className="mb-1 text-xs text-[rgba(26,24,20,0.5)]">感官通道</div>
+            <div className="mb-1 text-xs text-[rgba(232,230,225,0.45)]">感官通道</div>
             <div className="flex flex-wrap gap-1.5 text-xs">
               {engine.senses.map(s => (
-                <span key={s.id} className={`inline-flex items-center gap-0.5 ${s.active ? 'text-[#c4956a]' : 'text-[rgba(26,24,20,0.2)]'}`}>
+                <span key={s.id} className={`inline-flex items-center gap-0.5 ${s.active ? 'text-[#c4956a]' : 'text-[rgba(232,230,225,0.25)]'}`}>
                   {SENSE_SVGS[s.icon]}{s.active ? '✓' : '○'}
                 </span>
               ))}
@@ -219,14 +219,14 @@ function CategorySection({
           }`}>
             {icon}
           </div>
-          <span className="text-[13px] font-medium text-[#1a1814]">{title}</span>
+          <span className="text-[13px] font-medium text-[#e8e6e1]">{title}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className={`text-sm font-semibold ${badgeWarn ? 'text-[#b06060]' : 'text-[#c4956a]'}`}>
             {badge}
           </span>
           <svg
-            className={`h-2.5 w-2.5 text-[rgba(26,24,20,0.2)] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+            className={`h-2.5 w-2.5 text-[rgba(232,230,225,0.25)] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
             viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
           >
             <path d="M1 1L5 5L9 1" />
@@ -249,10 +249,10 @@ function CategorySection({
 function MetricRow({ label, value, progress, color }: { label: string; value: string; progress: number; color: string }) {
   return (
     <div className="flex items-center justify-between py-[5px] text-xs">
-      <span className="text-[rgba(26,24,20,0.5)]">{label}</span>
+      <span className="text-[rgba(232,230,225,0.45)]">{label}</span>
       <div className="flex items-center gap-2">
-        <span className="font-medium text-[#1a1814]">{value}</span>
-        <div className="h-1 w-14 overflow-hidden rounded-full bg-[rgba(26,24,20,0.06)]">
+        <span className="font-medium text-[#e8e6e1]">{value}</span>
+        <div className="h-1 w-14 overflow-hidden rounded-full bg-[rgba(232,230,225,0.08)]">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
@@ -269,8 +269,8 @@ function MetricRow({ label, value, progress, color }: { label: string; value: st
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-[5px] text-xs">
-      <span className="text-[rgba(26,24,20,0.5)]">{label}</span>
-      <span className="text-right font-medium text-[#1a1814] max-w-[160px] truncate" title={value}>{value}</span>
+      <span className="text-[rgba(232,230,225,0.45)]">{label}</span>
+      <span className="text-right font-medium text-[#e8e6e1] max-w-[160px] truncate" title={value}>{value}</span>
     </div>
   )
 }
@@ -279,7 +279,7 @@ function StatusRow({ label, count, max, warn }: { label: string; count: number; 
   const isPass = max <= 0 ? count === 0 : count <= max
   return (
     <div className="flex items-center justify-between py-[5px] text-xs">
-      <span className="text-[rgba(26,24,20,0.5)]">{label}</span>
+      <span className="text-[rgba(232,230,225,0.45)]">{label}</span>
       <div className="flex items-center gap-1.5">
         <span className={`font-medium ${isPass ? 'text-[#6a8a6a]' : 'text-[#b06060]'}`}>
           {max > 0 ? `${count}/${max}` : warn ? `${count}次` : `${count}次`}
