@@ -3,8 +3,42 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: #f8f9fb;
-  --color-foreground: #0f172a;
+  --color-background: #161514;
+  --color-foreground: #e8e6e1;
+  --color-primary: #c4956a;
+  --color-primary-foreground: #161514;
+  --color-primary-light: rgba(196,149,106,0.12);
+  --color-primary-hover: #b8895a;
+  --color-secondary: #1c1b1a;
+  --color-secondary-foreground: #e8e6e1;
+  --color-muted: #1c1b1a;
+  --color-muted-foreground: rgba(232,230,225,0.55);
+  --color-accent: rgba(196,149,106,0.12);
+  --color-accent-foreground: #c4956a;
+  --color-destructive: #b06060;
+  --color-destructive-foreground: #ffffff;
+  --color-warning: #b8a060;
+  --color-warning-light: rgba(184,160,96,0.15);
+  --color-success: #6a8a6a;
+  --color-success-light: rgba(106,138,106,0.12);
+  --color-border: rgba(232,230,225,0.08);
+  --color-input: rgba(232,230,225,0.1);
+  --color-ring: rgba(196,149,106,0.3);
+  --color-card: #1c1b1a;
+  --color-card-foreground: #e8e6e1;
+  --color-popover: #1c1b1a;
+  --color-popover-foreground: #e8e6e1;
+  --color-overlay: rgba(0,0,0,0.5);
+  --color-sidebar: rgba(22,21,20,0.95);
+  --color-sidebar-foreground: #e8e6e1;
+  --color-sidebar-hover: rgba(196,149,106,0.08);
+  --color-sidebar-active: rgba(196,149,106,0.15);
+
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.2);
+  --shadow-elevated: 0 8px 20px rgba(0,0,0,0.3);
+  --shadow-hover: 0 4px 12px rgba(196,149,106,0.15);
+  --shadow-modal: 0 12px 32px rgba(0,0,0,0.4);
+eground: #0f172a;
   --color-primary: #6b8c6e;
   --color-primary-foreground: #ffffff;
   --color-primary-light: #eef4ef;
@@ -56,7 +90,6 @@
 }
 
 :root {
-  --gradient-primary: linear-gradient(135deg, #6b8c6e 0%, #5a7a5d 50%, #8b5cf6 100%);
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
   --shadow-card: 0 2px 8px rgba(0,0,0,0.05);
   --shadow-elevated: 0 8px 20px rgba(0,0,0,0.06);
@@ -105,9 +138,9 @@ textarea:focus-visible {
 .ProseMirror {
   font-family: var(--font-serif);
   font-size: 15px;
-  line-height: 1.8;
-  letter-spacing: 0.005em;
-  padding: 3rem 5rem;
+  line-height: 2;
+  letter-spacing: 0.04em;
+  padding: 3rem 3.5rem;
   min-height: 80vh;
 }
 .ProseMirror h1 {
@@ -133,8 +166,9 @@ textarea:focus-visible {
 }
 .ProseMirror p {
   text-indent: 2em;
-  margin: 0.8rem 0;
+  margin: 0;
 }
+h1 + p, h2 + p { text-indent: 0; }
 .ProseMirror blockquote {
   border-left: 3px solid #d1d5db;
   padding-left: 1em;
@@ -159,11 +193,11 @@ textarea:focus-visible {
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(107,140,110,0.2);
+  background: rgba(196,149,106,0.3);
   border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(107,140,110,0.35);
+  background: rgba(196,149,106,0.5);
 }
 
 /* ===== 🌙 暗夜主题 ===== */
@@ -174,36 +208,34 @@ textarea:focus-visible {
   --color-card-foreground: #f1f5f9;
   --color-popover: #1e293b;
   --color-popover-foreground: #f1f5f9;
-  --color-primary: #8aac8d;
+  --color-primary: #c4956a;
   --color-primary-foreground: #ffffff;
-  --color-primary-light: rgba(138,172,141,0.12);
-  --color-primary-hover: #6b8c6e;
+  --color-primary-light: rgba(196,149,106,0.12);
+  --color-primary-hover: #b8895a;
   --color-secondary: #1e293b;
   --color-secondary-foreground: #f1f5f9;
   --color-muted: #1e293b;
   --color-muted-foreground: #94a3b8;
-  --color-accent: rgba(16,185,129,0.12);
-  --color-accent-foreground: #34d399;
+  --color-accent: rgba(196,149,106,0.12);
+  --color-accent-foreground: #c4956a;
   --color-destructive: #ef4444;
   --color-destructive-foreground: #ffffff;
   --color-warning: #f59e0b;
   --color-warning-light: rgba(245,158,11,0.15);
   --color-success: #10b981;
   --color-success-light: rgba(16,185,129,0.12);
-  --color-ai-accent: #a78bfa;
-  --color-ai-accent-light: rgba(167,139,250,0.12);
   --color-border: rgba(255,255,255,0.06);
   --color-input: rgba(255,255,255,0.08);
-  --color-ring: rgba(138,172,141,0.35);
+  --color-ring: rgba(196,149,106,0.35);
   --color-overlay: rgba(0,0,0,0.5);
   --color-sidebar: #1a1f2e;
   --color-sidebar-foreground: #f1f5f9;
   --color-sidebar-hover: rgba(255,255,255,0.05);
-  --color-sidebar-active: rgba(138,172,141,0.12);
+  --color-sidebar-active: rgba(196,149,106,0.12);
 }
 
 .dark .ProseMirror { color: var(--color-foreground); }
-.dark .ProseMirror mark { background: rgba(138,172,141,0.25); }
+.dark .ProseMirror mark { background: rgba(196,149,106,0.25); }
 .dark .ProseMirror blockquote {
   border-left-color: var(--color-border);
   color: var(--color-muted-foreground);
@@ -228,7 +260,7 @@ textarea:focus-visible {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(229,231,235,0.8);
-  box-shadow: 0 2px 8px rgba(107,140,110,0.04);
+  box-shadow: 0 2px 8px rgba(196,149,106,0.06);
 }
 /* 顶部高光线 — 渐变显得更自然 */
 .glass-panel::before {
@@ -276,26 +308,26 @@ textarea:focus-visible {
 /* 暗色渐变环境光 — 编辑器背景用 */
 .editor-ambient {
   background:
-    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(107,140,110,0.04) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(139,92,246,0.03) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(196,149,106,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(196,149,106,0.03) 0%, transparent 70%),
     var(--color-background);
 }
 .dark .editor-ambient {
   background:
-    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(138,172,141,0.06) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(167,139,250,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(196,149,106,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(196,149,106,0.04) 0%, transparent 70%),
     var(--color-background);
 }
 .theme-warm .editor-ambient {
   background:
-    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(107,140,110,0.04) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(251,191,36,0.03) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(196,149,106,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(196,149,106,0.04) 0%, transparent 70%),
     var(--color-background);
 }
 .theme-cool .editor-ambient {
   background:
-    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(107,140,110,0.04) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(96,165,250,0.03) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(196,149,106,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 50%, rgba(196,149,106,0.03) 0%, transparent 70%),
     var(--color-background);
 }
 
@@ -315,32 +347,30 @@ textarea:focus-visible {
   --color-card-foreground: hsl(30 40% 20%);
   --color-popover: hsl(40 25% 94%);
   --color-popover-foreground: hsl(30 40% 20%);
-  --color-primary: hsl(130 20% 48%);
+  --color-primary: hsl(30 40% 52%);
   --color-primary-foreground: #ffffff;
-  --color-primary-light: hsl(130 25% 93%);
-  --color-primary-hover: hsl(130 20% 40%);
+  --color-primary-light: hsl(30 35% 92%);
+  --color-primary-hover: hsl(30 40% 44%);
   --color-secondary: hsl(35 25% 88%);
   --color-secondary-foreground: hsl(30 40% 20%);
   --color-muted: hsl(40 20% 90%);
   --color-muted-foreground: hsl(30 15% 48%);
-  --color-accent: hsl(155 40% 88%);
-  --color-accent-foreground: hsl(155 50% 35%);
+  --color-accent: rgba(196,149,106,0.12);
+  --color-accent-foreground: #c4956a;
   --color-destructive: hsl(0 60% 50%);
   --color-destructive-foreground: #ffffff;
   --color-warning: hsl(35 80% 55%);
   --color-warning-light: hsl(40 80% 92%);
   --color-success: hsl(155 50% 42%);
   --color-success-light: hsl(155 40% 88%);
-  --color-ai-accent: hsl(270 50% 60%);
-  --color-ai-accent-light: hsl(270 40% 94%);
   --color-border: hsl(35 20% 85%);
   --color-input: hsl(35 20% 85%);
-  --color-ring: hsl(130 20% 48%);
+  --color-ring: hsl(30 40% 52%);
   --color-overlay: rgba(60,40,20,0.3);
   --color-sidebar: hsl(40 28% 92%);
   --color-sidebar-foreground: hsl(30 40% 20%);
   --color-sidebar-hover: hsl(35 20% 88%);
-  --color-sidebar-active: hsl(130 20% 90%);
+  --color-sidebar-active: rgba(196,149,106,0.15);
 }
 
 .theme-warm .ProseMirror { color: var(--color-foreground); }
@@ -369,32 +399,30 @@ textarea:focus-visible {
   --color-card-foreground: hsl(215 30% 20%);
   --color-popover: hsl(210 15% 96%);
   --color-popover-foreground: hsl(215 30% 20%);
-  --color-primary: hsl(130 15% 48%);
+  --color-primary: #c4956a;
   --color-primary-foreground: #ffffff;
-  --color-primary-light: hsl(130 18% 92%);
-  --color-primary-hover: hsl(130 15% 40%);
+  --color-primary-light: rgba(196,149,106,0.12);
+  --color-primary-hover: #b8895a;
   --color-secondary: hsl(210 15% 85%);
   --color-secondary-foreground: hsl(215 30% 20%);
   --color-muted: hsl(210 12% 88%);
   --color-muted-foreground: hsl(215 12% 52%);
-  --color-accent: hsl(170 30% 88%);
-  --color-accent-foreground: hsl(170 50% 32%);
+  --color-accent: rgba(196,149,106,0.10);
+  --color-accent-foreground: #c4956a;
   --color-destructive: hsl(0 60% 52%);
   --color-destructive-foreground: #ffffff;
   --color-warning: hsl(40 80% 52%);
   --color-warning-light: hsl(40 60% 90%);
   --color-success: hsl(160 50% 42%);
   --color-success-light: hsl(160 35% 88%);
-  --color-ai-accent: hsl(260 50% 62%);
-  --color-ai-accent-light: hsl(260 35% 93%);
   --color-border: hsl(210 15% 82%);
   --color-input: hsl(210 15% 82%);
-  --color-ring: hsl(130 15% 48%);
+  --color-ring: rgba(196,149,106,0.30);
   --color-overlay: rgba(20,30,50,0.3);
   --color-sidebar: hsl(210 18% 90%);
   --color-sidebar-foreground: hsl(215 30% 20%);
   --color-sidebar-hover: hsl(210 15% 86%);
-  --color-sidebar-active: hsl(130 18% 90%);
+  --color-sidebar-active: rgba(196,149,106,0.12);
 }
 
 .theme-cool .ProseMirror { color: var(--color-foreground); }
@@ -457,11 +485,11 @@ textarea:focus-visible {
 
 /* 滚动条品牌色 */
 ::-webkit-scrollbar-thumb {
-  background: rgba(107,140,110,0.2);
+  background: rgba(196,149,106,0.3);
   border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(107,140,110,0.35);
+  background: rgba(196,149,106,0.5);
 }
 
 /* ProseMirror 引用块改用苔绿色调 */
@@ -682,4 +710,12 @@ textarea:focus-visible {
     rgba(255,255,255,0.04) 1.5em,
     rgba(255,255,255,0.04) 1.51em
   );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
