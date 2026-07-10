@@ -56,62 +56,84 @@ export default function DeskPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* ===== 左 + 中：扇形书架 ===== */}
+
+          {/* ===== 左 + 中：层叠书架 ===== */}
           <div className="lg:col-span-2">
-            {bookCount > 3 ? (
-            /* 7角度扇形布局（4本以上） */
-            <div className="book-perspective h-[420px] flex items-end justify-center relative">
-              {[
-                { deg: -35, left: 'calc(50% - 336px)', z: 4, cls: '' },
-                { deg: -25, left: 'calc(50% - 246px)', z: 5, cls: 'dark' },
-                { deg: -12, left: 'calc(50% - 151px)', z: 6, cls: 'dark' },
-                { deg: 0, left: 'calc(50% - 56px)', z: 10, cls: 'primary' },
-                { deg: 12, left: 'calc(50% + 39px)', z: 6, cls: 'dark' },
-                { deg: 25, left: 'calc(50% + 134px)', z: 5, cls: 'dark' },
-                { deg: 35, left: 'calc(50% + 224px)', z: 4, cls: '' },
-              ].map((pos, i) => (
-                <div key={i}
-                  className={`book-item ${pos.cls} absolute w-28 h-80 rounded-sm shadow-md cursor-pointer transition-all duration-300`}
-                  style={{ transform: `rotateY(${pos.deg}deg)`, left: pos.left, zIndex: pos.z }}
-                  onClick={() => books[i] && router.push(`/editor/${books[i].id}`)}
-                >
-                  <div className="w-full h-full rounded-sm border border-border/50 flex flex-col p-4">
-                    <div className="text-xs opacity-70">{String(i+1).padStart(2,'0')}</div>
-                    <div className="mt-auto">
-                      <div className="font-medium text-sm" style={{ fontFamily: "'Noto Serif SC', serif" }}>{books[i]?.name || '空书位'}</div>
-                      <div className="text-xs mt-1 opacity-60">{books[i] ? `${((books[i].totalWords || 0) / 10000).toFixed(1)}万字` : '—'}</div>
+            {bookCount > 0 ? (
+            <div className="relative h-[340px] flex items-end justify-center" style={{ perspective: '1200px', perspectiveOrigin: 'center bottom' }}>
+              {(() => {
+                const colors = [
+                  { bg: 'linear-gradient(150deg, #4a3028, #6a4a3e 40%, #5a3a30)', fg: '#f0e8d8' },
+                  { bg: 'linear-gradient(145deg, #2a3848, #3a4e5c 45%, #304050)', fg: '#dce4ec' },
+                  { bg: 'linear-gradient(160deg, #3a5040, #5a6e5e 45%, #4a604e)', fg: '#e0ece0' },
+                  { bg: 'linear-gradient(150deg, #4a2a2e, #6a3a3e 40%, #5a3034)', fg: '#f8ece8' },
+                  { bg: 'linear-gradient(145deg, #3a3836, #504a3e 35%, #423e3a)', fg: '#e8e6e2' },
+                  { bg: 'linear-gradient(150deg, #3a2e38, #503e48 40%, #42303e)', fg: '#ece0e8' },
+                ]
+                const positions = [
+                  { x: -210, r: -14, z: 1 },
+                  { x: -135, r: -8, z: 2 },
+                  { x: -50, r: -2, z: 3 },
+                  { x: 50, r: 5, z: 5 },
+                  { x: 135, r: 10, z: 4 },
+                  { x: 210, r: 16, z: 3 },
+                ]
+                return books.slice(0, 6).map((book, i) => {
+                  const c = colors[i % colors.length]
+                  const p = positions[i]
+                  const isMain = i === 3
+                  return (
+                    <div key={book.id}
+                      className="group absolute bottom-0 cursor-pointer"
+                      style={{
+                        width: 148, height: 200,
+                        borderRadius: '4px 12px 12px 4px',
+                        transform: `translateX(${p.x}px) rotate(${p.r}deg)`,
+                        transformOrigin: 'center bottom',
+                        zIndex: p.z,
+                        background: c.bg, color: c.fg,
+                        boxShadow: isMain ? '0 6px 24px rgba(196,149,106,0.12), 0 1px 3px rgba(0,0,0,0.06)' : undefined,
+                        transition: 'transform 0.45s cubic-bezier(0.25,1,0.5,1), box-shadow 0.45s ease, filter 0.45s ease',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = `translateX(${p.x}px) rotate(${p.r}deg) translateY(-10px) scale(1.03)`
+                        e.currentTarget.style.zIndex = '20'
+                        e.currentTarget.style.boxShadow = '0 16px 40px rgba(196,149,106,0.18), 0 4px 12px rgba(0,0,0,0.08)'
+                        e.currentTarget.style.filter = 'brightness(1.08)'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = `translateX(${p.x}px) rotate(${p.r}deg)`
+                        e.currentTarget.style.zIndex = String(p.z)
+                        e.currentTarget.style.boxShadow = isMain ? '0 6px 24px rgba(196,149,106,0.12), 0 1px 3px rgba(0,0,0,0.06)' : ''
+                        e.currentTarget.style.filter = ''
+                      }}
+                      onClick={() => router.push(`/editor/${book.id}`)}
+                    >
+                      {isMain && (
+                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: 'linear-gradient(to bottom, rgba(196,149,106,0.4), rgba(196,149,106,0.05))', borderRadius: '4px 0 0 4px' }} />
+                      )}
+                      <div style={{ position: 'relative', zIndex: 1, padding: '16px 14px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: 9, letterSpacing: '0.12em', opacity: 0.5, marginBottom: 6 }}>{book.genre || '未分类'}</span>
+                        <span style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 18, fontWeight: 700, lineHeight: 1.25 }}>{book.name}</span>
+                        <span style={{ marginTop: 'auto', fontSize: 9, opacity: 0.4 }}>{book.chapterCount || 0}章 · {(book.totalWords || 0) >= 10000 ? ((book.totalWords||0)/10000).toFixed(1)+'万字' : (book.totalWords||0)+'字'}</span>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  )
+                })
+              })()}
+              {/* 桌面线 */}
+              <div style={{ position: 'absolute', bottom: 0, left: '5%', right: '5%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(196,149,106,0.12) 30%, rgba(196,149,106,0.18) 50%, rgba(196,149,106,0.12) 70%, transparent)' }} />
             </div>
             ) : (
-            /* 少书模式（≤3本）：居中紧凑排列 */
-            <div className="h-[420px] flex items-end justify-center gap-6 pb-8">
-              {bookCount > 0 ? books.map((book, i) => (
-                <div key={book.id}
-                  className="book-item w-32 h-80 rounded-sm shadow-md cursor-pointer transition-all duration-300"
-                  style={{ transform: `rotateY(${(i - (bookCount-1)/2) * 12}deg)`, zIndex: 10 - i }}
-                  onClick={() => router.push(`/editor/${book.id}`)}
-                >
-                  <div className="w-full h-full rounded-sm border border-border/50 flex flex-col p-4">
-                    <div className="text-xs opacity-70">{String(i+1).padStart(2,'0')}</div>
-                    <div className="mt-auto">
-                      <div className="font-medium text-sm" style={{ fontFamily: "'Noto Serif SC', serif" }}>{book.name}</div>
-                      <div className="text-xs mt-1 opacity-60">{((book.totalWords || 0) / 10000).toFixed(1)}万字</div>
-                    </div>
-                  </div>
-                </div>
-              )) : (
-                <div className="text-center text-muted-foreground animate-[desk-breathe_3s_ease-in-out_infinite]">
-                  <p className="text-2xl font-serif italic mb-2">案头尚无字，待君著新篇</p>
-                  <p className="text-sm">点击上方「新建作品」开始写作</p>
-                </div>
-              )}
+            <div className="h-[340px] flex items-center justify-center">
+              <div className="text-center text-muted-foreground opacity-40" style={{ fontFamily: "'Noto Serif SC', serif" }}>
+                <p className="text-2xl italic mb-3">案头尚无字，待君著新篇</p>
+                <p className="text-sm">点击右上角「开始创作」写下第一个字</p>
+              </div>
             </div>
             )}
           </div>
 
-          {/* ===== 右侧：灵感推荐 + 脑洞喷射 ===== */}
           <div className="space-y-4">
             <div className="bg-card rounded-2xl p-6 border border-border shadow-card">
               <h3 className="text-sm font-semibold text-foreground mb-4 font-serif">今日灵感推荐</h3>
