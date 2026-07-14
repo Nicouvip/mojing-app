@@ -264,14 +264,14 @@ export function createProject(name: string, genre: string, options?: {
     options?.length ? `篇幅：${options.length}` : '',
     options?.idea ? `创意：${options.idea}` : '',
   ].filter(Boolean).join(' | ')
-  const p: Project = { id: `proj-${Date.now()}`, name, genre, description: desc,
+  const p: Project = { id: `proj-${Date.now()}-${Math.random().toString(36).slice(2,8)}`, name, genre, description: desc,
     createdAt: Date.now(), updatedAt: Date.now(), chapterCount: 1, totalWords: 0 }
   projects.push(p)
   setProjectsAll(projects)
   // 创建默认卷
   const defaultVol = createVolume(p.id, '第一卷')
   const chapters = getChaptersAll(true)
-  chapters.push({ id: `ch-${Date.now()}`, projectId: p.id, title: '第一章', content: '',
+  chapters.push({ id: `ch-${Date.now()}-${Math.random().toString(36).slice(2,8)}`, projectId: p.id, title: '第一章', content: '',
     order: 1, wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft',
     volumeId: defaultVol.id })
   setChaptersAll(chapters)
@@ -417,7 +417,7 @@ export function createVolume(projectId: string, name: string): Volume {
   const volumes = getVolumesAll()
   const maxOrder = volumes.filter(v => v.projectId === projectId).reduce((max, v) => Math.max(max, v.order), 0)
   const vol: Volume = {
-    id: `vol-${Date.now()}`,
+    id: `vol-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
     projectId,
     name: name.trim() || '未命名卷',
     order: maxOrder + 1,
@@ -546,7 +546,7 @@ export function createCharacterProfile(input: Omit<CharacterProfile, 'id' | 'cre
   const all = isClient() ? loadClient<CharacterProfile[]>('character_profiles', []) : []
   const profile: CharacterProfile = {
     ...input,
-    id: `char-${Date.now()}`,
+    id: `char-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
     growthHistory: [],
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -588,7 +588,7 @@ export function getWorldSettings(projectId: string): WorldSetting[] {
 
 export function createWorldSetting(input: Omit<WorldSetting, 'id' | 'createdAt' | 'updatedAt'>): WorldSetting {
   const all = isClient() ? loadClient<WorldSetting[]>('world_settings', []) : []
-  const ws: WorldSetting = { ...input, id: `ws-${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now() }
+  const ws: WorldSetting = { ...input, id: `ws-${Date.now()}-${Math.random().toString(36).slice(2,8)}`, createdAt: Date.now(), updatedAt: Date.now() }
   all.push(ws)
   if (isClient()) saveClient('world_settings', all)
   if (isTursoAvailable()) { tursoSaveWorldSetting(ws).catch(() => {}) }
@@ -635,7 +635,7 @@ export function upsertOutline(input: Omit<Outline, 'id' | 'createdAt' | 'updated
     if (isClient()) saveClient('outlines', all)
     return all[idx]
   }
-  const outline: Outline = { ...input, id: `ol-${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now() }
+  const outline: Outline = { ...input, id: `ol-${Date.now()}-${Math.random().toString(36).slice(2,8)}`, createdAt: Date.now(), updatedAt: Date.now() }
   all.push(outline)
   if (isClient()) saveClient('outlines', all)
   if (isTursoAvailable()) { tursoUpsertOutline(outline).catch(() => {}) }
@@ -663,7 +663,7 @@ export function getActiveForeshadows(projectId: string): Foreshadow[] {
 
 export function createForeshadow(input: Omit<Foreshadow, 'id' | 'createdAt' | 'updatedAt'>): Foreshadow {
   const all = isClient() ? loadClient<Foreshadow[]>('foreshadows', []) : []
-  const fs: Foreshadow = { ...input, id: `fs-${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now() }
+  const fs: Foreshadow = { ...input, id: `fs-${Date.now()}-${Math.random().toString(36).slice(2,8)}`, createdAt: Date.now(), updatedAt: Date.now() }
   all.push(fs)
   if (isClient()) saveClient('foreshadows', all)
   if (isTursoAvailable()) { tursoSaveForeshadow(fs).catch(() => {}) }
