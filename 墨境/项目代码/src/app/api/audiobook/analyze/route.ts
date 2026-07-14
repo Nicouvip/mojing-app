@@ -28,6 +28,8 @@ async function callDeepSeek(prompt: string, retryHint?: string): Promise<string>
     || '你是一位资深的有声书演播导演。请严格按照用户要求的 JSON 格式输出分析结果，不要添加任何其他文字或markdown代码块标记。只输出纯JSON。'
 
   try {
+    console.log(`[Analyze API] 调用 ${ANALYZE_MODEL}, prompt长度: ${prompt.length} chars`)
+    const t0 = Date.now()
     const response = await fetch(DEEPSEEK_API_URL, {
       method: 'POST',
       headers: {
@@ -47,14 +49,18 @@ async function callDeepSeek(prompt: string, retryHint?: string): Promise<string>
     })
 
     clearTimeout(timeout)
+    console.log(`[Analyze API] 响应耗时: ${Date.now() - t0}ms, status: ${response.status}`)
 
     if (!response.ok) {
       const error = await response.text()
+      console.error(`[Analyze API] 错误: ${error}`)
       throw new Error(`DeepSeek API error: ${response.status} - ${error}`)
     }
 
     const result = await response.json()
-    return result.choices?.[0]?.message?.content || ''
+    const content = result.choices?.[0]?.message?.content || ''
+    console.log(`[Analyze API] 返回内容长度: ${content.length} chars`)
+    return content
   } catch (err) {
     clearTimeout(timeout)
     if (err instanceof Error && err.name === 'AbortError') {
