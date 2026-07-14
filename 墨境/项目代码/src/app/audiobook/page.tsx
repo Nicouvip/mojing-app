@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Navbar from '@/components/navbar'
 import DeskSidebar from '@/components/desk-sidebar'
-import { getProjects, getChapters, createChapter } from '@/lib/db/store'
+import { getProjects, getChapters, createChapter, createProject, updateChapterContent } from '@/lib/db/store'
 import type { Project, Chapter } from '@/lib/db/types'
 
 const C = {
@@ -63,6 +63,8 @@ export default function AudiobookPage() {
   const [importSplitMode, setImportSplitMode] = useState<'auto' | 'manual' | 'none'>('auto')
   const [importText, setImportText] = useState('')
   const [importFileName, setImportFileName] = useState('')
+  const [importNewName, setImportNewName] = useState('')
+  const [importNewGenre, setImportNewGenre] = useState('都市')
   const [importParsed, setImportParsed] = useState<ParsedChapter[] | null>(null)
   const [importLoading, setImportLoading] = useState(false)
   const [importStep, setImportStep] = useState<'upload' | 'preview' | 'done'>('upload')
@@ -130,14 +132,23 @@ export default function AudiobookPage() {
 
   /* ── 第二步：确认导入，把分章结果写入 store ── */
   const handleConfirmImport = () => {
-    if (!importParsed || !importTarget) { alert('请选择目标作品'); return }
+    if (!importParsed) { alert('请先上传文本文件'); return }
+    if (!importTarget) { alert('请选择目标作品'); return }
     setImportLoading(true)
 
+    // 如果选择了「新建作品」，先创建作品
+    let targetId = importTarget
+    if (importTarget === '__new__') {
+      if (!importNewName.trim()) { alert('请输入作品名称'); setImportLoading(false); return }
+      const newProj = createProject(importNewName.trim(), importNewGenre)
+      targetId = newProj.id
+    }
+
     for (const ch of importParsed) {
-      createChapter(importTarget, ch.title)
-      // 注意：createChapter 只创建了章节壳，content 需要后续通过编辑器写入
-      // 这里我们用 store 的 createChapter + updateChapterContent
-      // 但 updateChapterContent 不存在，我们直接用 store 底层写入
+      const created = createChapter(targetId, ch.title)
+      if (created && ch.content) {
+        updateChapterContent(created.id, ch.content)
+      }
     }
 
     setImportLoading(false)
@@ -279,8 +290,17 @@ export default function AudiobookPage() {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>选择目标作品</label>
                   <select value={importTarget} onChange={e => setImportTarget(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.ink, background: C.card, fontFamily: 'inherit', boxSizing: 'border-box' }}>
                     <option value="">请选择作品...</option>
+                    <option value="__new__">✨ 新建作品（直接导入）</option>
                     {projects.map(p => <option key={p.id} value={p.id}>{p.name} ({p.genre})</option>)}
                   </select>
+                  {importTarget === '__new__' && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <input value={importNewName} onChange={e => setImportNewName(e.target.value)} placeholder="作品名称" style={{ flex: 1, padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                      <select value={importNewGenre} onChange={e => setImportNewGenre(e.target.value)} style={{ width: 100, padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', boxSizing: 'border-box' }}>
+                        <option>都市</option><option>玄幻</option><option>悬疑</option><option>科幻</option><option>历史</option><option>灵异</option><option>言情</option><option>竞技</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>分章模式</label>
