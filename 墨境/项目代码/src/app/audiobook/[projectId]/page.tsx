@@ -447,14 +447,14 @@ export default function AudiobookProjectPage() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {chapters.map(ch => {
+                  {chapters.map((ch, idx) => {
                     const isSelected = selectedChapters.has(ch.id)
                     const gen = generatedChapters.get(ch.id)
                     const isPlayingThis = playingChapterId === ch.id && isPlaying
                     const subIdx = isPlayingThis ? getCurrentSubtitleIndex(ch.id) : -1
 
                     return (
-                      <div key={ch.id} style={{
+                      <div key={`${ch.id}-${idx}`} style={{
                         padding: '14px 16px', background: C.card,
                         border: `1px solid ${isSelected ? C.pri : isPlayingThis ? C.pri : C.line}`,
                         borderRadius: C.radius, transition: 'all .12s',
