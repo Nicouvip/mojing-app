@@ -22,9 +22,13 @@ function readTheme(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(readTheme)
+  const [theme, setTheme] = useState<Theme>('light')
 
+  // 客户端挂载后才从 localStorage 读取真实主题，避免 SSR hydration 不一致
   useEffect(() => {
+    const stored = readTheme()
+    if (stored !== 'light') setTheme(stored)
+
     const root = document.documentElement
     root.className = root.className.replace(/theme-\w+|dark/g, '').trim()
     if (theme === 'dark') root.classList.add('dark')
