@@ -1,0 +1,9 @@
+{
+  "name": "mojing-workspace",
+  "private": true,
+  "scripts": {
+    "build": "cd 墨境/项目代码 && npm run build",
+    "dev": "cd 墨境/项目代码 && npm run dev",
+    "start": "cd 墨境/项目代码 && npm start"
+  }
+}

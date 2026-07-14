@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+*.tsbuildinfo
+.agents
+.kunsdd
+.reasonix
+backups
+docs
+public/assets/_backup_*
+scripts

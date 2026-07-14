@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>墨境 · 编辑器重设计参考</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg-primary: #faf8f3;
+      --bg-secondary: #f5f0e6;
+      --bg-tertiary: #ebe4d6;
+      --bg-sidebar: #f0eadf;
+      --bg-header: #1c1915;
+      
+      --text-primary: #2a2520;
+      --text-secondary: #6b5f52;
+      --text-muted: #9a8d7d;
+      --text-inverse: #f5f0e6;
+      
+      --accent: #b8865a;
+      --accent-light: #d4a574;
+      --accent-dark: #9a6d45;
+      --accent-bg: rgba(184, 134, 90, 0.08);
+      --accent-bg-hover: rgba(184, 134, 90, 0.15);
+      
+      --border: #e0d6c5;
+      --border-light: #ece5d8;
+      
+      --success: #5a8a6b;
+      --warning: #c9a24a;
+      
+      --shadow-sm: 0 1px 2px rgba(28, 25, 21, 0.04);
+      --shadow-md: 0 4px 12px rgba(28, 25, 21, 0.06);
+      --shadow-lg: 0 8px 24px rgba(28, 25, 21, 0.08);
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Serif SC', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ========== 顶部导航栏 ========== */
+    .top-bar {
+      height: 56px;
+      background: var(--bg-header);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .top-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8b7d6b;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.06); color: var(--accent-light); }
+
+    .logo {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent-light);
+      letter-spacing: 2px;
+    }
+
+    .project-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-left: 16px;
+      border-left: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .project-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #e8dfd0;
+    }
+
+    .genre-tag {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(184, 134, 90, 0.15);
+      color: var(--accent-light);
+      font-weight: 500;
+    }
+
+    /* 模式切换 */
+    .mode-switcher {
+      display: flex;
+      background: rgba(255,255,255,0.04);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .mode-btn {
+      padding: 6px 16px;
+      font-size: 12px;
+      border: none;
+      background: transparent;
+      color: #8b7d6b;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .mode-btn.active {
+      background: var(--accent);
+      color: var(--bg-header);
+      font-weight: 600;
+    }
+    .mode-btn:not(.active):hover { color: #d4c5b0; }
+
+    /* 工作区标签 */
+    .workspace-tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .ws-tab {
+      padding: 0 20px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+      color: #8b7d6b;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .ws-tab.active {
+      color: var(--accent-light);
+      border-bottom-color: var(--accent);
+      font-weight: 600;
+    }
+    .ws-tab:hover:not(.active) { color: #d4c5b0; }
+
+    /* 右侧操作区 */
+    .top-bar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .word-count-info {
+      font-size: 11px;
+      color: #8b7d6b;
+    }
+    .word-count-info strong {
+      color: #e8dfd0;
+      font-weight: 600;
+    }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8b7d6b;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,0.06); color: var(--accent-light); }
+
+    .save-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+    .save-btn.saved {
+      background: rgba(90, 138, 107, 0.15);
+      color: #7ab890;
+    }
+    .save-btn.unsaved {
+      background: var(--accent);
+      color: var(--bg-header);
+    }
+    .save-btn.unsaved:hover { background: var(--accent-light); }
+
+    .quality-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      background: rgba(184, 134, 90, 0.12);
+      color: var(--accent-light);
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .quality-btn:hover { background: rgba(184, 134, 90, 0.2); }
+
+    /* ========== 主内容区三栏布局 ========== */
+    .main-container {
+      display: flex;
+      height: calc(100vh - 56px);
+      overflow: hidden;
+    }
+
+    /* ========== 左侧边栏 ========== */
+    .left-sidebar {
+      width: 260px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+
+    .sidebar-tab {
+      flex: 1;
+      padding: 12px 0;
+      font-size: 12px;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .sidebar-tab.active {
+      color: var(--accent-dark);
+      border-bottom-color: var(--accent);
+      font-weight: 600;
+    }
+
+    .search-box {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 12px 8px 32px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      outline: none;
+      transition: all 0.2s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239a8d7d' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 10px center;
+    }
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-bg);
+    }
+
+    /* 章节列表 */
+    .chapter-section {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .add-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .add-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-bg);
+    }
+
+    .chapter-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 8px 8px;
+    }
+
+    .volume-group {
+      margin-bottom: 4px;
+    }
+
+    .volume-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+    .volume-header:hover { background: var(--accent-bg); }
+
+    .volume-arrow {
+      font-size: 9px;
+      color: var(--text-muted);
+      width: 12px;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+
+    .volume-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .volume-words {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .chapter-items {
+      padding-left: 8px;
+    }
+
+    .chapter-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      margin: 2px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chapter-item:hover { background: var(--accent-bg); }
+    .chapter-item.active {
+      background: var(--accent-bg);
+    }
+
+    .chapter-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+      background: rgba(28, 25, 21, 0.06);
+      color: var(--text-secondary);
+    }
+    .chapter-item.active .chapter-num {
+      background: var(--accent);
+      color: white;
+    }
+
+    .chapter-title {
+      font-size: 12px;
+      color: var(--text-secondary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .chapter-item.active .chapter-title {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .chapter-words {
+      font-size: 10px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    /* 角色速览 */
+    .characters-section {
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+
+    .characters-list {
+      max-height: 130px;
+      overflow-y: auto;
+      padding: 0 8px 8px;
+    }
+
+    .character-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .character-item:hover { background: var(--accent-bg); }
+
+    .character-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--accent-bg);
+      color: var(--accent-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .character-name {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .character-type {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* 底部操作栏 */
+    .sidebar-footer {
+      display: flex;
+      gap: 6px;
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+
+    .footer-btn {
+      flex: 1;
+      padding: 7px 0;
+      font-size: 11px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--bg-primary);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .footer-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent-dark);
+      background: var(--accent-bg);
+    }
+
+    /* ========== 中间编辑区 ========== */
+    .editor-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: var(--bg-primary);
+    }
+
+    /* 格式工具栏 */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 8px 24px;
+      border-bottom: 1px solid var(--border-light);
+      background: var(--bg-primary);
+      flex-wrap: wrap;
+    }
+
+    .tool-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-size: 14px;
+    }
+    .tool-btn:hover {
+      background: var(--accent-bg);
+      color: var(--accent-dark);
+    }
+    .tool-btn.active {
+      background: var(--accent-bg);
+      color: var(--accent-dark);
+    }
+    .tool-btn.bold { font-weight: 700; }
+    .tool-btn.italic { font-style: italic; }
+    .tool-btn.underline { text-decoration: underline; }
+
+    .tool-divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      margin: 0 6px;
+    }
+
+    .tool-select {
+      padding: 5px 10px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .tool-select:hover { border-color: var(--accent); }
+    .tool-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-bg);
+    }
+
+    .toolbar-spacer { flex: 1; }
+
+    .ai-quick-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent-bg);
+      color: var(--accent-dark);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-left: 4px;
+    }
+    .ai-quick-btn:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    .format-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .format-btn:hover { background: var(--accent-dark); }
+
+    /* 章节标题 */
+    .chapter-title-area {
+      padding: 32px 80px 16px;
+    }
+
+    .chapter-title-input {
+      width: 100%;
+      font-family: 'Noto Serif SC', serif;
+      font-size: 28px;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      outline: none;
+      line-height: 1.4;
+    }
+    .chapter-title-input::placeholder { color: var(--text-muted); }
+
+    /* 编辑正文区 */
+    .editor-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 80px 40px;
+    }
+
+    .writing-area {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 17px;
+      line-height: 2;
+      color: var(--text-primary);
+      min-height: 100%;
+      outline: none;
+    }
+
+    .writing-area p {
+      margin-bottom: 1em;
+      text-indent: 2em;
+    }
+
+    .writing-area h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 1.5em 0 0.8em;
+      text-indent: 0;
+    }
+
+    .writing-area blockquote {
+      border-left: 3px solid var(--accent);
+      padding-left: 1em;
+      margin: 1em 0;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    /* 底部状态栏 */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 24px;
+      border-top: 1px solid var(--border-light);
+      background: var(--bg-primary);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-left, .status-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .save-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .save-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .status-item strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .progress-bar {
+      width: 80px;
+      height: 4px;
+      border-radius: 4px;
+      background: var(--border);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--accent-light), var(--accent));
+      transition: width 0.3s ease;
+    }
+
+    /* ========== 右侧AI面板 ========== */
+    .right-panel {
+      width: 320px;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-tertiary);
+    }
+
+    .panel-tab {
+      flex: 1;
+      padding: 12px 0;
+      font-size: 12px;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .panel-tab.active {
+      color: var(--accent-dark);
+      border-bottom-color: var(--accent);
+      font-weight: 600;
+      background: var(--bg-secondary);
+    }
+
+    /* AI聊天头部 */
+    .ai-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ai-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .ai-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 3px rgba(90, 138, 107, 0.2);
+    }
+
+    .ai-model-tag {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      background: var(--bg-primary);
+    }
+
+    /* 快捷操作 */
+    .quick-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .quick-action {
+      padding: 5px 10px;
+      font-size: 11px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--bg-primary);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .quick-action:hover {
+      border-color: var(--accent);
+      color: var(--accent-dark);
+      background: var(--accent-bg);
+    }
+
+    /* 聊天区域 */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .chat-message {
+      max-width: 90%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .chat-message.assistant {
+      align-self: flex-start;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border-light);
+    }
+
+    .chat-message.user {
+      align-self: flex-end;
+      background: var(--accent);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-loading {
+      align-self: flex-start;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 8px 14px;
+    }
+
+    /* 输入区域 */
+    .chat-input-area {
+      border-top: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      padding: 12px 16px;
+    }
+
+    .context-selector {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .context-select {
+      padding: 4px 8px;
+      font-size: 11px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      cursor: pointer;
+      outline: none;
+    }
+
+    .chapter-context {
+      font-size: 10px;
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 10px;
+      background: var(--accent-bg);
+      color: var(--accent-dark);
+    }
+
+    .chat-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      outline: none;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .chat-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-bg);
+    }
+    .chat-input::placeholder { color: var(--text-muted); }
+
+    .send-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .send-btn:hover { background: var(--accent-dark); }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* 滚动条美化 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* 示例文本样式 */
+    .sample-text {
+      color: var(--text-secondary);
+    }
+    .sample-text .highlight {
+      background: linear-gradient(180deg, transparent 60%, rgba(184, 134, 90, 0.3) 60%);
+      padding: 0 2px;
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航栏 -->
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <div class="back-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+      </div>
+      <span class="logo">墨境</span>
+      <div class="project-info">
+        <span class="project-name">长安月</span>
+        <span class="genre-tag">古风 · 权谋</span>
+      </div>
+    </div>
+
+    <div class="mode-switcher">
+      <button class="mode-btn active">编辑</button>
+      <button class="mode-btn">预览</button>
+      <button class="mode-btn">分屏</button>
+    </div>
+
+    <nav class="workspace-tabs">
+      <div class="ws-tab active">写作</div>
+      <div class="ws-tab">构思</div>
+      <div class="ws-tab">工具</div>
+    </nav>
+
+    <div class="top-bar-right">
+      <span class="word-count-info">本章 <strong>2,847</strong> / 全书 <strong>128,563</strong></span>
+      <div class="icon-btn" title="手机预览">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/>
+        </svg>
+      </div>
+      <div class="icon-btn" title="查找替换">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </div>
+      <button class="save-btn saved">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        已保存
+      </button>
+      <button class="quality-btn">
+        质量
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <div class="main-container">
+    <!-- 左侧边栏 -->
+    <aside class="left-sidebar">
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab active">正文</div>
+        <div class="sidebar-tab">草稿</div>
+        <div class="sidebar-tab">细纲</div>
+      </div>
+
+      <div class="search-box">
+        <input type="text" class="search-input" placeholder="搜索章节…">
+      </div>
+
+      <div class="chapter-section">
+        <div class="section-header">
+          <span class="section-title">章节目录</span>
+          <button class="add-btn">+</button>
+        </div>
+
+        <div class="chapter-list">
+          <div class="volume-group">
+            <div class="volume-header">
+              <span class="volume-arrow">▼</span>
+              <span class="volume-name">第一卷 · 长安夜</span>
+              <span class="volume-words">48,320 字</span>
+            </div>
+            <div class="chapter-items">
+              <div class="chapter-item">
+                <span class="chapter-num">1</span>
+                <span class="chapter-title">楔子 · 归人</span>
+                <span class="chapter-words">3,241</span>
+              </div>
+              <div class="chapter-item">
+                <span class="chapter-num">2</span>
+                <span class="chapter-title">第一章 旧都重逢</span>
+                <span class="chapter-words">4,128</span>
+              </div>
+              <div class="chapter-item active">
+                <span class="chapter-num">3</span>
+                <span class="chapter-title">第二章 白玉腰牌</span>
+                <span class="chapter-words">2,847</span>
+              </div>
+              <div class="chapter-item">
+                <span class="chapter-num">4</span>
+                <span class="chapter-title">第三章 暗流涌动</span>
+                <span class="chapter-words">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="volume-group" style="margin-top: 8px;">
+            <div class="volume-header">
+              <span class="volume-arrow">▶</span>
+              <span class="volume-name">第二卷 · 风云起</span>
+              <span class="volume-words">80,243 字</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="characters-section">
+        <div class="section-header">
+          <span class="section-title">角色速览</span>
+          <button class="add-btn">+</button>
+        </div>
+        <div class="characters-list">
+          <div class="character-item">
+            <span class="character-avatar">沈</span>
+            <span class="character-name">沈辞</span>
+            <span class="character-type">主角</span>
+          </div>
+          <div class="character-item">
+            <span class="character-avatar">苏</span>
+            <span class="character-name">苏晚晴</span>
+            <span class="character-type">女主</span>
+          </div>
+          <div class="character-item">
+            <span class="character-avatar">裴</span>
+            <span class="character-name">裴行俭</span>
+            <span class="character-type">配角</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="footer-btn">新建</button>
+        <button class="footer-btn">导入</button>
+        <button class="footer-btn">导出</button>
+      </div>
+    </aside>
+
+    <!-- 中间编辑区 -->
+    <main class="editor-area">
+      <!-- 格式工具栏 -->
+      <div class="toolbar">
+        <button class="tool-btn bold active">B</button>
+        <button class="tool-btn italic">I</button>
+        <button class="tool-btn underline">U</button>
+        <button class="tool-btn"><s>S</s></button>
+        
+        <div class="tool-divider"></div>
+        
+        <select class="tool-select">
+          <option>宋体</option>
+          <option>楷体</option>
+          <option>黑体</option>
+        </select>
+        <select class="tool-select">
+          <option>标准字号</option>
+          <option>大号</option>
+          <option>特大</option>
+        </select>
+        
+        <div class="tool-divider"></div>
+        
+        <button class="tool-btn" title="章标题">H₂</button>
+        <button class="tool-btn" title="引用">「」</button>
+        <button class="tool-btn" title="无序列表">•</button>
+        <button class="tool-btn" title="有序列表">1.</button>
+        
+        <div class="tool-divider"></div>
+        
+        <button class="tool-btn" title="左对齐">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/>
+          </svg>
+        </button>
+        <button class="tool-btn" title="居中">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/>
+          </svg>
+        </button>
+        
+        <div class="tool-divider"></div>
+        
+        <button class="tool-btn" title="撤销">↶</button>
+        <button class="tool-btn" title="重做">↷</button>
+        
+        <div class="toolbar-spacer"></div>
+        
+        <button class="format-btn">
+          <span>✦</span> 一键排版
+        </button>
+        <button class="ai-quick-btn">✦ 灵感</button>
+        <button class="ai-quick-btn">✦ 续写</button>
+        <button class="ai-quick-btn">✦ 润色</button>
+      </div>
+
+      <!-- 章节标题 -->
+      <div class="chapter-title-area">
+        <input type="text" class="chapter-title-input" value="第二章 白玉腰牌" placeholder="输入章节标题…">
+      </div>
+
+      <!-- 编辑正文 -->
+      <div class="editor-content">
+        <div class="writing-area sample-text">
+          <p>暮色四合，长安城的朱雀大街上渐渐亮起了灯笼。</p>
+          
+          <p>沈辞站在怀远坊的街口，望着那扇熟悉的朱红大门，指尖微微发凉。三年了，他终于回到了这座让他魂牵梦萦又恨之入骨的城池。</p>
+          
+          <p>身后的马蹄声由远及近，他没有回头，只是将手中的那枚<span class="highlight">白玉腰牌</span>攥得更紧了些。玉牌上刻着一个小小的「裴」字，纹路里还残留着当年的体温。</p>
+          
+          <p>「沈公子，我们到了。」车夫的声音恭谨而疏离。</p>
+          
+          <p>沈辞点点头，缓步走上前去。门阶上的铜环在暮色里泛着冷光，他抬起手，却在即将触碰到的那一刻顿住了。</p>
+          
+          <blockquote>
+            物是人非事事休，欲语泪先流。
+          </blockquote>
+          
+          <p>门「吱呀」一声开了。</p>
+          
+          <p>开门的是个面生的小厮，上下打量了他一番，皱眉问道：「这位公子找谁？」</p>
+          
+          <p>沈辞将那枚白玉腰牌递了过去，声音平静得像一潭深水：「劳烦通报一声，就说……故人沈辞求见裴大人。」</p>
+          
+          <p>小厮接过腰牌，脸色顿时变了。他慌忙行了个礼，转身便往里跑，连门都忘了关。</p>
+          
+          <p>沈辞站在门外，目光越过庭院，落在深处那盏摇曳的灯火上。那里曾是他少年时最常去的地方，也是他这辈子都不想再踏入的地方。</p>
+          
+          <p>风吹过，带着晚桂的香气。</p>
+          
+          <p>他忽然想起很多年前，也是这样一个桂香浮动的夜晚，裴行俭拍着他的肩膀说：「阿辞，等你将来金榜题名，我们兄弟二人联手，定要让这长安城换个模样。」</p>
+          
+          <p>如今他回来了。</p>
+          
+          <p>只是这长安城，真的还能换个模样吗？</p>
+        </div>
+      </div>
+
+      <!-- 底部状态栏 -->
+      <div class="status-bar">
+        <div class="status-left">
+          <div class="save-indicator">
+            <span class="save-dot"></span>
+            <span>自动保存 · 32秒前</span>
+          </div>
+          <div class="status-item">段落 <strong>12</strong></div>
+          <div class="status-item">阅读时长 <strong>~10 min</strong></div>
+        </div>
+        <div class="status-right">
+          <div class="progress-wrap">
+            <span>今日目标 <strong>2,847</strong> / 3,000 字</span>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 95%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 右侧AI面板 -->
+    <aside class="right-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active">AI助手</div>
+        <div class="panel-tab">灵感</div>
+        <div class="panel-tab">工作流</div>
+      </div>
+
+      <div class="ai-header">
+        <div class="ai-title">
+          <span class="ai-status-dot"></span>
+          AI 写作助手
+        </div>
+        <span class="ai-model-tag">DeepSeek V4</span>
+      </div>
+
+      <div class="quick-actions">
+        <button class="quick-action">✦ 续写</button>
+        <button class="quick-action">✦ 润色</button>
+        <button class="quick-action">✦ 扩写</button>
+        <button class="quick-action">✦ 改文风</button>
+      </div>
+
+      <div class="chat-area">
+        <div class="chat-message assistant">
+          欢迎回到编辑器，沈辞与裴行俭的对手戏张力很足。需要我帮你做什么？
+        </div>
+        <div class="chat-message user">
+          帮我续写接下来三段，重点描写裴行俭见到沈辞时的反应
+        </div>
+        <div class="chat-message assistant">
+          好的，我来为你续写这段重逢戏。考虑到两人之间有旧怨和兄弟情谊的复杂关系，我会侧重裴行俭的微表情和动作细节，通过环境烘托情绪张力……
+        </div>
+        <div class="chat-loading">AI 正在思考中…</div>
+      </div>
+
+      <div class="chat-input-area">
+        <div class="context-selector">
+          <select class="context-select">
+            <option>专注本章</option>
+            <option>全书视角</option>
+            <option>自由对话</option>
+          </select>
+          <span class="chapter-context">§ 第二章 · 2847字</span>
+        </div>
+        <div class="chat-input-wrap">
+          <input type="text" class="chat-input" placeholder="输入写作指令，回车发送…">
+          <button class="send-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

@@ -41,3 +41,11 @@ yarn-error.log*
 next-env.d.ts
 mcp/vision-server.py
 .mojing_ai_usage.json
+
+# 敏感文件
+墨境/墨境-账号密码Key交接文档.md
+墨境/项目文档/99-墨境项目资产清单.md
+全局配置/
+backups/
+**/env.keys
+
