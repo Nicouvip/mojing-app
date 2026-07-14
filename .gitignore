@@ -67,6 +67,8 @@ skills-lock.json
 # backup / temp files
 *.bak
 pnpm-lock.yaml.bak
+_editor_temp.txt
+_stash_files.txt
 
 # scripts
 scripts/
@@ -83,3 +85,7 @@ logo/
 **/env.keys
 **/.env.local
 **/.env*.local
+
+# kun editor temp files
+_editor_temp.txt
+_stash_files.txt
