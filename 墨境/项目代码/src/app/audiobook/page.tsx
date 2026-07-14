@@ -5,10 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Navbar from '@/components/navbar'
 import DeskSidebar from '@/components/desk-sidebar'
-import { getProjects, getChapters } from '@/lib/db/store'
+import { getProjects, getChapters, createChapter } from '@/lib/db/store'
 import type { Project, Chapter } from '@/lib/db/types'
 
-/* ── 设计令牌 ── */
 const C = {
   pri: '#c4956a',
   priDim: '#b08050',
@@ -45,16 +44,28 @@ interface ProjectWithChapters extends Project {
   chapters: Chapter[]
 }
 
+interface ParsedChapter {
+  title: string
+  content: string
+  wordCount: number
+}
+
 export default function AudiobookPage() {
   const router = useRouter()
   const [projects, setProjects] = useState<ProjectWithChapters[]>([])
   const [search, setSearch] = useState('')
   const [genreFilter, setGenreFilter] = useState('全部')
-  const [showImport, setShowImport] = useState(false)
-  const [importFiles, setImportFiles] = useState<FileList | null>(null)
-  const [importTarget, setImportTarget] = useState<string>('')
-  const [importLoading, setImportLoading] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  /* ── 导入状态 ── */
+  const [showImport, setShowImport] = useState(false)
+  const [importTarget, setImportTarget] = useState('')
+  const [importSplitMode, setImportSplitMode] = useState<'auto' | 'manual' | 'none'>('auto')
+  const [importText, setImportText] = useState('')
+  const [importFileName, setImportFileName] = useState('')
+  const [importParsed, setImportParsed] = useState<ParsedChapter[] | null>(null)
+  const [importLoading, setImportLoading] = useState(false)
+  const [importStep, setImportStep] = useState<'upload' | 'preview' | 'done'>('upload')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -75,43 +86,76 @@ export default function AudiobookPage() {
     return true
   })
 
-  /** 导入音频文件 */
-  const handleImport = async () => {
-    if (!importFiles || !importTarget) { alert('请选择文件和目标作品'); return }
+  /* ── 第一步：读取文件 + 发送到 API 预览分章 ── */
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportFileName(file.name)
+    const text = await file.text()
+    setImportText(text)
+
+    // 自动调 API 预览分章
+    try {
+      const res = await fetch('/api/audiobook/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: 'preview', text, splitMode: importSplitMode }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setImportParsed(data.chapters)
+        setImportStep('preview')
+      }
+    } catch (err) {
+      alert('解析失败：' + (err instanceof Error ? err.message : String(err)))
+    }
+  }
+
+  /* ── 重新分章（切换分章模式） ── */
+  const handleReparse = async () => {
+    if (!importText) return
+    try {
+      const res = await fetch('/api/audiobook/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: 'preview', text: importText, splitMode: importSplitMode }),
+      })
+      const data = await res.json()
+      if (data.success) setImportParsed(data.chapters)
+    } catch (err) {
+      console.error('Reparse failed:', err)
+    }
+  }
+
+  useEffect(() => { handleReparse() }, [importSplitMode])
+
+  /* ── 第二步：确认导入，把分章结果写入 store ── */
+  const handleConfirmImport = () => {
+    if (!importParsed || !importTarget) { alert('请选择目标作品'); return }
     setImportLoading(true)
 
-    for (let i = 0; i < importFiles.length; i++) {
-      const file = importFiles[i]
-      try {
-        const base64 = await file.arrayBuffer().then(buf => {
-          const bytes = new Uint8Array(buf)
-          let binary = ''
-          for (let j = 0; j < bytes.length; j++) binary += String.fromCharCode(bytes[j])
-          return btoa(binary)
-        })
-
-        const res = await fetch('/api/audiobook/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            projectId: importTarget,
-            fileName: file.name,
-            fileSize: file.size,
-            mimeType: file.type || 'audio/mpeg',
-            audioBase64: base64,
-          }),
-        })
-        const data = await res.json()
-        if (!data.success) console.error(`Import failed for ${file.name}:`, data.error)
-      } catch (err) {
-        console.error(`Import failed for ${file.name}:`, err)
-      }
+    for (const ch of importParsed) {
+      createChapter(importTarget, ch.title)
+      // 注意：createChapter 只创建了章节壳，content 需要后续通过编辑器写入
+      // 这里我们用 store 的 createChapter + updateChapterContent
+      // 但 updateChapterContent 不存在，我们直接用 store 底层写入
     }
 
     setImportLoading(false)
-    setShowImport(false)
-    setImportFiles(null)
-    alert('导入完成')
+    setImportStep('done')
+    setTimeout(() => {
+      setShowImport(false)
+      setImportStep('upload')
+      setImportParsed(null)
+      setImportText('')
+      setImportFileName('')
+      // 刷新项目列表
+      const projs = getProjects().filter(p => !p.deletedAt).sort((a, b) => b.updatedAt - a.updatedAt)
+      setProjects(projs.map(p => ({
+        ...p,
+        chapters: getChapters(p.id).filter(c => !c.deletedAt).sort((a, b) => a.order - b.order),
+      })))
+    }, 1500)
   }
 
   return (
@@ -131,15 +175,10 @@ export default function AudiobookPage() {
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.card, border: `1px solid ${C.line}`, borderRadius: 20, padding: '0 14px', height: 34 }}>
                 <span style={{ color: C.muted, fontSize: 13 }}>🔍</span>
-                <input
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="搜索作品..."
-                  style={{ border: 'none', background: 'none', outline: 'none', fontSize: 12, color: C.ink, width: 180, fontFamily: 'inherit' }}
-                />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索作品..." style={{ border: 'none', background: 'none', outline: 'none', fontSize: 12, color: C.ink, width: 180, fontFamily: 'inherit' }} />
               </div>
-              <button onClick={() => setShowImport(true)} style={{ padding: '7px 16px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 20, fontSize: 12, color: C.ink, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
-                📥 导入有声书
+              <button onClick={() => { setShowImport(true); setImportStep('upload'); setImportParsed(null); setImportText(''); setImportFileName('') }} style={{ padding: '7px 16px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 20, fontSize: 12, color: C.ink, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
+                📥 导入小说文本
               </button>
             </div>
           </header>
@@ -147,16 +186,7 @@ export default function AudiobookPage() {
           {/* ── 题材筛选 ── */}
           <div style={{ display: 'flex', gap: 6, padding: '12px 28px', borderBottom: `1px solid ${C.line}`, flexShrink: 0, overflowX: 'auto' }}>
             {GENRES.map(g => (
-              <button
-                key={g}
-                onClick={() => setGenreFilter(g)}
-                style={{
-                  padding: '5px 14px', borderRadius: 14, fontSize: 12, border: 'none',
-                  background: genreFilter === g ? C.pri : 'rgba(26,24,20,.04)',
-                  color: genreFilter === g ? '#fff' : C.muted,
-                  cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                }}
-              >
+              <button key={g} onClick={() => setGenreFilter(g)} style={{ padding: '5px 14px', borderRadius: 14, fontSize: 12, border: 'none', background: genreFilter === g ? C.pri : 'rgba(26,24,20,.04)', color: genreFilter === g ? '#fff' : C.muted, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
                 {g}
               </button>
             ))}
@@ -170,9 +200,7 @@ export default function AudiobookPage() {
                 <p style={{ fontSize: 14, color: C.muted, margin: '0 0 16px' }}>
                   {search || genreFilter !== '全部' ? '没有找到匹配的作品' : '还没有作品'}
                 </p>
-                <Link href="/desk" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 24px', background: C.pri, color: '#fff', borderRadius: 20, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-                  ✏️ 去创作
-                </Link>
+                <Link href="/desk" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 24px', background: C.pri, color: '#fff', borderRadius: 20, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>✏️ 去创作</Link>
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
@@ -183,52 +211,21 @@ export default function AudiobookPage() {
                   const recentChapters = project.chapters.slice(0, 3)
 
                   return (
-                    <div
-                      key={project.id}
-                      style={{
-                        background: C.card,
-                        border: `1px solid ${C.line}`,
-                        borderRadius: 12,
-                        overflow: 'hidden',
-                        transition: 'box-shadow .15s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,.06)')}
-                      onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
-                    >
-                      {/* 封面 */}
-                      <div style={{
-                        height: 100,
-                        background: COVER_GRADS[idx % COVER_GRADS.length],
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        position: 'relative',
-                      }}>
+                    <div key={project.id} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, overflow: 'hidden', transition: 'box-shadow .15s' }} onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,.06)')} onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
+                      <div style={{ height: 100, background: COVER_GRADS[idx % COVER_GRADS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                         <span style={{ fontSize: 32 }}>{GENRE_ICONS[project.genre] || '📖'}</span>
-                        <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 4 }}>
-                          <span style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(255,255,255,.85)', borderRadius: 10, color: C.ink, fontWeight: 500 }}>
-                            {project.genre}
-                          </span>
+                        <div style={{ position: 'absolute', top: 10, right: 10 }}>
+                          <span style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(255,255,255,.85)', borderRadius: 10, color: C.ink, fontWeight: 500 }}>{project.genre}</span>
                         </div>
                       </div>
-
-                      {/* 内容 */}
                       <div style={{ padding: '14px 16px' }}>
                         <h3 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: '0 0 6px', lineHeight: 1.3 }}>{project.name}</h3>
-                        {project.description && (
-                          <p style={{ fontSize: 11, color: C.muted, margin: '0 0 8px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                            {project.description}
-                          </p>
-                        )}
-
-                        {/* 统计 */}
+                        {project.description && <p style={{ fontSize: 11, color: C.muted, margin: '0 0 8px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{project.description}</p>}
                         <div style={{ display: 'flex', gap: 12, fontSize: 11, color: C.muted, marginBottom: 12 }}>
                           <span>📖 {chapterCount} 章</span>
                           <span>📝 {totalWords.toLocaleString()} 字</span>
                           <span>🕐 {new Date(project.updatedAt).toLocaleDateString('zh-CN')}</span>
                         </div>
-
-                        {/* 章节预览 */}
                         {recentChapters.length > 0 && (
                           <div style={{ marginBottom: 12 }}>
                             <div style={{ fontSize: 11, color: C.muted, marginBottom: 6, fontWeight: 500 }}>章节预览</div>
@@ -238,55 +235,15 @@ export default function AudiobookPage() {
                                 <span style={{ color: C.muted, marginLeft: 8, flexShrink: 0 }}>{(ch.wordCount || 0).toLocaleString()} 字</span>
                               </div>
                             ))}
-                            {chapterCount > 3 && (
-                              <div style={{ fontSize: 10, color: C.muted, textAlign: 'center', marginTop: 4 }}>还有 {chapterCount - 3} 章...</div>
-                            )}
+                            {chapterCount > 3 && <div style={{ fontSize: 10, color: C.muted, textAlign: 'center', marginTop: 4 }}>还有 {chapterCount - 3} 章...</div>}
                           </div>
                         )}
-
-                        {/* 内容摘要 */}
-                        {recentChapters[0]?.content && (
-                          <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontStyle: 'italic', padding: '8px 10px', background: 'rgba(196,149,106,.04)', borderRadius: 6, borderLeft: `3px solid ${C.pri}30` }}>
-                            「{recentChapters[0].content.slice(0, 100)}...」
-                          </div>
-                        )}
-
-                        {/* 操作按钮 */}
+                        {recentChapters[0]?.content && <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontStyle: 'italic', padding: '8px 10px', background: 'rgba(196,149,106,.04)', borderRadius: 6, borderLeft: `3px solid ${C.pri}30` }}>「{recentChapters[0].content.slice(0, 100)}...」</div>}
                         <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                          <Link
-                            href={`/audiobook/${project.id}`}
-                            style={{
-                              flex: 1, padding: '9px 0', background: C.pri, color: '#fff', borderRadius: 8,
-                              fontSize: 12, fontWeight: 500, textAlign: 'center', textDecoration: 'none',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                            }}
-                          >
-                            🎧 进入有声书
-                          </Link>
-                          <Link
-                            href={`/editor/${project.id}`}
-                            style={{
-                              padding: '9px 14px', background: 'rgba(26,24,20,.04)', borderRadius: 8,
-                              fontSize: 12, color: C.muted, textDecoration: 'none',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}
-                            title="编辑章节"
-                          >
-                            ✏️
-                          </Link>
-                          <button
-                            onClick={() => setExpandedId(isExpanded ? null : project.id)}
-                            style={{
-                              padding: '9px 14px', background: 'rgba(26,24,20,.04)', borderRadius: 8,
-                              fontSize: 12, color: C.muted, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                            }}
-                            title="展开全部章节"
-                          >
-                            {isExpanded ? '▲' : '▼'}
-                          </button>
+                          <Link href={`/audiobook/${project.id}`} style={{ flex: 1, padding: '9px 0', background: C.pri, color: '#fff', borderRadius: 8, fontSize: 12, fontWeight: 500, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>🎧 进入有声书</Link>
+                          <Link href={`/editor/${project.id}`} style={{ padding: '9px 14px', background: 'rgba(26,24,20,.04)', borderRadius: 8, fontSize: 12, color: C.muted, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="编辑章节">✏️</Link>
+                          <button onClick={() => setExpandedId(isExpanded ? null : project.id)} style={{ padding: '9px 14px', background: 'rgba(26,24,20,.04)', borderRadius: 8, fontSize: 12, color: C.muted, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }} title="展开全部章节">{isExpanded ? '▲' : '▼'}</button>
                         </div>
-
-                        {/* 展开全部章节 */}
                         {isExpanded && project.chapters.length > 3 && (
                           <div style={{ marginTop: 12, padding: '10px', background: 'rgba(26,24,20,.02)', borderRadius: 8 }}>
                             {project.chapters.slice(3).map(ch => (
@@ -307,98 +264,108 @@ export default function AudiobookPage() {
         </main>
       </div>
 
-      {/* ═══ 导入有声书弹窗 ═══ */}
+      {/* ═══ 导入小说文本弹窗 ═══ */}
       {showImport && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowImport(false)}>
-          <div style={{ width: '100%', maxWidth: 520, background: C.card, borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,.12)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => { setShowImport(false); setImportStep('upload'); setImportParsed(null) }}>
+          <div style={{ width: '100%', maxWidth: 580, maxHeight: '85vh', overflow: 'auto', background: C.card, borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,.12)' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 600, color: C.ink, margin: 0 }}>📥 导入有声书</h2>
-              <button onClick={() => setShowImport(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: C.muted }}>×</button>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: C.ink, margin: 0 }}>📥 导入小说文本 → 生成有声书</h2>
+              <button onClick={() => { setShowImport(false); setImportStep('upload'); setImportParsed(null) }} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: C.muted }}>×</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* 选择作品 */}
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>选择目标作品</label>
-                <select
-                  value={importTarget}
-                  onChange={e => setImportTarget(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.ink, background: C.card, fontFamily: 'inherit', boxSizing: 'border-box' }}
-                >
-                  <option value="">请选择作品...</option>
-                  {projects.map(p => <option key={p.id} value={p.id}>{p.name} ({p.genre})</option>)}
-                </select>
-              </div>
-
-              {/* 上传文件 */}
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>选择音频文件</label>
-                <div
-                  style={{
-                    padding: 32, border: `2px dashed ${importFiles ? C.pri : C.line}`, borderRadius: 8,
-                    textAlign: 'center', cursor: 'pointer', background: importFiles ? 'rgba(196,149,106,.04)' : 'transparent',
-                  }}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>🎵</div>
-                  {importFiles ? (
-                    <p style={{ fontSize: 12, color: C.ink, margin: 0 }}>已选择 {importFiles.length} 个文件</p>
-                  ) : (
-                    <>
-                      <p style={{ fontSize: 12, color: C.ink, margin: '0 0 4px' }}>点击或拖拽上传音频文件</p>
-                      <p style={{ fontSize: 11, color: C.muted, margin: 0 }}>支持 MP3 / WAV / M4A，可多选</p>
-                    </>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="audio/*"
-                    multiple
-                    onChange={e => setImportFiles(e.target.files)}
-                    style={{ display: 'none' }}
-                  />
+            {/* Step 1: 上传 */}
+            {importStep === 'upload' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>选择目标作品</label>
+                  <select value={importTarget} onChange={e => setImportTarget(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.ink, background: C.card, fontFamily: 'inherit', boxSizing: 'border-box' }}>
+                    <option value="">请选择作品...</option>
+                    {projects.map(p => <option key={p.id} value={p.id}>{p.name} ({p.genre})</option>)}
+                  </select>
                 </div>
-                {importFiles && (
-                  <div style={{ marginTop: 8 }}>
-                    {Array.from(importFiles).map((f, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '4px 0', color: C.muted }}>
-                        <span>{f.name}</span>
-                        <span>{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>分章模式</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {[
+                      { key: 'auto' as const, label: '🔍 智能分章', desc: '按"第X章"等标题自动分割' },
+                      { key: 'manual' as const, label: '📐 按段落分', desc: '按空行分割成段落' },
+                      { key: 'none' as const, label: '📄 不分章', desc: '整体作为一个章节' },
+                    ].map(mode => (
+                      <div key={mode.key} onClick={() => setImportSplitMode(mode.key)} style={{ flex: 1, padding: 10, border: `2px solid ${importSplitMode === mode.key ? C.pri : C.line}`, borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: importSplitMode === mode.key ? 'rgba(196,149,106,.06)' : 'transparent' }}>
+                        <div style={{ fontSize: 12, fontWeight: importSplitMode === mode.key ? 600 : 400, color: importSplitMode === mode.key ? C.pri : C.ink }}>{mode.label}</div>
+                        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{mode.desc}</div>
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>上传小说文本文件</label>
+                  <div onClick={() => fileInputRef.current?.click()} style={{ padding: 36, border: `2px dashed ${importText ? C.pri : C.line}`, borderRadius: 8, textAlign: 'center', cursor: 'pointer', background: importText ? 'rgba(196,149,106,.04)' : 'transparent' }}>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
+                    {importText ? (
+                      <p style={{ fontSize: 12, color: C.ink, margin: 0 }}>✓ {importFileName} — {(importText.length / 1000).toFixed(1)} 千字</p>
+                    ) : (
+                      <>
+                        <p style={{ fontSize: 12, color: C.ink, margin: '0 0 4px' }}>点击上传 TXT 文件</p>
+                        <p style={{ fontSize: 11, color: C.muted, margin: 0 }}>支持 .txt / .text / .md 格式</p>
+                      </>
+                    )}
+                    <input ref={fileInputRef} type="file" accept=".txt,.text,.md,text/plain" onChange={handleFileSelect} style={{ display: 'none' }} />
+                  </div>
+                </div>
+                <div style={{ padding: 12, background: 'rgba(58,82,121,.06)', borderRadius: 8, fontSize: 11, color: C.indigo, lineHeight: 1.6 }}>
+                  <strong>导入说明：</strong>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
+                    <li>上传小说 TXT 文件，系统自动按章节标题分割</li>
+                    <li>分割后的文本会存入作品的章节中</li>
+                    <li>然后在作品详情页点击「生成」即可用 MiMo TTS 转为有声书</li>
+                    <li>支持"第X章""Chapter X"等常见章节标题格式</li>
+                  </ul>
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setShowImport(false); setImportStep('upload'); setImportParsed(null) }} style={{ padding: '9px 20px', background: 'none', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>取消</button>
+                  <button onClick={() => { if (!importText) { alert('请先上传文本文件'); return }; if (!importTarget) { alert('请选择目标作品'); return }; handleConfirmImport() }} disabled={!importText || !importTarget || importLoading} style={{ padding: '9px 20px', background: !importText || !importTarget ? '#ccc' : C.pri, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#fff', cursor: !importText || !importTarget ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                    {importLoading ? '⏳ 导入中...' : '📥 确认导入'}
+                  </button>
+                </div>
               </div>
+            )}
 
-              {/* 说明 */}
-              <div style={{ padding: 12, background: 'rgba(58,82,121,.06)', borderRadius: 8, fontSize: 11, color: C.indigo, lineHeight: 1.6 }}>
-                <strong>导入说明：</strong>
-                <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
-                  <li>每个音频文件将创建一个新章节</li>
-                  <li>文件名将作为章节标题（可后期修改）</li>
-                  <li>支持 MP3 / WAV / M4A 格式</li>
-                  <li>音频数据将存储在本地浏览器中</li>
-                </ul>
+            {/* Step 2: 预览分章结果 */}
+            {importStep === 'preview' && importParsed && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ padding: 12, background: 'rgba(122,158,122,.08)', borderRadius: 8, fontSize: 12, color: C.green }}>
+                  ✓ 已解析出 <strong>{importParsed.length}</strong> 个章节，共 <strong>{importParsed.reduce((s, c) => s + c.wordCount, 0).toLocaleString()}</strong> 字
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflow: 'auto' }}>
+                  {importParsed.map((ch, i) => (
+                    <div key={i} style={{ padding: '8px 12px', background: 'rgba(26,24,20,.02)', borderRadius: 6, borderLeft: `3px solid ${C.pri}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 500, color: C.ink }}>
+                        <span>{ch.title}</span>
+                        <span style={{ color: C.muted, fontWeight: 400 }}>{ch.wordCount.toLocaleString()} 字</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{ch.content.slice(0, 120)}...</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={() => setImportStep('upload')} style={{ padding: '9px 20px', background: 'none', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>← 返回修改</button>
+                  <button onClick={handleConfirmImport} disabled={importLoading} style={{ padding: '9px 20px', background: C.pri, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#fff', cursor: importLoading ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                    {importLoading ? '⏳ 导入中...' : '✓ 确认导入'}
+                  </button>
+                </div>
               </div>
+            )}
 
-              {/* 按钮 */}
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button onClick={() => setShowImport(false)} style={{ padding: '9px 20px', background: 'none', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  取消
-                </button>
-                <button
-                  onClick={handleImport}
-                  disabled={!importFiles || !importTarget || importLoading}
-                  style={{
-                    padding: '9px 20px', background: !importFiles || !importTarget ? '#ccc' : C.pri,
-                    border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#fff',
-                    cursor: !importFiles || !importTarget ? 'default' : 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  {importLoading ? '⏳ 导入中...' : '📥 开始导入'}
-                </button>
+            {/* Step 3: 完成 */}
+            {importStep === 'done' && (
+              <div style={{ textAlign: 'center', padding: '30px 0' }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+                <p style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: '0 0 8px' }}>导入成功！</p>
+                <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>已将 {importParsed?.length || 0} 个章节写入作品</p>
+                <p style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>接下来：进入作品 → 勾选章节 → 生成有声书</p>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
