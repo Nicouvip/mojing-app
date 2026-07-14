@@ -223,7 +223,7 @@ export default function AudiobookPage() {
                         {project.description && <p style={{ fontSize: 11, color: C.muted, margin: '0 0 8px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{project.description}</p>}
                         <div style={{ display: 'flex', gap: 12, fontSize: 11, color: C.muted, marginBottom: 12 }}>
                           <span>📖 {chapterCount} 章</span>
-                          <span>📝 {totalWords.toLocaleString()} 字</span>
+                          <span>📝 {(totalWords || 0).toLocaleString()} 字</span>
                           <span>🕐 {new Date(project.updatedAt).toLocaleDateString('zh-CN')}</span>
                         </div>
                         {recentChapters.length > 0 && (
@@ -335,14 +335,14 @@ export default function AudiobookPage() {
             {importStep === 'preview' && importParsed && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ padding: 12, background: 'rgba(122,158,122,.08)', borderRadius: 8, fontSize: 12, color: C.green }}>
-                  ✓ 已解析出 <strong>{importParsed.length}</strong> 个章节，共 <strong>{importParsed.reduce((s, c) => s + c.wordCount, 0).toLocaleString()}</strong> 字
+                  ✓ 已解析出 <strong>{importParsed.length}</strong> 个章节，共 <strong>{importParsed.reduce((s, c) => s + (c.wordCount || 0), 0).toLocaleString()}</strong> 字
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflow: 'auto' }}>
                   {importParsed.map((ch, i) => (
                     <div key={i} style={{ padding: '8px 12px', background: 'rgba(26,24,20,.02)', borderRadius: 6, borderLeft: `3px solid ${C.pri}` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 500, color: C.ink }}>
                         <span>{ch.title}</span>
-                        <span style={{ color: C.muted, fontWeight: 400 }}>{ch.wordCount.toLocaleString()} 字</span>
+                        <span style={{ color: C.muted, fontWeight: 400 }}>{(ch.wordCount || 0).toLocaleString()} 字</span>
                       </div>
                       <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{ch.content.slice(0, 120)}...</div>
                     </div>
