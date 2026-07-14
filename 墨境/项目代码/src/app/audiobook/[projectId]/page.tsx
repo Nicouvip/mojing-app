@@ -510,7 +510,7 @@ export default function AudiobookProjectPage() {
                   <p style={{ fontSize: 12, color: C.muted, margin: 0, flex: 1 }}>选择章节 → 自动识别对话/叙述 → 为角色分配音色 → 逐句生成</p>
                   <select value={dialogueChapterId} onChange={e => setDialogueChapterId(e.target.value)} style={{ padding: '6px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
                     <option value="">选择章节...</option>
-                    {chapters.filter(c => !c.deletedAt).map(ch => <option key={ch.id} value={ch.id}>{ch.title}</option>)}
+                    {chapters.filter(c => !c.deletedAt).map((ch, ci) => <option key={`${ch.id}-${ci}`} value={ch.id}>{ch.title}</option>)}
                   </select>
                 </div>
                 {dialogueChapterId ? (
