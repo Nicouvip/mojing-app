@@ -23,6 +23,7 @@ const MAIN_NAV: NavItem[] = [
 
 const WRITE_NAV: NavItem[] = [
   { href: '/editor/demo-1', label: '小说写作', icon: '✍️' },
+  { href: '/audiobook', label: '有声书', icon: '🎧' },
   { href: '#', label: '剧本写作', icon: '🎭', disabled: true },
   { href: '#', label: '漫剧视频', icon: '▶️', disabled: true },
   { href: '#', label: '通用写作', icon: '🖊️', disabled: true },
