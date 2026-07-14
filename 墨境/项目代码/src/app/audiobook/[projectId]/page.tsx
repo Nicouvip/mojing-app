@@ -89,6 +89,38 @@ export default function AudiobookProjectPage() {
   const [cloneLoading, setCloneLoading] = useState(false)
   const [clonedVoices, setClonedVoices] = useState<Array<{ id: string; name: string; sampleName: string; audioBase64: string }>>([])
 
+  /* ── WAV 编码器 ── */
+  function encodeWAV(audioBuf: AudioBuffer): Blob {
+    const numCh = audioBuf.numberOfChannels
+    const sampleRate = audioBuf.sampleRate
+    const format = 1 // PCM
+    const bitsPerSample = 16
+    const bytesPerSample = bitsPerSample / 8
+    const blockAlign = numCh * bytesPerSample
+    const dataLength = audioBuf.length * blockAlign
+    const buffer = new ArrayBuffer(44 + dataLength)
+    const view = new DataView(buffer)
+    const writeStr = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)) }
+    writeStr(0, 'RIFF'); view.setUint32(4, 36 + dataLength, true); writeStr(8, 'WAVE')
+    writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, format, true); view.setUint16(22, numCh, true)
+    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * blockAlign, true); view.setUint16(32, blockAlign, true); view.setUint16(34, bitsPerSample, true)
+    writeStr(36, 'data'); view.setUint32(40, dataLength, true)
+    const channels: Float32Array[] = []
+    for (let ch = 0; ch < numCh; ch++) channels.push(audioBuf.getChannelData(ch))
+    let offset = 44
+    for (let i = 0; i < audioBuf.length; i++) {
+      for (let ch = 0; ch < numCh; ch++) {
+        const sample = Math.max(-1, Math.min(1, channels[ch][i]))
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true)
+        offset += 2
+      }
+    }
+    return new Blob([buffer], { type: 'audio/wav' })
+  }
+
+  /* ── 录音范本 ── */
+  const RECORDING_TEMPLATE = '春天的花开，秋天的月，夏天的风，冬天的雪。我在微风中轻轻吟唱，那是一首关于时光和记忆的歌。窗外的雨滴落在玻璃上，像是大自然写给大地的情书。'
+
   /* ── 在线录音状态 ── */
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
@@ -105,14 +137,27 @@ export default function AudiobookProjectPage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
       recordedChunksRef.current = []
       recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data) }
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop())
-        const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' })
-        const file = new File([blob], `录音-${new Date().toLocaleTimeString('zh-CN')}.webm`, { type: 'audio/webm' })
-        setCloneSample(file)
+        const webmBlob = new Blob(recordedChunksRef.current, { type: 'audio/webm' })
+        try {
+          // webm → wav 转换
+          const arrayBuf = await webmBlob.arrayBuffer()
+          const audioCtx = new AudioContext()
+          const audioBuf = await audioCtx.decodeAudioData(arrayBuf)
+          const wavBlob = encodeWAV(audioBuf)
+          audioCtx.close()
+          const file = new File([wavBlob], `录音-${new Date().toLocaleTimeString('zh-CN')}.wav`, { type: 'audio/wav' })
+          setCloneSample(file)
+        } catch {
+          // 转换失败则直接用 webm
+          const file = new File([webmBlob], `录音-${new Date().toLocaleTimeString('zh-CN')}.webm`, { type: 'audio/webm' })
+          setCloneSample(file)
+          alert('wav转换失败，已保存为webm格式')
+        }
       }
       recorder.start()
       mediaRecorderRef.current = recorder
@@ -765,16 +810,22 @@ export default function AudiobookProjectPage() {
                 </div>
                 {/* 录音 */}
                 <div style={{ flex: 1, padding: 16, border: `2px dashed ${isRecording ? C.crimson : C.line}`, borderRadius: 8, textAlign: 'center', background: isRecording ? 'rgba(181,69,74,.04)' : 'transparent' }}>
-                  <p style={{ fontSize: 12, color: C.muted, margin: '0 0 8px' }}>🎙️ 在线录音</p>
+                  <p style={{ fontSize: 12, color: C.muted, margin: '0 0 4px' }}>🎙️ 在线录音</p>
+                  <p style={{ fontSize: 10, color: C.muted, margin: '0 0 8px' }}>最少录制 10 秒，请照以下范本朗读</p>
+                  {isRecording && (
+                    <div style={{ padding: '8px 10px', background: 'rgba(58,82,121,.06)', borderRadius: 6, fontSize: 11, color: C.indigo, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left', fontStyle: 'italic' }}>
+                      「{RECORDING_TEMPLATE}」
+                    </div>
+                  )}
                   {isRecording ? (
                     <>
-                      <p style={{ fontSize: 20, fontWeight: 700, color: C.crimson, margin: '0 0 8px' }}>🔴 {recordingTime}s</p>
-                      <button onClick={stopRecording} style={{ padding: '6px 20px', background: C.crimson, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>⏹ 停止录音</button>
+                      <p style={{ fontSize: 20, fontWeight: 700, color: recordingTime < 10 ? C.crimson : C.green, margin: '0 0 4px' }}>🔴 {recordingTime}s{recordingTime < 10 ? ` (还需${10 - recordingTime}s)` : ' ✓'}</p>
+                      <button onClick={stopRecording} disabled={recordingTime < 3} style={{ padding: '6px 20px', background: recordingTime < 3 ? '#ccc' : C.crimson, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: recordingTime < 3 ? 'default' : 'pointer', fontFamily: 'inherit' }}>⏹ 停止录音</button>
                     </>
                   ) : (
                     <button onClick={startRecording} style={{ padding: '6px 20px', background: C.indigo, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>🎙️ 开始录音</button>
                   )}
-                  {cloneSample && !isRecording && cloneSample.name.startsWith('录音') && <p style={{ fontSize: 11, color: C.green, margin: '8px 0 0' }}>✓ {cloneSample.name}</p>}
+                  {cloneSample && !isRecording && cloneSample.name.startsWith('录音') && <p style={{ fontSize: 11, color: C.green, margin: '8px 0 0' }}>✓ {cloneSample.name} (已转为wav格式)</p>}
                 </div>
               </div>
               <div>
