@@ -7,6 +7,7 @@ import Navbar from '@/components/navbar'
 import DeskSidebar from '@/components/desk-sidebar'
 import { getProject, getChapters } from '@/lib/db/store'
 import type { Project, Chapter } from '@/lib/db/types'
+import { DialogueMode } from '@/components/audiobook/dialogue-mode'
 
 /* ── 设计令牌 ── */
 const C = {
@@ -58,7 +59,8 @@ export default function AudiobookProjectPage() {
   const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set())
   const [defaultVoice, setDefaultVoice] = useState('冰糖')
   const [defaultEmotion, setDefaultEmotion] = useState('平静')
-  const [activeTab, setActiveTab] = useState<'chapters' | 'voices' | 'settings'>('chapters')
+  const [activeTab, setActiveTab] = useState<'chapters' | 'dialogue' | 'voices' | 'settings'>('chapters')
+  const [dialogueChapterId, setDialogueChapterId] = useState<string>('')
 
   /* ── 生成状态 ── */
   const [generating, setGenerating] = useState(false)
@@ -416,6 +418,7 @@ export default function AudiobookProjectPage() {
           <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.line}`, padding: '0 28px', flexShrink: 0 }}>
             {([
               { key: 'chapters' as const, label: '章节管理', icon: '📖' },
+              { key: 'dialogue' as const, label: '对话模式', icon: '🎭' },
               { key: 'voices' as const, label: '音色管理', icon: '🎤' },
               { key: 'settings' as const, label: '生成设置', icon: '⚙️' },
             ]).map(tab => (
@@ -497,6 +500,27 @@ export default function AudiobookProjectPage() {
                     )
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* ═══ 对话模式 ═══ */}
+            {activeTab === 'dialogue' && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                  <p style={{ fontSize: 12, color: C.muted, margin: 0, flex: 1 }}>选择章节 → 自动识别对话/叙述 → 为角色分配音色 → 逐句生成</p>
+                  <select value={dialogueChapterId} onChange={e => setDialogueChapterId(e.target.value)} style={{ padding: '6px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
+                    <option value="">选择章节...</option>
+                    {chapters.filter(c => !c.deletedAt).map(ch => <option key={ch.id} value={ch.id}>{ch.title}</option>)}
+                  </select>
+                </div>
+                {dialogueChapterId ? (
+                  <DialogueMode chapter={chapters.find(c => c.id === dialogueChapterId)!} defaultVoice={defaultVoice} defaultEmotion={defaultEmotion} />
+                ) : (
+                  <div style={{ textAlign: 'center', padding: 60, color: C.muted }}>
+                    <div style={{ fontSize: 36, marginBottom: 12 }}>🎭</div>
+                    <p style={{ fontSize: 13, margin: 0 }}>请先选择一个章节，系统会自动识别对话和角色</p>
+                  </div>
+                )}
               </div>
             )}
 
