@@ -533,7 +533,7 @@ export default function AudiobookProjectPage() {
                   <>
                     <h3 style={{ fontSize: 12, fontWeight: 600, color: C.ink, margin: '0 0 10px' }}>我的自定义音色</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
-                      {[...designedVoices, ...clonedVoices].map(v => (
+                      {[...designedVoices.map(v => ({...v, desc: v.desc || ''})), ...clonedVoices.map(v => ({...v, desc: v.sampleName || v.desc || ''}))].map(v => (
                         <div key={v.id} onClick={() => setDefaultVoice(v.id)} style={{ padding: 12, background: C.card, border: `2px solid ${defaultVoice === v.id ? C.pri : C.line}`, borderRadius: C.radius, cursor: 'pointer', transition: 'all .12s' }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 4 }}>{v.name}</div>
                           <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>{v.desc}</div>
