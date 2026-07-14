@@ -239,8 +239,8 @@ export default function AudiobookPage() {
                         {recentChapters.length > 0 && (
                           <div style={{ marginBottom: 12 }}>
                             <div style={{ fontSize: 11, color: C.muted, marginBottom: 6, fontWeight: 500 }}>章节预览</div>
-                            {recentChapters.map(ch => (
-                              <div key={ch.id} style={{ fontSize: 11, color: C.ink, padding: '4px 8px', background: 'rgba(26,24,20,.02)', borderRadius: 4, marginBottom: 3, display: 'flex', justifyContent: 'space-between' }}>
+                            {recentChapters.map((ch, ri) => (
+                              <div key={`${ch.id}-${ri}`} style={{ fontSize: 11, color: C.ink, padding: '4px 8px', background: 'rgba(26,24,20,.02)', borderRadius: 4, marginBottom: 3, display: 'flex', justifyContent: 'space-between' }}>
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{ch.title}</span>
                                 <span style={{ color: C.muted, marginLeft: 8, flexShrink: 0 }}>{(ch.wordCount || 0).toLocaleString()} 字</span>
                               </div>
@@ -256,8 +256,8 @@ export default function AudiobookPage() {
                         </div>
                         {isExpanded && project.chapters.length > 3 && (
                           <div style={{ marginTop: 12, padding: '10px', background: 'rgba(26,24,20,.02)', borderRadius: 8 }}>
-                            {project.chapters.slice(3).map(ch => (
-                              <div key={ch.id} style={{ fontSize: 11, color: C.ink, padding: '4px 8px', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
+                            {project.chapters.slice(3).map((ch, ei) => (
+                              <div key={`${ch.id}-${ei}`} style={{ fontSize: 11, color: C.ink, padding: '4px 8px', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
                                 <span>{ch.title}</span>
                                 <span style={{ color: C.muted }}>{(ch.wordCount || 0).toLocaleString()} 字</span>
                               </div>
