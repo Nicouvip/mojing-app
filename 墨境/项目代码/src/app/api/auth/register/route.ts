@@ -3,14 +3,14 @@ import { createUser, userExists } from '@/lib/db/auth-store'
 
 export async function POST(req: Request) {
   try {
-    let body: { email?: string; password?: string }
+    let body: { email?: string; password?: string; name?: string }
     try {
       body = await req.json()
     } catch {
       return NextResponse.json({ error: '请求体不是有效的 JSON' }, { status: 400 })
     }
 
-    const { email, password } = body
+    const { email, password, name: rawName } = body
 
     if (!email || !password) {
       return NextResponse.json({ error: '邮箱和密码不能为空' }, { status: 400 })
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '该邮箱已注册' }, { status: 409 })
     }
 
-    const name = email.split('@')[0]
+    const name = (rawName || '').trim() || email.split('@')[0]
     const user = await createUser(email, password, name)
     return NextResponse.json({ success: true, message: '注册成功', email: user.email, name: user.name })
   } catch (e: unknown) {

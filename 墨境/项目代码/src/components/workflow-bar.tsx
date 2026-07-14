@@ -62,7 +62,7 @@ export function WorkflowBar({ currentStage, onStageChange, wordCount, bodyDensit
           字数: <span className="text-foreground font-medium">{wordCount.toLocaleString()}</span>
         </span>
         <span className="text-muted-foreground/60">
-          密度: <span className={`font-medium ${bodyDensity >= 40 ? 'text-[#6a8a6a]' : bodyDensity >= 25 ? 'text-[#b8a060]' : 'text-[#b06060]'}`}>{bodyDensity}%</span>
+          密度: <span className={`font-medium ${bodyDensity >= 40 ? 'text-[#6a8a6a]' : bodyDensity >= 25 ? 'text-[#b8a060]' : 'text-destructive'}`}>{bodyDensity}%</span>
         </span>
       </div>
     </div>

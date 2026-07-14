@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { SlidersHorizontal, Save, Play } from 'lucide-react'
+import { Save, Play } from 'lucide-react'
 
 const presets = [
   { id: 'tomato', name: '番茄爆款风', desc: '短句节奏快，爽点密集' },
@@ -13,6 +13,20 @@ const presets = [
 export default function RulesPage() {
   const [sentenceLength, setSentenceLength] = useState(50)
   const [descDensity, setDescDensity] = useState(40)
+
+  const applyPreset = (id: string) => {
+    switch (id) {
+      case 'tomato':
+        setSentenceLength(25); setDescDensity(20)
+        break
+      case 'qidian':
+        setSentenceLength(70); setDescDensity(45)
+        break
+      case 'guyan':
+        setSentenceLength(55); setDescDensity(75)
+        break
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -33,7 +47,7 @@ export default function RulesPage() {
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-muted-foreground mb-3">官方预设</h3>
             {presets.map((p) => (
-              <button key={p.id} className="w-full text-left p-4 rounded-xl bg-card shadow-sm hover:shadow-md transition-all border border-transparent hover:border-primary/30">
+              <button key={p.id} onClick={() => applyPreset(p.id)} className="w-full text-left p-4 rounded-xl bg-card shadow-sm hover:shadow-md transition-all border border-transparent hover:border-primary/30">
                 <p className="font-medium text-sm">{p.name}</p><p className="text-xs text-muted-foreground">{p.desc}</p>
               </button>
             ))}

@@ -15,7 +15,8 @@ export async function GET() {
       : '{"count":0,"lastAt":0}'
     const usage = JSON.parse(raw)
     return NextResponse.json(usage)
-  } catch {
-    return NextResponse.json({ count: 0, lastAt: 0 })
+  } catch (e) {
+    console.error('[usage] 读取用量失败:', e)
+    return NextResponse.json({ error: '读取用量失败' }, { status: 500 })
   }
 }

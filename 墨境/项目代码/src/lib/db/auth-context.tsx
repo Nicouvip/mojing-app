@@ -1,7 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
-import { setCurrentUserId, initStore } from '@/lib/db/store'
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 
 interface User {
   id: string
@@ -54,15 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isLoggedIn = !!user && !!token
 
-  // 客户端挂载时：初始化 store（从 Turso 加载数据）
-  useEffect(() => {
-    if (stored.user?.id) setCurrentUserId(stored.user.id)
-    initStore()
-  }, [])
-
   const login = useCallback((u: User, t: string) => {
     setUser(u); setToken(t)
-    setCurrentUserId(u.id)
     try { localStorage.setItem(AUTH_KEY, JSON.stringify({ user: u, token: t })) } catch {}
   }, [])
 

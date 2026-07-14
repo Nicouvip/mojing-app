@@ -1,14 +1,14 @@
 'use client'
-import { Users, Globe, Bookmark, Package, Search, Plus, ChevronRight } from 'lucide-react'
+import { Users, Globe, Bookmark, ListTree, Settings } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import Link from 'next/link'
 import Image from 'next/image'
 
 const categories = [
   { icon: <Users className="w-5 h-5" />, title: '人物素材', count: 0, href: '/library/characters', color: 'text-warning bg-warning-light' },
-  { icon: <Globe className="w-5 h-5" />, title: '世界观设定', count: 0, href: '/library/world', color: 'text-blue-600 bg-blue-50' },
-  { icon: <Bookmark className="w-5 h-5" />, title: '桥段金句', count: 0, href: '/library/bits', color: 'text-purple-600 bg-purple-50' },
-  { icon: <Package className="w-5 h-5" />, title: '官方素材包', count: 0, href: '/library/packs', color: 'text-green-600 bg-green-50' },
+  { icon: <Globe className="w-5 h-5" />, title: '世界观设定', count: 0, href: '/library/worldbuilding', color: 'text-blue-600 bg-blue-50' },
+  { icon: <ListTree className="w-5 h-5" />, title: '大纲管理', count: 0, href: '/library/outline', color: 'text-purple-600 bg-purple-50' },
+  { icon: <Settings className="w-5 h-5" />, title: '素材库设置', count: 0, href: '/library/settings', color: 'text-green-600 bg-green-50' },
 ]
 
 export default function LibraryPage() {

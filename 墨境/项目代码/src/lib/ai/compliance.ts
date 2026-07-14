@@ -92,23 +92,17 @@ export function checkCompliance(
       if (matches) forbiddenD += matches.length
     }
 
-    // 动作后解释检测
-    const sentences = splitSentences(para)
-    for (let si = 0; si < sentences.length - 1; si++) {
-      const isAction = BODY_ACTION_WORDS.some(w => sentences[si].includes(w))
-      if (isAction) {
-        const hasExplanation = EXPLANATION_WORDS.some(w => sentences[si + 1].includes(w))
-        if (hasExplanation) {
-          blockedItems.push({
-            type: 'explanation_after_action',
-            paragraphIndex: idx,
-            detail: `动作句后紧跟解释语句`,
-          })
-        }
-      }
+    // 动作后解释检测（共享函数）
+    if (detectPostActionExplanations(para) > 0) {
+      blockedItems.push({
+        type: 'explanation_after_action',
+        paragraphIndex: idx,
+        detail: `动作句后紧跟解释语句`,
+      })
     }
 
     // 精致句密度检测（当前段落内）
+    const sentences = splitSentences(para)
     for (const s of sentences) {
       totalSentences++
       const isRefined = REFINED_WORD_INDICATORS.some(w => s.includes(w))
@@ -174,6 +168,23 @@ const GENRE_55_CONFIG: Record<Genre, { length: number; condition: string; checke
     condition: '情感悬念/关系张力/情感冲突',
     checker: (t) => checkEmotionalSuspense(t),
   },
+}
+
+/**
+ * 共享检测函数：统计动作句后紧跟解释语句的次数
+ * 4 处重复提取至此，各调用方按需包装返回类型
+ */
+function detectPostActionExplanations(text: string): number {
+  const sentences = splitSentences(text)
+  let count = 0
+  for (let i = 0; i < sentences.length - 1; i++) {
+    const isAction = BODY_ACTION_WORDS.some(w => sentences[i].includes(w))
+    if (isAction) {
+      const hasExplanation = EXPLANATION_WORDS.some(w => sentences[i + 1].includes(w))
+      if (hasExplanation) count++
+    }
+  }
+  return count
 }
 
 // 通用条件检测：冲突/悬念/动作
@@ -352,8 +363,9 @@ function checkSingleIntent(text: string): ParagraphCheckItem {
 
   for (const s of sentences) {
     // 简化：提取主语（第一个出现的人物/代词）
+    // 排除人称代词自身（他/她/它/我/你），避免将"你他"等捉为主语
     const subjectMatch = s.match(/^[\u4e00-\u9fa5]{1,2}(?=[他她它我你你们他们她们])/)
-    if (subjectMatch) subjects.add(subjectMatch[0])
+    if (subjectMatch && !/^[他她它我你]$/.test(subjectMatch[0])) subjects.add(subjectMatch[0])
   }
 
   // 如果有3个以上不同主语，可能违反单一意图
@@ -802,7 +814,7 @@ function checkCE_SingleIntent(text: string): ChapterCheckItem {
     const subjects = new Set<string>()
     for (const s of sentences) {
       const m = s.match(/^[\u4e00-\u9fa5]{1,2}(?=[他她它我你你们他们她们])/)
-      if (m) subjects.add(m[0])
+      if (m && !/^[他她它我你]$/.test(m[0])) subjects.add(m[0])
     }
     if (subjects.size >= 4) violations++
   }

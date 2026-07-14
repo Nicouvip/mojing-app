@@ -36,6 +36,15 @@ const eslintConfig = defineConfig([
 
       // 禁止显式 any 类型（JSON.parse 等场景用 eslint-disable 豁免）
       "@typescript-eslint/no-explicit-any": "warn",
+
+      // 禁止未处理的 Promise
+      "@typescript-eslint/no-floating-promises": "error",
+
+      // 禁止空 catch 块
+      "no-empty": ["error", { "allowEmptyCatch": false }],
+
+      // 要求 async 函数必须有 await
+      "require-await": "error",
     },
   },
 ]);

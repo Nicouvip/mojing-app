@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { getProjects, deleteProject, permanentDeleteProject, restoreProject, getChapters } from '@/lib/db/store'
+import { getProjects, deleteProject, permanentDeleteProject, restoreProject } from '@/lib/db/store'
 import type { Project } from '@/lib/db/types'
 import { FileText, Trash2, Undo2, XCircle, Search, Edit3 } from 'lucide-react'
 

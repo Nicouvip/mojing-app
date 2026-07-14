@@ -7,7 +7,9 @@
 import type { BuildOptions, BuildResult, PromptLayer, ConflictLevel, WritingStyle } from './types'
 import { GENRE_MAP, CONFLICT_LEVELS } from './types'
 import { registry } from './registry'
-import { SYSTEM_IRON_RULES, FORBIDDEN_WORDS_REMINDER, BRAINSTORM_QUALITY_RULES } from './iron-rules'
+import { SYSTEM_IRON_RULES, FORBIDDEN_WORDS_REMINDER, BRAINSTORM_QUALITY_RULES, CONFLICT_LEVEL_RULES, PERSPECTIVE_RULES, B0_RULES } from './iron-rules'
+import { formatGenreParams } from './genre-params'
+import { getAllAlwaysItems, getKnowledgeByTiming, retrieveRelevantKnowledge, formatKnowledgeForPrompt } from '@/lib/ai/knowledge-base'
 
 /**
  * 构建完整 Prompt
@@ -89,7 +91,22 @@ export function buildPrompt(options: BuildOptions): BuildResult {
       rules += `\n\n${sensoryRules}`
     }
 
+    // P2-5: 注入题材参数表
+    if (genre) {
+      rules += `\n\n${formatGenreParams(genre)}`
+    }
+
+    // P2-6: 注入冲突强度详表 + 视角原则 + B-0后台规则
+    rules += `\n\n${CONFLICT_LEVEL_RULES}`
+    rules += `\n\n${PERSPECTIVE_RULES}`
+    rules += `\n\n${B0_RULES}`
+
     layerTexts.system_iron_rules = rules
+
+    // P4: 注入 always 时机的知识库条目（未在铁律中覆盖的补充规则）
+    const alwaysItems = getAllAlwaysItems()
+    const alwaysText = formatKnowledgeForPrompt(alwaysItems)
+    layerTexts.system_iron_rules += '\n\n' + alwaysText
   }
 
   // L2 — 功能指令层
@@ -138,6 +155,75 @@ export function buildPrompt(options: BuildOptions): BuildResult {
   if (type === 'brainstorm') {
     fnInstruction += '\n\n' + BRAINSTORM_QUALITY_RULES
     layerTexts.function_instruction = fnInstruction
+  }
+
+  // ═══ P2-6: L3 上下文注入 — 角色/世界观/冷却/伏笔/上章检测 ═══
+  const contextParts: string[] = []
+
+  // 角色档案摘要
+  if (options.characterProfiles && options.characterProfiles.length > 0) {
+    const charSummary = options.characterProfiles.map(c => {
+      const parts = [c.name]
+      if (c.corePersonality) parts.push(`性格:${c.corePersonality}`)
+      if (c.speakingStyle) parts.push(`说话:${c.speakingStyle}`)
+      if (c.bodyHabits?.length) parts.push(`身体习惯:${c.bodyHabits.join('、')}`)
+      return parts.join(' | ')
+    }).join('\n')
+    contextParts.push(`【角色档案】\n${charSummary}`)
+  }
+
+  // 世界观设定摘要
+  if (options.worldSettings && options.worldSettings.length > 0) {
+    const worldSummary = options.worldSettings.map(w => `- ${w.title}: ${w.content.slice(0, 200)}`).join('\n')
+    contextParts.push(`【世界观设定】\n${worldSummary}`)
+  }
+
+  // 冷却状态摘要
+  if (options.coolingState) {
+    const cs = options.coolingState
+    const recentEmotions = cs.emotions.slice(-3).join('→') || '无'
+    const sceneEntries = Object.entries(cs.scenes).map(([k, v]) => `${k}(${v.length}次)`).join(' ') || '无'
+    contextParts.push(`【冷却状态】\n- 近3章情感颜色: ${recentEmotions}\n- 场景方法使用: ${sceneEntries}`)
+  }
+
+  // 活跃伏笔
+  if (options.activeForeshadows && options.activeForeshadows.length > 0) {
+    const fsSummary = options.activeForeshadows.map(f => `- [${f.importance}] ${f.content}（第${f.chapterPlanted}章埋设）`).join('\n')
+    contextParts.push(`【活跃伏笔 ${options.activeForeshadows.length}条】\n${fsSummary}`)
+  }
+
+  // 上章检测结果
+  if (options.lastReport) {
+    const lr = options.lastReport
+    const issues: string[] = []
+    if (lr.forbiddenA > 0) issues.push(`A类递进判断句${lr.forbiddenA}次`)
+    if (lr.forbiddenB > 0) issues.push(`B类弱化词${lr.forbiddenB}段`)
+    if (lr.forbiddenC > 0) issues.push(`C类连接词${lr.forbiddenC}次`)
+    if (lr.forbiddenD > 0) issues.push(`D类AI高频词${lr.forbiddenD}次`)
+    const issueText = issues.length > 0 ? issues.join('、') : '无违规'
+    contextParts.push(`【上章检测结果】\n- 评分: ${lr.score}/5\n- 合规: ${lr.compliant ? '是' : '否'}\n- 身体密度: ${lr.bodyDensity}%\n- 违规项: ${issueText}\n- 报告行: ${lr.reportLine}`)
+  }
+
+  // 追加到上下文注入
+  if (contextParts.length > 0) {
+    ctxInjection += '\n\n' + contextParts.join('\n\n')
+  }
+
+  // P4: 知识库按需检索注入（基于当前写作上下文）
+  const relevantKnowledge = retrieveRelevantKnowledge({
+    genre,
+    conflictLevel,
+    style: style as string,
+    chapterIndex,
+    lastReport: options.lastReport ? {
+      forbiddenA: options.lastReport.forbiddenA,
+      forbiddenB: options.lastReport.forbiddenB,
+      forbiddenC: options.lastReport.forbiddenC,
+      forbiddenD: options.lastReport.forbiddenD,
+    } : undefined,
+  })
+  if (relevantKnowledge.length > 0) {
+    ctxInjection += '\n\n' + formatKnowledgeForPrompt(relevantKnowledge)
   }
 
   layerTexts.context_injection = ctxInjection

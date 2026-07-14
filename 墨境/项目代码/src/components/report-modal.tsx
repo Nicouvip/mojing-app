@@ -10,7 +10,7 @@ import {
   type Genre,
   type ChapterCheckItem,
 } from '@/lib/ai/compliance'
-import { DEEP_CHECK_PROMPTS } from '@/lib/ai/deep-check-prompt'
+import { loadPrompts } from '@/lib/ai/deep-check-prompt'
 import {
   type ChapterReportRecord,
   type CheckTier,
@@ -77,7 +77,7 @@ export function ReportModal({
     const existing = getChapterReport(projectId, chapterId)
     setSavedRecord(existing)
     setHistory(getAllChapterReports(projectId))
-    setView(existing ? 'report' : 'report')
+    setView(existing ? 'history' : 'report')
     setTab('all')
     setExpandedId(null)
   }, [show, projectId, chapterId])
@@ -144,7 +144,7 @@ export function ReportModal({
   const scoreDiff = prevScore !== undefined ? score - prevScore : null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="章末自检报告" onClick={onClose}>
       <div
         className="bg-white rounded-[20px] shadow-modal max-w-2xl w-full mx-4 flex flex-col max-h-[90vh] modal-enter"
         onClick={e => e.stopPropagation()}
@@ -259,7 +259,7 @@ export function ReportModal({
                     <h4 className="text-xs font-semibold text-muted-foreground mb-2">身体密度走势（目标40-55%）</h4>
                     <SimpleLineChart
                       data={history.map(r => ({ label: r.chapterTitle, value: r.bodyDensity, max: 100 }))}
-                      color="#c4956a"
+                      color="var(--color-primary)"
                     />
                   </div>
                   {/* 违规统计 */}
@@ -426,7 +426,7 @@ function AiOverviewBar({ content, projectId, chapterId, onRefresh }: { content: 
   const cachedWarn = cached ? Object.values(cached).filter(r => r.status === 'warning').length : 0
   const cachedFail = cached ? Object.values(cached).filter(r => r.status === 'fail').length : 0
 
-  const totalItems = DEEP_CHECK_PROMPTS.length
+  const totalItems = loadPrompts().length
 
   const handleBatch = async () => {
     setLoading(true); setDone(false)
@@ -434,7 +434,7 @@ function AiOverviewBar({ content, projectId, chapterId, onRefresh }: { content: 
       const res = await fetch('/api/ai/deep-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: content, batch: true }),
+        body: JSON.stringify({ text: content, batch: true, prompts: loadPrompts() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || '分析失败')
@@ -521,13 +521,14 @@ function AiOverviewBar({ content, projectId, chapterId, onRefresh }: { content: 
 /* ─── AI 深度分析子组件 ─── */
 
 function AiCheckSection({ itemId, content, projectId, chapterId }: { itemId: number; content: string; projectId: string; chapterId: string }) {
+  const prompts = useMemo(() => loadPrompts(), [])
   const [state, setState] = useState<{
     status: 'idle' | 'loading' | 'done' | 'error'
     result?: { status: string; reason: string; detail: string }
     error?: string
   }>({ status: 'idle' })
 
-  const promptInfo = useMemo(() => DEEP_CHECK_PROMPTS.find(p => p.id === itemId), [itemId])
+  const promptInfo = useMemo(() => prompts.find(p => p.id === itemId), [itemId, prompts])
 
   const handleCheck = async () => {
     setState({ status: 'loading' })
@@ -535,7 +536,7 @@ function AiCheckSection({ itemId, content, projectId, chapterId }: { itemId: num
       const res = await fetch('/api/ai/deep-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: content, checkId: itemId }),
+        body: JSON.stringify({ text: content, checkId: itemId, prompts: loadPrompts() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || '分析失败')

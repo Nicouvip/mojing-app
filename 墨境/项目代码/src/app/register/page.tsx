@@ -40,10 +40,11 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* 左侧 Logo */}
-      <div className="hidden md:flex w-[480px] bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] items-center justify-center flex-col gap-6 p-12">
-        <Image src="/assets/brand/mojing-logo-main.png" alt="墨境" width={200} height={100} priority className="drop-shadow-2xl" />
-        <p className="text-white/60 text-sm text-center max-w-xs">开始你的创作之旅<br />新人注册即享 AI 写作权益</p>
+      {/* 左侧品牌区 — 暖金色渐变，与首页一致 */}
+      <div className="hidden md:flex w-[480px] items-center justify-center flex-col gap-6 p-12 relative overflow-hidden"
+        style={{ background: 'radial-gradient(ellipse 70% 60% at 25% 45%, rgba(196,149,106,0.35) 0%, rgba(196,149,106,0.12) 35%, transparent 70%), linear-gradient(160deg, #c4956a 0%, #d4a878 25%, #e0c4a0 50%, #ede0d0 80%, #f5f0e8 100%)' }}>
+        <Image src="/assets/brand/mojing-logo-main.png" alt="墨境" width={200} height={100} priority className="drop-shadow-lg" />
+        <p className="text-sm text-center max-w-xs" style={{ color: 'rgba(80,60,40,0.85)' }}>开始你的创作之旅<br />新人注册即享 AI 写作权益</p>
       </div>
 
       {/* 右侧表单 */}

@@ -4,11 +4,12 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { cn } from '@/lib/utils/utils'
-import { LayoutDashboard, Users, Settings, FileText, BarChart3, Database, ChevronRight, BookOpen, Shield, PenLine, Building2, Video, ExternalLink } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, FileText, BarChart3, Database, ChevronRight, BookOpen, Shield, PenLine, BrainCircuit } from 'lucide-react'
 
 const navItems = [
   { href: '/admin', label: '数据看板', icon: LayoutDashboard },
   { href: '/admin/prompts', label: '提示词模板', icon: BookOpen },
+  { href: '/admin/knowledge', label: '知识库管理', icon: BrainCircuit },
   { href: '/admin/compliance', label: '合规规则', icon: Shield },
   { href: '/admin/settings', label: '系统设置', icon: Settings },
   { href: '/admin/pages', label: '页面编辑器', icon: PenLine },

@@ -5,6 +5,7 @@
 // ============================================================
 
 import type { ChapterCheckReport, ChapterCheckItem } from './compliance'
+import { getChapters } from '@/lib/db/store'
 
 /* ─── 存储记录类型 ─── */
 
@@ -217,17 +218,44 @@ export function getProjectQualitySummary(projectId: string) {
 
   const scores = reports.map(r => r.score)
   const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length
+  const bodyDensities = reports.map(r => r.bodyDensity || 0)
+
+  // 趋势分析：比较前半段和后半段
+  const mid = Math.floor(reports.length / 2)
+  const firstHalfAvg = mid > 0 ? reports.slice(0, mid).reduce((s, r) => s + r.score, 0) / mid : avgScore
+  const secondHalfAvg = reports.length > mid ? reports.slice(mid).reduce((s, r) => s + r.score, 0) / (reports.length - mid) : avgScore
+  const trend = secondHalfAvg > firstHalfAvg + 0.3 ? 'up' : secondHalfAvg < firstHalfAvg - 0.3 ? 'down' : 'flat'
+
+  const bestReport = reports.find(r => r.score === Math.max(...scores))
+  const worstReport = reports.find(r => r.score === Math.min(...scores))
+  const totalViolations = reports.reduce((s, r) => s + r.forbiddenA + r.forbiddenB + r.forbiddenC + r.forbiddenD, 0)
 
   return {
-    totalChapters: reports.length,
+    // 基础统计
+    totalChapters: getChapters(projectId).length,
     checkedChapters: reports.length,
     avgScore: Math.round(avgScore * 10) / 10,
     bestChapter: Math.max(...scores),
+    bestChapterOrder: bestReport?.chapterOrder || 0,
     worstChapter: Math.min(...scores),
+    worstChapterOrder: worstReport?.chapterOrder || 0,
     compliantCount: reports.filter(r => r.compliant).length,
     complianceRate: Math.round((reports.filter(r => r.compliant).length / reports.length) * 100),
+    // 字数统计
     avgWordCount: Math.round(reports.reduce((a, b) => a + b.wordCount, 0) / reports.length),
     totalWords: reports.reduce((a, b) => a + b.wordCount, 0),
+    // 身体密度与违规聚合
+    avgBodyDensity: Math.round(bodyDensities.reduce((a, b) => a + b, 0) / bodyDensities.length),
+    avgForbiddenA: Math.round(reports.reduce((s, r) => s + r.forbiddenA, 0) / reports.length),
+    avgForbiddenB: Math.round(reports.reduce((s, r) => s + r.forbiddenB, 0) / reports.length),
+    avgForbiddenC: Math.round(reports.reduce((s, r) => s + r.forbiddenC, 0) / reports.length),
+    avgForbiddenD: Math.round(reports.reduce((s, r) => s + r.forbiddenD, 0) / reports.length),
+    totalViolations,
+    // 55字生死线
+    openingHookRate: Math.round((reports.filter(r => r.openingHook).length / reports.length) * 100),
+    // 趋势
+    trendDirection: trend,
+    // 原始数据
     reports,
   }
 }
@@ -259,12 +287,41 @@ export function saveAiResults(
   chapterId: string,
   results: Record<number, { status: string; reason: string; detail: string }>,
 ) {
-  const existing = getChapterReport(projectId, chapterId)
-  if (!existing) return
+  let existing = getChapterReport(projectId, chapterId)
+  // 如果报告还没保存，自动创建占位记录，避免 AI 结果丢失
+  if (!existing) {
+    existing = {
+      id: `${projectId}_${chapterId}_${Date.now()}`,
+      projectId,
+      chapterId,
+      chapterTitle: '',
+      chapterOrder: 0,
+      score: 0,
+      compliant: false,
+      wordCount: 0,
+      bodyDensity: 0,
+      bodyDensityStatus: '',
+      openingHook: false,
+      forbiddenA: 0,
+      forbiddenB: 0,
+      forbiddenC: 0,
+      forbiddenD: 0,
+      items: [],
+      reportLine: '',
+      aiResults: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+  }
   existing.aiResults = results
   existing.updatedAt = Date.now()
   try {
     localStorage.setItem(recordKey(projectId, chapterId), JSON.stringify(existing))
+    // 更新索引
+    const idx = getIndex()
+    if (!idx[projectId]) idx[projectId] = []
+    if (!idx[projectId].includes(chapterId)) idx[projectId].push(chapterId)
+    saveIndex(idx)
   } catch {}
 }
 

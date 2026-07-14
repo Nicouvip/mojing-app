@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { abTestManager } from '@/lib/prompts'
 import type { ABExperiment } from '@/lib/prompts'
-import { FlaskConical, Play, Pause, Square, Trophy } from 'lucide-react'
+import { FlaskConical, Play, Square, Trophy } from 'lucide-react'
 import { cn } from '@/lib/utils/utils'
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {

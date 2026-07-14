@@ -1,15 +1,19 @@
-import { exec } from 'child_process'
+import { execFile } from 'child_process'
 import { readdir, stat } from 'fs/promises'
 import { join } from 'path'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/admin-auth'
 
 const BACKUP_DIR = join(process.cwd(), '..', 'backups', 'auto')
 const PYTHON_SCRIPT = join(process.cwd(), '..', 'mojing-docs', 'auto-backup.py')
 
 export async function GET() {
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
+
   try {
     const dir = BACKUP_DIR
-    let files: { name: string; size: number; mtime: number }[] = []
+    const files: { name: string; size: number; mtime: number }[] = []
     try {
       const entries = await readdir(dir)
       for (const name of entries) {
@@ -20,24 +24,33 @@ export async function GET() {
         }
       }
       files.sort((a, b) => b.mtime - a.mtime)
-    } catch {
-      // 备份目录不存在
+    } catch (e) {
+      console.error('[backup] 读取备份目录失败:', e)
     }
     return NextResponse.json({ backups: files })
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    console.error('[backup] 列出备份失败:', err)
+    return NextResponse.json({ error: '获取备份列表失败' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
+
   try {
     const body = await request.json().catch(() => ({}))
-    const flag = body.mode === 'app' ? '--app-only' : body.mode === 'docs' ? '--docs-only' : ''
+    const mode = body.mode
+    const args: string[] = []
 
-    const cmd = `python "${PYTHON_SCRIPT}" ${flag}`
-    
+    if (mode === 'app') {
+      args.push('--app-only')
+    } else if (mode === 'docs') {
+      args.push('--docs-only')
+    }
+
     const result = await new Promise<string>((resolve, reject) => {
-      exec(cmd, { timeout: 120_000 }, (error, stdout, stderr) => {
+      execFile('python', [PYTHON_SCRIPT, ...args], { timeout: 120_000 }, (error, stdout, stderr) => {
         if (error) {
           reject(new Error(stderr || error.message))
         } else {
@@ -48,6 +61,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, output: result })
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    console.error('[backup] 执行备份失败:', err)
+    return NextResponse.json({ error: '备份执行失败' }, { status: 500 })
   }
 }

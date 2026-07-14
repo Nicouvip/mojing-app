@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAllUsers, setUserBanned } from '@/lib/db/auth-store'
+import { requireAdmin } from '@/lib/admin-auth'
 
 /**
  * GET /api/admin/users
  * 返回所有用户列表（不含密码哈希）
  */
 export async function GET() {
-  const users = getAllUsers()
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
+
+  const users = await getAllUsers()
   return NextResponse.json({ users })
 }
 
@@ -16,6 +20,9 @@ export async function GET() {
  * Body: { email: string, banned: boolean }
  */
 export async function PATCH(req: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
+
   try {
     const { email, banned }: { email: string; banned: boolean } = await req.json()
     if (!email) {

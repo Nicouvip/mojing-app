@@ -83,7 +83,7 @@ export function CoolingMatrix({ currentChapter, coolingState }: CoolingMatrixPro
       {open && (
         <div className="px-3 pb-3 space-y-2">
           {/* Tab */}
-          <div className="flex gap-1">
+          <div className="flex gap-1" role="tablist">
             {(['scene','ending','hook'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 aria-label={t === 'scene' ? '场景方法' : t === 'ending' ? '章末收束' : '钩子类型'}

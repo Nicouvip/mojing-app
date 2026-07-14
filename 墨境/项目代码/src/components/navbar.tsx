@@ -6,8 +6,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAuth } from '@/lib/db/auth-context'
 import { useTheme } from '@/lib/utils/theme-context'
-import { Button } from '@/components/ui/button'
-import { Menu, X, Sun, Sunrise, Moon, Snowflake, Plus } from 'lucide-react'
+import { isAdminEmail } from '@/lib/admin-auth'
+
+import { Menu, X, Sun, Sunrise, Moon, Snowflake } from 'lucide-react'
 
 export interface NavbarProps {
   /** 覆盖默认的 h-14，首页使用 h-16 */
@@ -50,12 +51,9 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
-  // 检测管理员身份
+  // 检测管理员身份（白名单机制，见 admin-auth.ts）
   useEffect(() => {
-    setIsAdmin(!!(user?.email && (
-      user.email.includes('admin') ||
-      user.email === 'mojing@admin.com'
-    )))
+    setIsAdmin(isAdminEmail(user?.email))
   }, [user])
 
   // 路由变化时关闭抽屉
@@ -82,8 +80,8 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
               src="/assets/brand/mojing-logo-nav.png"
               alt="墨境"
               width={160}
-              height={36}
-              className="h-9 w-auto"
+              height={53}
+              className="h-8 w-auto max-w-[140px] object-contain"
               priority
             />
           </Link>
@@ -169,7 +167,7 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
               href="/desk"
               className="h-9 px-5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover hover:-translate-y-0.5 transition-all duration-300 shadow-card hover:shadow-hover flex items-center"
             >
-              开始创作
+              返回书桌
             </Link>
 
             {extraRight}
@@ -209,9 +207,9 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
             <Image
               src="/assets/brand/mojing-logo-nav.png"
               alt="墨境"
-              height={32}
-              width={110}
-              className="h-8 w-auto"
+              height={36}
+              width={108}
+              className="h-8 w-auto max-w-[120px] object-contain"
             />
             <button
               onClick={() => setMobileOpen(false)}

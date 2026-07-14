@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { fetchWithTimeout, FetchRetryError } from '@/lib/utils/fetch-with-timeout'
+import { DEEPSEEK_API_URL, DEEPSEEK_MODEL } from '@/lib/ai/constants'
 
 const API_KEY = process.env.DEEPSEEK_API_KEY
-const API_URL = 'https://api.deepseek.com/chat/completions'
+const API_URL = DEEPSEEK_API_URL
 
 export async function POST(req: Request) {
   try {
@@ -41,7 +42,7 @@ ${currentHtml ? `需要重新设计的页面内容：\n${currentHtml.substring(0
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: DEEPSEEK_MODEL,
         messages: [{ role: 'user', content: systemPrompt }],
         max_tokens: 4096,
         temperature: 0.7,

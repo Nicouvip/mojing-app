@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { fetchWithTimeout, FetchRetryError } from '@/lib/utils/fetch-with-timeout'
+import { DEEPSEEK_API_URL, DEEPSEEK_MODEL } from '@/lib/ai/constants'
 
 const API_KEY = process.env.DEEPSEEK_API_KEY
-const API_URL = 'https://api.deepseek.com/chat/completions'
+const API_URL = DEEPSEEK_API_URL
 
 export async function POST(req: Request) {
   try {
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: DEEPSEEK_MODEL,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 2048,
         temperature: 1.1,

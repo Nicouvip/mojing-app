@@ -237,3 +237,167 @@ CREATE INDEX IF NOT EXISTS idx_materials_custom_id    ON public.materials (custo
 --
 -- 5. 搜索标签
 --    SELECT * FROM materials WHERE tags @> ARRAY['世界观'] AND deleted_at IS NULL;
+
+
+-- ============================================================
+-- P1 新增：写作引擎表
+-- 来源：V10.0.2 模板 + 5个知识库
+-- ============================================================
+
+-- 6. characters 表扩展字段（ALTER 而非重建，不破坏现有数据）
+DO $$
+BEGIN
+  -- 核心性格（≤20字）
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='characters' AND column_name='core_personality') THEN
+    ALTER TABLE public.characters ADD COLUMN core_personality TEXT NOT NULL DEFAULT '';
+  END IF;
+  -- 核心欲望
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='characters' AND column_name='core_desire') THEN
+    ALTER TABLE public.characters ADD COLUMN core_desire TEXT NOT NULL DEFAULT '';
+  END IF;
+  -- 核心障碍
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='characters' AND column_name='core_obstacle') THEN
+    ALTER TABLE public.characters ADD COLUMN core_obstacle TEXT NOT NULL DEFAULT '';
+  END IF;
+  -- 标志性身体习惯（JSONB数组）
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='characters' AND column_name='body_habits') THEN
+    ALTER TABLE public.characters ADD COLUMN body_habits JSONB DEFAULT '[]'::jsonb;
+  END IF;
+  -- 感官通道偏好（JSONB数组）
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='characters' AND column_name='sensory_channels') THEN
+    ALTER TABLE public.characters ADD COLUMN sensory_channels JSONB DEFAULT '[]'::jsonb;
+  END IF;
+  -- 意象类型偏好（JSONB数组）
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='characters' AND column_name='imagery_types') THEN
+    ALTER TABLE public.characters ADD COLUMN imagery_types JSONB DEFAULT '[]'::jsonb;
+  END IF;
+  -- 比喻域偏好（JSONB数组）
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='characters' AND column_name='metaphor_domains') THEN
+    ALTER TABLE public.characters ADD COLUMN metaphor_domains JSONB DEFAULT '[]'::jsonb;
+  END IF;
+END $$;
+
+-- 7. world_settings — 世界观设定表
+CREATE TABLE IF NOT EXISTS public.world_settings (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  custom_id   TEXT UNIQUE,
+  project_id  UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  category    TEXT NOT NULL DEFAULT 'custom'
+              CHECK (category IN ('time_location', 'power_system', 'rules', 'custom')),
+  title       TEXT NOT NULL DEFAULT '',
+  content     TEXT NOT NULL DEFAULT '',
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER set_world_settings_updated_at
+  BEFORE UPDATE ON public.world_settings
+  FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_world_settings_project_id ON public.world_settings (project_id);
+CREATE INDEX IF NOT EXISTS idx_world_settings_custom_id ON public.world_settings (custom_id);
+
+-- 8. foreshadows — 伏笔表
+CREATE TABLE IF NOT EXISTS public.foreshadows (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  custom_id       TEXT UNIQUE,
+  project_id      UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  content         TEXT NOT NULL DEFAULT '',
+  importance      TEXT NOT NULL DEFAULT 'minor'
+                  CHECK (importance IN ('major', 'minor')),
+  status          TEXT NOT NULL DEFAULT 'active'
+                  CHECK (status IN ('active', 'resolved', 'abandoned')),
+  chapter_planted INTEGER NOT NULL DEFAULT 0,
+  chapter_planned_resolution INTEGER,
+  chapter_resolved INTEGER,
+  related_characters JSONB DEFAULT '[]'::jsonb,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER set_foreshadows_updated_at
+  BEFORE UPDATE ON public.foreshadows
+  FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_foreshadows_project_id ON public.foreshadows (project_id);
+CREATE INDEX IF NOT EXISTS idx_foreshadows_status ON public.foreshadows (status);
+CREATE INDEX IF NOT EXISTS idx_foreshadows_custom_id ON public.foreshadows (custom_id);
+
+-- 9. cooling_states — 冷却状态表（按项目唯一）
+CREATE TABLE IF NOT EXISTS public.cooling_states (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  custom_id            TEXT UNIQUE,
+  project_id           UUID NOT NULL UNIQUE REFERENCES public.projects(id) ON DELETE CASCADE,
+  senses               JSONB DEFAULT '{}'::jsonb,
+  sentences            JSONB DEFAULT '{}'::jsonb,
+  scenes               JSONB DEFAULT '{}'::jsonb,
+  endings              JSONB DEFAULT '{}'::jsonb,
+  hooks                JSONB DEFAULT '{}'::jsonb,
+  emotions             JSONB DEFAULT '[]'::jsonb,
+  progressive_judgment JSONB DEFAULT '{}'::jsonb,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER set_cooling_states_updated_at
+  BEFORE UPDATE ON public.cooling_states
+  FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_cooling_states_project_id ON public.cooling_states (project_id);
+CREATE INDEX IF NOT EXISTS idx_cooling_states_custom_id ON public.cooling_states (custom_id);
+
+-- 10. chapter_reports — 章末自检报告表
+CREATE TABLE IF NOT EXISTS public.chapter_reports (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  custom_id       TEXT UNIQUE,
+  project_id      UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  chapter_id      UUID NOT NULL REFERENCES public.chapters(id) ON DELETE CASCADE,
+  chapter_order   INTEGER NOT NULL DEFAULT 0,
+  score           INTEGER NOT NULL DEFAULT 0 CHECK (score BETWEEN 0 AND 5),
+  compliant       BOOLEAN NOT NULL DEFAULT false,
+  forbidden_a     INTEGER NOT NULL DEFAULT 0,
+  forbidden_b     INTEGER NOT NULL DEFAULT 0,
+  forbidden_c     INTEGER NOT NULL DEFAULT 0,
+  forbidden_d     INTEGER NOT NULL DEFAULT 0,
+  body_density    INTEGER NOT NULL DEFAULT 0,
+  opening_hook    BOOLEAN NOT NULL DEFAULT false,
+  items           JSONB DEFAULT '[]'::jsonb,
+  ai_results      JSONB,
+  report_line     TEXT NOT NULL DEFAULT '',
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chapter_reports_project_id ON public.chapter_reports (project_id);
+CREATE INDEX IF NOT EXISTS idx_chapter_reports_chapter_id ON public.chapter_reports (chapter_id);
+CREATE INDEX IF NOT EXISTS idx_chapter_reports_order ON public.chapter_reports (project_id, chapter_order);
+CREATE INDEX IF NOT EXISTS idx_chapter_reports_custom_id ON public.chapter_reports (custom_id);
+
+-- 11. writing_plans — 写作计划卡片表
+CREATE TABLE IF NOT EXISTS public.writing_plans (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  custom_id         TEXT UNIQUE,
+  project_id        UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  chapter_order     INTEGER NOT NULL DEFAULT 0,
+  conflict_level    TEXT NOT NULL DEFAULT 'L2'
+                    CHECK (conflict_level IN ('L1', 'L2', 'L3', 'L4', 'L5')),
+  style             TEXT NOT NULL DEFAULT '快消口语'
+                    CHECK (style IN ('冷峻白描', '快消口语', '感官极值')),
+  scene_method      TEXT NOT NULL DEFAULT '',
+  sensory_anchors   JSONB DEFAULT '[]'::jsonb,
+  body_anchors      JSONB DEFAULT '[]'::jsonb,
+  ending_type       TEXT NOT NULL DEFAULT '',
+  hook_type         TEXT NOT NULL DEFAULT '',
+  special_techniques JSONB DEFAULT '[]'::jsonb,
+  status_line       TEXT NOT NULL DEFAULT '',
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER set_writing_plans_updated_at
+  BEFORE UPDATE ON public.writing_plans
+  FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_writing_plans_project_id ON public.writing_plans (project_id);
+CREATE INDEX IF NOT EXISTS idx_writing_plans_order ON public.writing_plans (project_id, chapter_order);
+CREATE INDEX IF NOT EXISTS idx_writing_plans_custom_id ON public.writing_plans (custom_id);

@@ -22,20 +22,17 @@ let memChapters: Chapter[] = [
 ]
 let loadedFromSupabase = false
 let loadedFromTurso = false
+
+/** 判断 Turso 是否可用 */
+function isTursoAvailable(): boolean {
+  const url = process.env.TURSO_DATABASE_URL
+  const token = process.env.TURSO_AUTH_TOKEN
+  return !!url && !!token && url.length > 10 && token.length > 10
+}
 /** 当前用户 ID（由客户端在初始化时设置） */
 let currentUserId: string | undefined
-let _tursoAvailable: boolean | null = null
 
 function isClient(): boolean { return typeof window !== 'undefined' }
-
-/** 判断 Turso 是否可用（缓存结果，只检测一次） */
-export function isTursoAvailable(): boolean {
-  if (_tursoAvailable !== null) return _tursoAvailable
-  const url = process.env.NEXT_PUBLIC_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL
-  const token = process.env.NEXT_PUBLIC_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN
-  _tursoAvailable = !!url && !!token && url.length > 10 && token.length > 10
-  return _tursoAvailable
-}
 
 /**
  * 设置当前用户 ID，供 syncToSupabase 做行级隔离
@@ -47,9 +44,12 @@ export function setCurrentUserId(id: string | undefined) {
 
 /** 获取当前用户 ID */
 export function getCurrentUserId(): string | undefined {
+  // 服务端尝试从 NextAuth session 获取
   if (!isClient()) {
+    // 服务端环境下跳过（syncToSupabase 主要在客户端触发）
     return currentUserId
   }
+  // 客户端从 localStorage 读取
   if (!currentUserId && typeof window !== 'undefined') {
     try {
       const stored = localStorage.getItem('mojing_auth')
@@ -62,21 +62,27 @@ export function getCurrentUserId(): string | undefined {
   return currentUserId
 }
 
-// ──────────────────────────────────────────────
-// store 初始化 —— 从云端加载数据
-// ──────────────────────────────────────────────
-
-/** 从 Turso 加载数据到内存缓存 + localStorage */
-export async function loadFromTurso(): Promise<boolean> {
-  if (!isTursoAvailable() || loadedFromTurso) return false
+// Load from Supabase, fall back to localStorage
+function loadClient<T>(key: string, fallback: T): T {
   try {
-    const uid = getCurrentUserId()
-    const projects = await tursoGetProjects(uid)
+    const d = localStorage.getItem('mojing_' + key)
+    return d ? JSON.parse(d) as T : fallback
+  } catch { return fallback }
+}
+
+function saveClient<T>(key: string, data: T) {
+  try { localStorage.setItem('mojing_' + key, JSON.stringify(data)) } catch {}
+}
+
+async function loadFromTurso() {
+  if (!isTursoAvailable() || loadedFromTurso) return
+  try {
+    const projects = await tursoGetProjects()
     if (projects.length > 0) {
       memProjects = projects
       if (isClient()) saveClient('projects', projects)
     }
-    // 加载所有项目的章节、卷和其他数据
+    // 加载所有项目的章节
     const allChapters: Chapter[] = []
     const allVolumes: Volume[] = []
     const allCharProfiles: CharacterProfile[] = []
@@ -112,49 +118,8 @@ export async function loadFromTurso(): Promise<boolean> {
     if (allOutlines.length > 0 && isClient()) saveClient('outlines', allOutlines)
     if (allForeshadows.length > 0 && isClient()) saveClient('foreshadows', allForeshadows)
     loadedFromTurso = true
-    return true
   } catch (err) {
     console.warn('[store] loadFromTurso 失败：', err)
-    return false
-  }
-}
-
-/** 初始化 store：从 Turso → Supabase → localStorage 依次尝试加载 */
-export async function initStore(): Promise<void> {
-  if (!isClient()) return
-  const uid = getCurrentUserId()
-  if (uid) setCurrentUserId(uid)
-  // 优先 Turso
-  const tursoLoaded = await loadFromTurso()
-  if (!tursoLoaded) {
-    // Turso 不可用时尝试 Supabase
-    await loadFromSupabase()
-  }
-  startCleanupTimer()
-}
-
-// ──────────────────────────────────────────────
-// 数据同步（变更后自动推送）
-// ──────────────────────────────────────────────
-
-/** 将内存数据同步到 Turso */
-async function syncToTurso(): Promise<void> {
-  if (!isTursoAvailable()) return
-  try {
-    const uid = getCurrentUserId()
-    const userProjects = uid
-      ? memProjects.filter(p => !p.userId || p.userId === uid)
-      : memProjects
-    const userChapters = uid
-      ? memChapters.filter(c => !c.userId || c.userId === uid)
-      : memChapters
-    await Promise.all([
-      ...userProjects.map(p => tursoSaveProject(p).catch(() => {})),
-      ...userChapters.map(c => tursoSaveChapter(c).catch(() => {})),
-      ...memVolumes.map(v => tursoSaveVolume(v).catch(() => {})),
-    ])
-  } catch (err) {
-    console.warn('[store] syncToTurso 失败：', err)
   }
 }
 
@@ -182,12 +147,15 @@ async function syncToSupabase() {
   if (!isSupabaseAvailable()) return
   try {
     const uid = getCurrentUserId()
+
+    // 按用户 ID 过滤后再同步，避免跨用户数据覆盖
     const userProjects = uid
       ? memProjects.filter(p => !p.userId || p.userId === uid)
       : memProjects
     const userChapters = uid
       ? memChapters.filter(c => !c.userId || c.userId === uid)
       : memChapters
+
     if (userProjects.length > 0) {
       await supabase!.from('projects').upsert(
         uid ? userProjects.map(p => ({ ...p, userId: uid })) : userProjects
@@ -203,24 +171,43 @@ async function syncToSupabase() {
   }
 }
 
-// ──────────────────────────────────────────────
-// localStorage 读写
-// ──────────────────────────────────────────────
-
-function loadClient<T>(key: string, fallback: T): T {
+/** 将内存数据增量同步到 Turso */
+async function syncToTurso() {
+  if (!isTursoAvailable()) return
   try {
-    const d = localStorage.getItem('mojing_' + key)
-    return d ? JSON.parse(d) as T : fallback
-  } catch { return fallback }
-}
+    const uid = getCurrentUserId()
+    const userProjects = uid
+      ? memProjects.filter(p => !p.userId || p.userId === uid)
+      : memProjects
+    const userChapters = uid
+      ? memChapters.filter(c => !c.userId || c.userId === uid)
+      : memChapters
 
-function saveClient<T>(key: string, data: T) {
-  try { localStorage.setItem('mojing_' + key, JSON.stringify(data)) } catch {}
-}
+    // 同步核心实体
+    await Promise.all([
+      ...userProjects.map(p => tursoSaveProject(p).catch(() => {})),
+      ...userChapters.map(c => tursoSaveChapter(c).catch(() => {})),
+      ...memVolumes.map(v => tursoSaveVolume(v).catch(() => {})),
+    ])
 
-// ──────────────────────────────────────────────
-// 项目（Project）CRUD
-// ──────────────────────────────────────────────
+    // 同步 localStorage 实体
+    if (isClient()) {
+      const charProfiles = loadClient<CharacterProfile[]>('character_profiles', [])
+      const worldSettings = loadClient<WorldSetting[]>('world_settings', [])
+      const outlines = loadClient<Outline[]>('outlines', [])
+      const foreshadows = loadClient<Foreshadow[]>('foreshadows', [])
+
+      await Promise.all([
+        ...charProfiles.map(p => tursoSaveCharacterProfile(p).catch(() => {})),
+        ...worldSettings.map(ws => tursoSaveWorldSetting(ws).catch(() => {})),
+        ...outlines.map(o => tursoUpsertOutline(o).catch(() => {})),
+        ...foreshadows.map(f => tursoSaveForeshadow(f).catch(() => {})),
+      ])
+    }
+  } catch (err) {
+    console.warn('[store] syncToTurso 失败：', err)
+  }
+}
 
 function getProjectsAll(includeDeleted = false): Project[] {
   let list: Project[]
@@ -232,6 +219,20 @@ function getProjectsAll(includeDeleted = false): Project[] {
 function setProjectsAll(p: Project[]) {
   memProjects = p
   if (isClient()) saveClient('projects', p)
+  syncToSupabase()
+  syncToTurso()
+}
+
+function getChaptersAll(includeDeleted = false): Chapter[] {
+  let list: Chapter[]
+  if (isClient()) list = loadClient('chapters', memChapters)
+  else list = memChapters
+  if (!includeDeleted) list = list.filter(c => !c.deletedAt)
+  return list
+}
+function setChaptersAll(c: Chapter[]) {
+  memChapters = c
+  if (isClient()) saveClient('chapters', c)
   syncToSupabase()
   syncToTurso()
 }
@@ -307,28 +308,11 @@ export function restoreProject(id: string): void {
   setChaptersAll(chapters)
 }
 
-// ──────────────────────────────────────────────
-// 章节（Chapter）CRUD
-// ──────────────────────────────────────────────
-
-function getChaptersAll(includeDeleted = false): Chapter[] {
-  let list: Chapter[]
-  if (isClient()) list = loadClient('chapters', memChapters)
-  else list = memChapters
-  if (!includeDeleted) list = list.filter(c => !c.deletedAt)
-  return list
-}
-function setChaptersAll(c: Chapter[]) {
-  memChapters = c
-  if (isClient()) saveClient('chapters', c)
-  syncToSupabase()
-  syncToTurso()
-}
-
 export function createChapter(projectId: string, title: string, volumeId?: string): Chapter | undefined {
   const proj = getProjectsAll().find(p => p.id === projectId)
   if (!proj) return undefined
   const chapters = getChaptersAll(true)
+  // 默认归入第一个卷
   const targetVolumeId = volumeId || ensureDefaultVolume(projectId).id
   const ch: Chapter = {
     id: `ch-${Date.now()}`, projectId, title, content: '',
@@ -359,6 +343,9 @@ export function deleteChapter(id: string): void {
 export function getTrash(): Chapter[] {
   if (typeof window === 'undefined') return []
   return getChaptersAll(true).filter(c => c.deletedAt)
+}
+function saveTrash(t: Chapter[]) {
+  // 不再使用独立 trash 存储，deletedAt 已内联到 chapters
 }
 
 export function restoreChapter(id: string): void {
@@ -406,10 +393,7 @@ export function updateChapterContent(id: string, content: string): Chapter | und
   return ch
 }
 
-// ──────────────────────────────────────────────
-// 卷（Volume）管理
-// ──────────────────────────────────────────────
-
+// ── 卷管理 ──────────────────────────────────────────
 let memVolumes: Volume[] = []
 
 function getVolumesAll(): Volume[] {
@@ -479,10 +463,7 @@ export function ensureDefaultVolume(projectId: string): Volume {
   return vols[0]
 }
 
-// ──────────────────────────────────────────────
-// 30天自动清理软删除数据
-// ──────────────────────────────────────────────
-
+// ── 30天自动清理软删除数据 ──────────────────────────────
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
 /** 永久清除超过30天的软删除数据 */
@@ -524,7 +505,8 @@ export function startCleanupTimer(): void {
   if (cleanupTimer || typeof window === 'undefined') return
   cleanupTimer = setInterval(() => {
     purgeExpiredDeletes()
-  }, 60 * 60 * 1000)
+  }, 60 * 60 * 1000) // 1 小时
+  // 启动后立即执行一次
   purgeExpiredDeletes()
 }
 
@@ -536,9 +518,14 @@ export function stopCleanupTimer(): void {
   }
 }
 
+// 客户端自动启动
+if (typeof window !== 'undefined') {
+  startCleanupTimer()
+}
+
 // ═══════════════════════════════════════════
 // P1 新增：写作引擎 CRUD 函数
-// 跟随现有模式：localStorage + Turso sync
+// 跟随现有模式：localStorage + Supabase sync
 // ═══════════════════════════════════════════
 
 // ── 角色档案 ──
@@ -566,6 +553,7 @@ export function createCharacterProfile(input: Omit<CharacterProfile, 'id' | 'cre
   }
   all.push(profile)
   if (isClient()) saveClient('character_profiles', all)
+  // Turso 同步
   if (isTursoAvailable()) { tursoSaveCharacterProfile(profile).catch(() => {}) }
   return profile
 }
@@ -577,6 +565,7 @@ export function updateCharacterProfile(id: string, patch: Partial<CharacterProfi
   if (idx < 0) return undefined
   all[idx] = { ...all[idx], ...patch, updatedAt: Date.now() }
   saveClient('character_profiles', all)
+  // Turso 同步
   if (isTursoAvailable()) { tursoSaveCharacterProfile(all[idx]).catch(() => {}) }
   return all[idx]
 }
@@ -585,6 +574,7 @@ export function deleteCharacterProfile(id: string): void {
   if (!isClient()) return
   const all = loadClient<CharacterProfile[]>('character_profiles', [])
   saveClient('character_profiles', all.filter(c => c.id !== id))
+  // Turso 同步
   if (isTursoAvailable()) { tursoDeleteCharacterProfile(id).catch(() => {}) }
 }
 

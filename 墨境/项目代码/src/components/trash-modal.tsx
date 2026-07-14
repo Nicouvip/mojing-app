@@ -17,7 +17,7 @@ interface Props {
 export function TrashModal({ show, onClose, trashChapters, selectedTrashId, onSelect, onRestore, onDelete }: Props) {
   if (!show) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="回收站" onClick={onClose}>
       <div className="bg-white rounded-[20px] shadow-modal border border-border w-[720px] max-h-[80vh] flex flex-col modal-enter" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-lg font-semibold">回收站</h2>

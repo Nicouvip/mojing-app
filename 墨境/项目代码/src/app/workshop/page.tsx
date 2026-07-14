@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { getProjects, getChapters } from '@/lib/db/store'
 import { checkCompliance, check55Rule, calcBodyDensity } from '@/lib/ai/compliance'
-import type { Project, Chapter } from '@/lib/db/types'
+import type { Chapter } from '@/lib/db/types'
 import type { ComplianceResult } from '@/lib/ai/compliance'
 import { Card, CardContent } from '@/components/ui/card'
-import { CheckCircle2, AlertTriangle, XCircle, RefreshCw, BookOpen } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, RefreshCw, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils/utils'
 
 interface ChapterReport {
@@ -86,7 +87,7 @@ export default function WorkshopPage() {
     <div className="min-h-screen bg-background">
       <header className="h-14 px-6 flex items-center justify-between border-b border-border bg-card/80">
         <div className="flex items-center gap-4">
-          <a href="/" className="text-sm text-muted-foreground hover:text-foreground">← 返回</a>
+          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">← 返回</Link>
           <h1 className="text-sm font-medium text-foreground">投稿质检中心</h1>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -102,7 +103,7 @@ export default function WorkshopPage() {
           <div className="text-center py-20">
             <BookOpen className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
             <p className="text-muted-foreground text-sm">暂无章节可供检测</p>
-            <a href="/" className="text-sm text-primary hover:underline mt-2 inline-block">← 返回首页创建作品</a>
+            <Link href="/" className="text-sm text-primary hover:underline mt-2 inline-block">← 返回首页创建作品</Link>
           </div>
         ) : (
           <>

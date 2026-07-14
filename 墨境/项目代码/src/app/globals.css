@@ -38,11 +38,14 @@
   --shadow-elevated: 0 8px 20px rgba(0,0,0,0.3);
   --shadow-hover: 0 4px 12px rgba(196,149,106,0.15);
   --shadow-modal: 0 12px 32px rgba(0,0,0,0.4);
+}
+
+:root {
   --color-foreground: #0f172a;
-  --color-primary: #6b8c6e;
+  --color-primary: #c4956a;
   --color-primary-foreground: #ffffff;
-  --color-primary-light: #eef4ef;
-  --color-primary-hover: #5a7a5d;
+  --color-primary-light: rgba(196,149,106,0.12);
+  --color-primary-hover: #b8895a;
   --color-secondary: #f0f2f5;
   --color-secondary-foreground: #0f172a;
   --color-muted: #f0f2f5;
@@ -69,7 +72,9 @@
   --color-sidebar-foreground: #1e293b;
   --color-sidebar-hover: rgba(0,0,0,0.04);
   --color-sidebar-active: rgba(107,140,110,0.08);
+}
 
+:root {
   --shadow-card: 0 2px 8px rgba(0,0,0,0.05);
   --shadow-elevated: 0 8px 20px rgba(0,0,0,0.06);
   --shadow-hover: 0 8px 20px rgba(0,0,0,0.06);
@@ -139,6 +144,9 @@ textarea:focus-visible {
   font-family: var(--font-serif);
   font-size: 15px;
   line-height: 2;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
   letter-spacing: 0.04em;
   padding: 3rem 3.5rem;
   min-height: 80vh;
@@ -293,6 +301,36 @@ h1 + p, h2 + p { text-indent: 0; }
     rgba(255,255,255,0.06) 15%,
     rgba(255,255,255,0.10) 50%,
     rgba(255,255,255,0.06) 85%,
+    transparent 100%
+  );
+}
+/* 暖光主题玻璃面板 */
+.theme-warm .glass-panel {
+  background: rgba(245,238,230,0.82);
+  border-color: rgba(180,150,120,0.25);
+  box-shadow: 0 2px 8px rgba(120,90,60,0.08);
+}
+.theme-warm .glass-panel::before {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(180,150,120,0.12) 15%,
+    rgba(180,150,120,0.18) 50%,
+    rgba(180,150,120,0.12) 85%,
+    transparent 100%
+  );
+}
+/* 冷光主题玻璃面板 */
+.theme-cool .glass-panel {
+  background: rgba(240,244,248,0.82);
+  border-color: rgba(180,190,200,0.30);
+  box-shadow: 0 2px 8px rgba(60,80,100,0.08);
+}
+.theme-cool .glass-panel::before {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(180,190,200,0.12) 15%,
+    rgba(180,190,200,0.18) 50%,
+    rgba(180,190,200,0.12) 85%,
     transparent 100%
   );
 }
@@ -718,6 +756,22 @@ h1 + p, h2 + p { text-indent: 0; }
     transparent 1.5em,
     rgba(255,255,255,0.04) 1.5em,
     rgba(255,255,255,0.04) 1.51em
+  );
+}
+.theme-warm .ProseMirror {
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 1.5em,
+    rgba(120,90,60,0.05) 1.5em,
+    rgba(120,90,60,0.05) 1.51em
+  );
+}
+.theme-cool .ProseMirror {
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 1.5em,
+    rgba(60,80,120,0.04) 1.5em,
+    rgba(60,80,120,0.04) 1.51em
   );
 }
 

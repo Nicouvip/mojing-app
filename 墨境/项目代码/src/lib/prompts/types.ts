@@ -184,6 +184,46 @@ export interface BuildOptions {
   usedSenses?: string[]
   /** P2-1: 每场景最少感官数（默认2） */
   requiredSensesCount?: number
+
+  // ═══ P2-6: L3 上下文注入参数 ═══
+  /** 角色档案（从 DB 读取，按出场角色筛选） */
+  characterProfiles?: Array<{
+    name: string
+    corePersonality: string
+    speakingStyle: string
+    bodyHabits: string[]
+    sensoryChannels: string[]
+  }>
+  /** 世界观设定（从 DB 读取） */
+  worldSettings?: Array<{
+    title: string
+    content: string
+  }>
+  /** 冷却状态（从 DB 读取） */
+  coolingState?: {
+    scenes: Record<string, number[]>
+    endings: Record<string, number[]>
+    hooks: Record<string, number[]>
+    senses: Record<string, number[]>
+    emotions: string[]
+  } | null
+  /** 活跃伏笔（从 DB 读取） */
+  activeForeshadows?: Array<{
+    content: string
+    importance: string
+    chapterPlanted: number
+  }>
+  /** 上章检测结果（从 DB 读取） */
+  lastReport?: {
+    score: number
+    compliant: boolean
+    forbiddenA: number
+    forbiddenB: number
+    forbiddenC: number
+    forbiddenD: number
+    bodyDensity: number
+    reportLine: string
+  } | null
 }
 
 /**

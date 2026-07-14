@@ -8,7 +8,7 @@ export interface Project {
   deletedAt?: number | null
   chapterCount: number
   totalWords: number
-  /** 所属用户 ID（用于行级隔离） */
+  /** 所属用户 ID（用于 Supabase 行级隔离） */
   userId?: string
 }
 
@@ -31,7 +31,7 @@ export interface Chapter {
   status: 'draft' | 'writing' | 'review' | 'completed'
   /** 所属卷 ID，空字符串表示未分类 */
   volumeId?: string
-  /** 所属用户 ID（用于行级隔离） */
+  /** 所属用户 ID（用于 Supabase 行级隔离） */
   userId?: string
 }
 
@@ -65,14 +65,18 @@ export interface CharacterProfile {
   projectId: string
   name: string
   type: '主角' | '配角' | '反派' | '次要角色' | '客串'
+  // 核心设定
   corePersonality: string
   speakingStyle: string
   coreDesire: string
   coreObstacle: string
+  // 身体描写
   bodyHabits: string[]
+  // 描写指纹
   sensoryChannels: string[]
   imageryTypes: string[]
   metaphorDomains: string[]
+  // 成长记录
   initialPersonality: string
   currentPersonality: string
   growthHistory: CharacterGrowth[]

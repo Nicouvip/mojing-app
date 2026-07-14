@@ -17,16 +17,24 @@ export default function AccountPage() {
   const [totalWords, setTotalWords] = useState(0)
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('mojing_token') : null
-    const savedUser = typeof window !== 'undefined' ? localStorage.getItem('mojing_user') : null
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('mojing_auth') : null
 
-    if (!token) {
+    if (!stored) {
       router.push('/login')
       return
     }
 
-    if (savedUser) {
-      try { setUser(JSON.parse(savedUser)) } catch {}
+    try {
+      const parsed = JSON.parse(stored)
+      if (parsed.token) {
+        setUser(parsed.user || null)
+      } else {
+        router.push('/login')
+        return
+      }
+    } catch {
+      router.push('/login')
+      return
     }
 
     const p = getProjects()
@@ -39,8 +47,7 @@ export default function AccountPage() {
   }, [router])
 
   const handleLogout = () => {
-    localStorage.removeItem('mojing_token')
-    localStorage.removeItem('mojing_user')
+    localStorage.removeItem('mojing_auth')
     router.push('/')
   }
 

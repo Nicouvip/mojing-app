@@ -1,10 +1,10 @@
-import { createClient } from '@supabase/supabase-js'
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-
-export const supabase = url && key ? createClient(url, key) : null
-
-export function isSupabaseAvailable(): boolean {
-  return !!supabase
-}
+/**
+ * Supabase 客户端 — 统一入口
+ *
+ * 原本存在两个独立的客户端文件（supabase-client.ts 和 supabase.ts），
+ * 现在统一为从 supabase.ts 导出，保持 supabase-client.ts 作为兼容层。
+ *
+ * 新代码推荐直接 from '@/lib/db/supabase'
+ */
+export { supabase, isSupabaseAvailable } from './supabase'
+export { getSupabase, getAdminSupabase } from './supabase'

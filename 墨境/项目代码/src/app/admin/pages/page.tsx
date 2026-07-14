@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { listPages, loadPage, deletePage, exportPage, importPage, applyPage } from '@/lib/page-builder/store'
-import type { PageData } from '@/lib/page-builder/types'
+import { listPages, deletePage, exportPage, importPage, applyPage } from '@/lib/page-builder/store'
+
 import { FileEdit, Eye, Download, Upload, Trash2, Zap, Plus } from 'lucide-react'
 
 const BUILTIN = ['/', '/login', '/dashboard']

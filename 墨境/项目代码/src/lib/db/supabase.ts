@@ -8,7 +8,7 @@ function isRealEnv(value: string | undefined): boolean {
   return !!value && !value.startsWith('placeholder') && value.length > 10
 }
 
-export function getSupabase(): SupabaseClient | null {
+function initClient(): SupabaseClient | null {
   if (client) return client
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -20,6 +20,18 @@ export function getSupabase(): SupabaseClient | null {
 
   client = createClient(url!, key!)
   return client
+}
+
+// 兼容性导出：供 store.ts 等旧代码使用（可能为 null）
+export const supabase: SupabaseClient | null = /* @__PURE__ */ initClient()
+
+/** 判断 Supabase 是否可用 */
+export function isSupabaseAvailable(): boolean {
+  return getSupabase() !== null
+}
+
+export function getSupabase(): SupabaseClient | null {
+  return initClient()
 }
 
 /** 服务端管理客户端（需要 SUPABASE_SERVICE_ROLE_KEY），用于 Admin API 操作 */

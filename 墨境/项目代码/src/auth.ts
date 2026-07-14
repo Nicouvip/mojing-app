@@ -8,8 +8,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // Google OAuth —— 需要真实凭据（AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET）
     // 当 .env.local 中为 placeholder 时，NextAuth 自动跳过不可用 provider
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
     }),
     // 邮箱+密码 fallback —— 不依赖任何第三方服务
     Credentials({

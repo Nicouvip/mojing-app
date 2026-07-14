@@ -8,8 +8,10 @@ import Highlight from '@tiptap/extension-highlight'
 import Underline from '@tiptap/extension-underline'
 import TextAlign from '@tiptap/extension-text-align'
 import CharacterCount from '@tiptap/extension-character-count'
+import { useDebouncedCallback } from 'use-debounce'
 import { cn } from '@/lib/utils/utils'
 import { Bold, Italic, UnderlineIcon, Heading1, Heading2, Heading3, Quote, List, ListOrdered, Highlighter, AlignLeft, AlignCenter, AlignRight, Minus, Undo, Redo } from 'lucide-react'
+import { recordWords } from '@/lib/ai/goals-store'
 
 interface Heading {
   level: number; text: string; pos: number
@@ -27,15 +29,21 @@ interface Props {
   content: string; onChange: (text: string) => void
   onHeadings?: (headings: Heading[]) => void
   onEditorReady?: (editor: Editor) => void
+  onCursorChange?: (line: number, col: number) => void
   wordGoal?: number; onWordGoalChange?: (goal: number) => void
   placeholder?: string
 }
 
-export const WritingEditor = forwardRef<EditorHandle, Props>(function WritingEditor({ content, onChange, onHeadings, onEditorReady, wordGoal = 3000, onWordGoalChange, placeholder = '开始写作...' }, ref) {
-  const extensions = useMemo(() => [StarterKit.configure({ heading: { levels: [1, 2, 3] } }), Placeholder.configure({ placeholder }),
+export const WritingEditor = forwardRef<EditorHandle, Props>(function WritingEditor({ content, onChange, onHeadings, onEditorReady, onCursorChange, wordGoal = 3000, onWordGoalChange, placeholder = '开始写作...' }, ref) {
+  const extensions = useMemo(() => [StarterKit.configure({ heading: { levels: [1, 2, 3] }, underline: false }), Placeholder.configure({ placeholder }),
       Highlight.configure({ multicolor: true }), Underline, TextAlign.configure({ types: ['heading', 'paragraph'] }), CharacterCount.configure()], [placeholder])
 
   const editorProps = useMemo(() => ({ attributes: { class: 'prose max-w-none outline-none min-h-[60vh] text-lg leading-8 font-serif' } }), [])
+
+  // onChange 节流 300ms（避免每次按键都触发 bodyDensity 计算）
+  const debouncedOnChange = useDebouncedCallback((html: string) => {
+    onChange(html)
+  }, 300)
 
   const editor = useEditor({
     extensions,
@@ -43,24 +51,48 @@ export const WritingEditor = forwardRef<EditorHandle, Props>(function WritingEdi
     immediatelyRender: false,
     editorProps,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML())
+      debouncedOnChange(editor.getHTML())
+      // 实时记录今日写作字数（轻量操作，无需节流）
+      recordWords(editor.storage.characterCount?.words?.() || 0)
       if (onHeadings) {
         const hs: Heading[] = []
         editor.state.doc.descendants((n, p) => { if (n.type.name === 'heading') hs.push({ level: n.attrs.level, text: n.textContent, pos: p }) })
         onHeadings(hs)
       }
     },
+    onSelectionUpdate: ({ editor }) => {
+      if (!onCursorChange) return
+      const { from } = editor.state.selection
+      let line = 1
+      let blockStart = 0
+      editor.state.doc.descendants((node, nodePos) => {
+        if (nodePos >= from) return false
+        if (node.isBlock && nodePos > 0) { line++; blockStart = nodePos }
+        return true
+      })
+      const col = Math.max(1, from - blockStart)
+      onCursorChange(line, col)
+    },
   })
   const readyCalled = useRef(false)
   const prevContent = useRef(content)
   const [inputGoal, setInputGoal] = useState(String(wordGoal))
 
-  // Sync external content → editor only when genuinely changed from outside (not from onUpdate)
+  // Auto-format plain text to HTML paragraphs for TipTap
+  const prepareContent = (raw: string) => {
+    if (!raw || raw.indexOf('<') !== -1) return raw
+    const paragraphs = raw.split(String.fromCharCode(10, 10)).filter(Boolean)
+    return paragraphs.map(function(p) {
+      return '<p>' + p.split(String.fromCharCode(10)).join('<br/>') + '</p>'
+    }).join('')
+  }
+
+  // Sync external content  // Sync external content → editor only when genuinely changed from outside (not from onUpdate)
   useEffect(() => {
     if (editor && content !== prevContent.current) {
       prevContent.current = content
       if (editor.getHTML() !== content) {
-        editor.commands.setContent(content)
+        editor.commands.setContent(prepareContent(content))
       }
     }
   }, [editor, content])
@@ -68,7 +100,7 @@ export const WritingEditor = forwardRef<EditorHandle, Props>(function WritingEdi
   useEffect(() => {
     if (editor && !readyCalled.current) {
       readyCalled.current = true
-      if (content) editor.commands.setContent(content)
+      if (content) editor.commands.setContent(prepareContent(content))
       onEditorReady?.(editor)
     }
   }, [editor])

@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
+import { requireAdmin } from '@/lib/admin-auth'
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 export async function POST(req: Request) {
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
+
   try {
     const formData = await req.formData()
     const file = formData.get('file') as File
@@ -10,6 +16,11 @@ export async function POST(req: Request) {
 
     // 只允许图片
     if (!file.type.startsWith('image/')) return NextResponse.json({ error: '仅支持图片' }, { status: 400 })
+
+    // 限制文件大小
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: '文件大小不能超过 10MB' }, { status: 400 })
+    }
 
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)

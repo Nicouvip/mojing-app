@@ -124,16 +124,16 @@ export function QualitySidebar({ content, editorRef, open, onClose, onOpenReport
 
           {warningItems.length > 0 && (
             <>
-              <div className="text-[10px] font-medium text-amber-600 mt-3 mb-1 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <div className="text-[10px] font-medium text-warning mt-3 mb-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-warning" />
                 建议优化
               </div>
               {warningItems.map((item) => {
                 const msg = ITEM_MESSAGES[item.id] || { title: item.name, advice: item.detail }
                 return (
-                  <div key={item.id} className="rounded-lg border border-amber-200 bg-amber-50/50 p-2.5">
+                  <div key={item.id} className="rounded-lg border border-warning/20 bg-warning-light p-2.5">
                     <div className="flex items-start gap-1.5">
-                      <span className="text-amber-500 text-[10px] mt-0.5">🟡</span>
+                      <span className="text-warning text-[10px] mt-0.5">🟡</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-muted-foreground">{msg.title}</p>
                         <p className="text-[10px] text-muted-foreground/60 mt-0.5 leading-relaxed">{msg.advice}</p>
@@ -152,7 +152,7 @@ export function QualitySidebar({ content, editorRef, open, onClose, onOpenReport
           )}
 
           {blockingItems.length === 0 && warningItems.length === 0 && result.items.length > 0 && (
-            <div className="text-xs text-emerald-600 text-center py-6 flex items-center justify-center gap-1">
+            <div className="text-xs text-success text-center py-6 flex items-center justify-center gap-1">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 7.5L6 10.5L11 3.5" />
               </svg>

@@ -25,3 +25,18 @@
 ### 如果发现我（Codex）没有遵守以上纪律
 - 张总：直接说"你读一下AGENTS.md"
 - 我会重新加载并纠正行为
+
+### Git 提交纪律（跨会话、跨项目通用）
+
+每次 AI 完成一轮代码改动后，必须立即执行：
+
+```bash
+git add src/ public/ package.json next.config.ts 等改动文件
+git commit -m "type: 做了什么"
+```
+
+**核心原则：**
+- **做完就提交**，不让改动留在工作区或 stash 中
+- commit message 写清楚做了什么，方便后续 AI 通过 `git log` 了解项目状态
+- 如果改动涉及多个独立功能，拆成多个提交
+- 禁止跨多个会话累积未提交的改动

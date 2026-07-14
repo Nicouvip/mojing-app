@@ -47,8 +47,8 @@ export function getCheckIds(): number[] {
 
 export const AI_CHECK_IDS = getCheckIds()
 
-export function getPromptById(id: number): DeepCheckPrompt | undefined {
-  return loadPrompts().find(p => p.id === id)
+export function getPromptById(id: number, prompts?: DeepCheckPrompt[]): DeepCheckPrompt | undefined {
+  return (prompts || loadPrompts()).find(p => p.id === id)
 }
 
 export function extractSample(text: string, mode: 'head' | 'spread', maxChars: number = 2000): string {
@@ -60,9 +60,9 @@ export function extractSample(text: string, mode: 'head' | 'spread', maxChars: n
   return '[开头]\n' + clean.slice(0, sampleSize) + '\n\n[中间]\n' + clean.slice(third, third + sampleSize) + '\n\n[结尾]\n' + clean.slice(-sampleSize)
 }
 
-export function buildBatchPrompt(text: string): { systemPrompt: string; userPrompt: string } {
+export function buildBatchPrompt(text: string, prompts?: DeepCheckPrompt[]): { systemPrompt: string; userPrompt: string } {
   const sample = extractSample(text, 'spread', 2500)
-  const dims = loadPrompts().map(p => p.id + '. ' + p.name).join('\n')
+  const dims = (prompts || loadPrompts()).map(p => p.id + '. ' + p.name).join('\n')
   return {
     systemPrompt: '你是一个专业的小说编辑。只输出 JSON，不要任何额外说明。',
     userPrompt: [

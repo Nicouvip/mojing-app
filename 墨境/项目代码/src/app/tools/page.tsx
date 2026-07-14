@@ -26,7 +26,7 @@ const tools = [
 ]
 
 export default function ToolsPage() {
-  const [selectedTool, setSelectedTool] = useState<number | null>(null)
+  const [selectedTool, setSelectedTool] = useState<string | null>(null)
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,9 +53,9 @@ export default function ToolsPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {phaseTools.map((t, i) => (
-                  <div key={i}
-                    onClick={() => setSelectedTool(selectedTool === i ? null : i)}
-                    className={`bg-card rounded-2xl p-5 border border-border shadow-card hover:shadow-hover hover:-translate-y-0.5 transition-all duration-300 ease cursor-pointer group relative ${selectedTool === i ? 'ring-2 ring-primary/30' : ''}`}>
+                  <div key={t.title}
+                    onClick={() => setSelectedTool(selectedTool === t.title ? null : t.title)}
+                    className={`bg-card rounded-2xl p-5 border border-border shadow-card hover:shadow-hover hover:-translate-y-0.5 transition-all duration-300 ease cursor-pointer group relative ${selectedTool === t.title ? 'ring-2 ring-primary/30' : ''}`}>
                     {/* Featured 标签 */}
                     {t.featured && (
                       <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">热门</span>
@@ -64,10 +64,10 @@ export default function ToolsPage() {
                       {t.icon}
                     </div>
                     <h3 className="font-semibold mb-1.5 text-sm">{t.title}</h3>
-                    <p className={`text-xs text-muted-foreground leading-relaxed transition-all duration-200 ${selectedTool === i ? '' : 'line-clamp-2'}`}>
+                    <p className={`text-xs text-muted-foreground leading-relaxed transition-all duration-200 ${selectedTool === t.title ? '' : 'line-clamp-2'}`}>
                       {t.desc}
                     </p>
-                    {selectedTool === i && (
+                    {selectedTool === t.title && (
                       <div className="mt-3 pt-3 border-t border-border/50">
                         <span className="text-xs text-primary font-medium">了解更多 →</span>
                       </div>

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
-import type { CompliancePanelData } from './use-compliance-data'
+import { useState, useMemo, useEffect } from 'react'
+
 import { computePanelData } from './use-compliance-data'
 
 interface CompliancePanelProps {

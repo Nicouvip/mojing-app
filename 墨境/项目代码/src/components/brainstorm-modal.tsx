@@ -16,7 +16,7 @@ interface Props {
 export function BrainstormModal({ show, onClose, bsGenre, onGenreChange, onGenerate, bsLoading, bsResult }: Props) {
   if (!show) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="脑洞喷射" onClick={onClose}>
       <div className="bg-white rounded-[20px] shadow-modal w-[600px] max-h-[80vh] flex flex-col modal-enter" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b"><h2 className="font-semibold"><Lightbulb className="w-4 h-4 mr-1.5 inline" />脑洞喷射</h2><button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button></div>
         <div className="flex items-center gap-3 px-6 py-3 border-b">

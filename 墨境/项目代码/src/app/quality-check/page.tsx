@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ShieldCheck, AlertTriangle, CheckCircle, Download, RefreshCw } from 'lucide-react'
+import { ShieldCheck, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react'
 
 export default function QualityCheckPage() {
   return (

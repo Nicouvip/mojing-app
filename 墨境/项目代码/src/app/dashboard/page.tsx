@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils/utils'
 import { Button } from '@/components/ui/button'
 import { getProjects } from '@/lib/db/store'
 import type { Project } from '@/lib/db/types'
-import { BookOpen, Sparkles, ShieldCheck, Library, ChevronRight, PenLine, Plus, ArrowRight, Circle, Flame, Clock, User, LayoutGrid } from 'lucide-react'
+import { BookOpen, Library, PenLine, Plus, ArrowRight, Flame, Clock, LayoutGrid } from 'lucide-react'
 import Link from 'next/link'
 import Navbar from '@/components/navbar'
 
@@ -17,9 +17,6 @@ const GENRE_MAP: Record<string, string> = {
 }
 
 const RECENT_LIMIT = 3
-
-import { loadPage } from '@/lib/page-builder/store'
-import { PageRenderer } from '@/lib/page-builder/renderer'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -35,7 +32,7 @@ export default function DashboardPage() {
   const recentWorks = projects.slice(0, RECENT_LIMIT)
 
   const quickTools = [
-    { icon: <PenLine className="h-5 w-5" />, title: '继续写作', desc: '进入编辑器', action: () => router.push('/editor') },
+    { icon: <PenLine className="h-5 w-5" />, title: '继续写作', desc: '进入编辑器', action: () => router.push('/desk') },
     { icon: <Plus className="h-5 w-5" />, title: '新建作品', desc: '从空白开始', action: () => router.push('/') },
     { icon: <Library className="h-5 w-5" />, title: '素材库', desc: '人设世界观', action: () => router.push('/library/characters') },
   ]

@@ -12,32 +12,24 @@ import {
   AI_CHECK_IDS,
 } from '@/lib/ai/deep-check-prompt'
 import { fetchWithTimeout } from '@/lib/utils/fetch-with-timeout'
+import { DEEPSEEK_API_URL, DEEPSEEK_MODEL } from '@/lib/ai/constants'
 import { promises as fsp } from 'fs'
 import path from 'path'
+import { getUsageFilePath, incrementUsage } from '@/lib/ai/usage-store'
 
 const API_KEY = process.env.DEEPSEEK_API_KEY
-const API_URL = 'https://api.deepseek.com/chat/completions'
+const API_URL = DEEPSEEK_API_URL
 
 // 用量文件路径
-const USAGE_FILE = path.join(process.cwd(), '.mojing_ai_usage.json')
+const USAGE_FILE = getUsageFilePath()
 
-/** 原子递增用量计数（文件锁简单实现：写临时文件 → rename） */
+/** 原子递增用量计数 */
 async function trackUsage() {
   try {
-    const tmp = USAGE_FILE + '.tmp'
-    let usage: { count: number; lastAt: number }
-    try {
-      const raw = await fsp.readFile(USAGE_FILE, 'utf-8')
-      usage = JSON.parse(raw)
-    } catch {
-      usage = { count: 0, lastAt: 0 }
-    }
-    usage.count++
-    usage.lastAt = Date.now()
-    // 写临时文件 → 原子 rename（同一磁盘分区保证原子性）
-    await fsp.writeFile(tmp, JSON.stringify(usage), 'utf-8')
-    await fsp.rename(tmp, USAGE_FILE)
-  } catch { /* 用量记录非关键路径，静默失败 */ }
+    await incrementUsage('deep-check')
+  } catch (e) {
+    console.error('[deep-check] 用量记录失败:', e)
+  }
 }
 
 /** 从 AI 回复中提取并解析 JSON */
@@ -70,7 +62,7 @@ async function callDeepSeek(
       'Authorization': `Bearer ${API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model: DEEPSEEK_MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -96,10 +88,12 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { text, checkId, batch }: {
+    const { text, checkId, batch, prompts: clientPrompts }: {
       text: string
       checkId?: number
       batch?: boolean
+      /** 从客户端传入的自定义 prompt 列表，覆盖服务端默认值 */
+      prompts?: any[]
     } = body
 
     if (!text?.trim()) {
@@ -111,7 +105,7 @@ export async function POST(req: Request) {
 
     // === 批量模式：一次分析 12 项 ===
     if (batch) {
-      const bp = buildBatchPrompt(text)
+      const bp = buildBatchPrompt(text, clientPrompts)
       const aiContent = await callDeepSeek(bp.systemPrompt, bp.userPrompt, 0.3, 2000)
       const parsed = extractJson(aiContent)
       const rawResults = (parsed?.results as Array<{ id: number; status: string; reason: string; detail: string }>) || []
@@ -136,7 +130,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '请提供 checkId 或启用 batch 模式' }, { status: 400 })
     }
 
-    const prompt = getPromptById(checkId)
+    const prompt = getPromptById(checkId, clientPrompts)
     if (!prompt) {
       return NextResponse.json({ error: `未知检查项 ID: ${checkId}` }, { status: 400 })
     }

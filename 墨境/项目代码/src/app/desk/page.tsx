@@ -1,219 +1,457 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { getProjects } from '@/lib/db/store'
+import Link from 'next/link'
+import { getProjects, getChapters, createProject } from '@/lib/db/store'
 import type { Project } from '@/lib/db/types'
-import { Sparkles, PenLine, ChevronRight } from 'lucide-react'
-import { BrainstormModal } from '@/components/brainstorm-modal'
+import { getTodayWords, getStreak, loadGoals } from '@/lib/ai/goals-store'
 import Navbar from '@/components/navbar'
+import DeskSidebar from '@/components/desk-sidebar'
+
+/* ── 设计系统 token ── */
+const C = {
+  pri: '#c4956a',
+  priDim: '#b08050',
+  ink: '#1a1814',
+  muted: 'rgba(26,24,20,.45)',
+  line: 'rgba(26,24,20,.06)',
+  paper: '#f5f2ed',
+  sb: '#f5f2ed',
+  card: '#fff',
+  indigo: '#3a5279',
+  crimson: '#b5454a',
+  green: '#7a9e7a',
+  radius: 8,
+} as const
+
+const GENRES = ['都市', '玄幻', '悬疑', '科幻', '历史', '灵异', '言情', '竞技'] as const
+const AUDIENCES = ['男频', '全频', '女频'] as const
+const PERSPECTIVES = ['第一人称', '第三人称'] as const
+const LENGTHS = ['短篇', '长篇'] as const
+
+const GATEWAYS = [
+  { icon: '✎', title: '小说写作', desc: '三栏沉浸编辑器，AI 辅助续写润色', bg: 'rgba(196,149,106,.1)', color: C.pri, href: '/' },
+  { icon: '☺', title: '角色工坊', desc: '构建角色、设定世界观和故事大纲', bg: 'rgba(58,82,121,.1)', color: C.indigo, href: '/features' },
+  { icon: '▶', title: '灵感市集', desc: '浏览社区创作灵感与写作素材', bg: 'rgba(181,69,74,.08)', color: C.crimson, href: null },
+  { icon: '★', title: '墨境课堂', desc: '从入门到精通的写作教程系列', bg: 'rgba(122,158,122,.1)', color: C.green, href: null },
+]
+
+const TEMPLATES = [
+  { icon: '⚒', bg: 'rgba(196,149,106,.08)', title: '都市异能开篇模板', meta: '含3种冲突模式 + 5个角色原型', tags: ['都市', '开篇', '男频'], author: '墨境官方', uses: '1.2k' },
+  { icon: '☙', bg: 'rgba(122,158,122,.1)', color: C.green, title: '古言虐恋大纲架构', meta: '三步构建情感冲突主线', tags: ['古言', '大纲', '女频'], author: '墨境官方', uses: '890' },
+  { icon: '☺', bg: 'rgba(58,82,121,.1)', color: C.indigo, title: '悬疑反转三幕结构', meta: '钩子→误导→真相，经典模板', tags: ['悬疑', '结构', '通用'], author: '云中漫步', uses: '430' },
+  { icon: '✎', bg: 'rgba(196,149,106,.08)', title: '万字短篇完稿流程', meta: '从脑洞到成稿，一步到位', tags: ['短篇', '全流程', '新人友好'], author: '墨境官方', uses: '2.1k' },
+]
+
+const RANKERS = [
+  { name: '柳成荫', words: '186,200', top: true },
+  { name: '笔下风雷', words: '152,840', top: true },
+  { name: '云中漫步', words: '126,800', top: true },
+  { name: '墨染青衣', words: '98,450' },
+  { name: '山海经年', words: '87,120' },
+]
+
+const TIPS = [
+  { title: '从零到日更万字——我的AI协作心法', date: '2026-07-10' },
+  { title: '如何用墨境写出第一篇签约作品', date: '2026-07-08' },
+  { title: '人物对话平淡？试试墨境的角色视角注入', date: '2026-07-05' },
+  { title: '悬疑小说伏笔管理：墨境大纲工作流分享', date: '2026-07-02' },
+]
+
+const COVERS = [
+  'linear-gradient(135deg,#e8dfd2,#d5c8b5)',
+  'linear-gradient(135deg,#d9d4cb,#c7bfb2)',
+  'linear-gradient(135deg,#cfc8bc,#b8afa2)',
+  'linear-gradient(135deg,#c4b090,#a88860)',
+  'linear-gradient(135deg,#b8a898,#908070)',
+  'linear-gradient(135deg,#a89888,#887060)',
+]
 
 export default function DeskPage() {
   const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
-  const [showBrainstorm, setShowBrainstorm] = useState(false)
-  const [bsGenre, setBsGenre] = useState('都市')
-  const [bsResult, setBsResult] = useState('')
-  const [bsLoading, setBsLoading] = useState(false)
-
-  const handleBrainstorm = async () => {
-    setBsLoading(true); setBsResult('')
-    try {
-      const res = await fetch('/api/ai/brainstorm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ genre: bsGenre }) })
-      const d = await res.json()
-      setBsResult(d.ideas || d.error || '生成失败')
-    } catch { setBsResult('请求失败') }
-    finally { setBsLoading(false) }
-  }
+  const [dlgOpen, setDlgOpen] = useState(false)
+  const [quickGenre, setQuickGenre] = useState('都市')
+  const [quickAudience, setQuickAudience] = useState('全频')
+  const [quickPerspective, setQuickPerspective] = useState('第三人称')
+  const [quickLength, setQuickLength] = useState('长篇')
+  const [quickIdea, setQuickIdea] = useState('')
+  const [dlgIdea, setDlgIdea] = useState('')
+  const [dlgGenre, setDlgGenre] = useState('都市')
+  const [dlgPerspective, setDlgPerspective] = useState('第三人称')
+  const [dlgLength, setDlgLength] = useState('长篇连载（>8万字）')
+  const [dlgAudience, setDlgAudience] = useState('不限')
+  const [checkinDone, setCheckinDone] = useState(false)
 
   useEffect(() => { setProjects(getProjects()) }, [])
 
-  const books = projects.slice(0, 7)
-  const bookCount = books.length
-  const todayDone = 800
-  const todayTarget = 2000
+  const todayDone = getTodayWords()
+  const goals = loadGoals()
+  const todayTarget = goals.enabled ? goals.dailyWordTarget : 3000
+  const streak = getStreak()
+
+  const weekWords = useMemo(() => {
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    let total = 0
+    for (const p of projects) {
+      const chs = getChapters(p.id)
+      for (const ch of chs) {
+        if ((ch.updatedAt || ch.createdAt || 0) >= weekAgo) {
+          total += ch.wordCount || 0
+        }
+      }
+    }
+    return total
+  }, [projects])
+
+  const totalWords = useMemo(() => projects.reduce((s, p) => s + (p.totalWords || 0), 0), [projects])
+  const recentProjects = projects.filter(p => !p.deletedAt).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3)
+
+  const handleQuickCreate = () => {
+    const name = quickIdea.trim() || '未命名作品'
+    const p = createProject(name, quickGenre, {
+      audience: quickAudience,
+      perspective: quickPerspective,
+      length: quickLength,
+      idea: quickIdea.trim() || undefined,
+    })
+    router.push(`/editor/${p.id}`)
+  }
+
+  const handleDlgCreate = () => {
+    const name = dlgIdea.trim() || '未命名作品'
+    const p = createProject(name, dlgGenre)
+    setDlgOpen(false)
+    router.push(`/editor/${p.id}`)
+  }
+
   const progress = Math.min(100, Math.round((todayDone / todayTarget) * 100))
+  const days = ['一', '二', '三', '四', '五', '六', '日']
+  const checkinDays = [true, true, true, false, false, false, false] // 本周 4/7
 
   return (
-    <div className="min-h-screen bg-background font-serif">
+    <div style={{ minHeight: '100vh', background: C.paper }}>
       <Navbar />
 
-      {/* ===== 进度条 ===== */}
-      <div className="max-w-7xl mx-auto px-6 pt-4 flex items-center gap-3">
-        <span className="text-sm font-medium text-foreground">✍️ 今日写作</span>
-        <div className="flex-1 max-w-xs h-2 bg-primary-light rounded-full overflow-hidden">
-          <div className="h-full bg-primary rounded-full transition-all duration-700 ease-out" style={{ width: `${progress}%` }} />
-        </div>
-        <span className="text-xs text-muted-foreground">{todayDone}/{todayTarget}</span>
-      </div>
+      <div style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
+        <DeskSidebar active="/desk" />
 
-      {/* ===== 主体 ===== */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="mb-12">
-          <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-3 font-serif">我的书桌</h1>
-          <p className="text-lg text-muted-foreground font-serif italic">案上的每一本书，都是你正在编织的世界</p>
-        </div>
+        {/* ── Main ── */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+          {/* Top bar */}
+          <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 56, borderBottom: `1px solid ${C.line}`, flexShrink: 0, gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.sb, borderRadius: 20, padding: '0 16px', height: 36, maxWidth: 360, flex: 1 }}>
+              <span style={{ color: C.muted, fontSize: 14 }}>⌕</span>
+              <input type="search" placeholder="搜作品、模板或写作心得…" style={{ border: 'none', background: 'none', outline: 'none', fontSize: 13, color: C.ink, fontFamily: 'inherit', width: '100%' }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button onClick={() => setDlgOpen(true)} style={{ fontSize: 12, padding: '7px 18px', borderRadius: 20, background: C.pri, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, boxShadow: '0 2px 8px rgba(196,149,106,.15)', minHeight: 34, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                ＋ 开始创作
+              </button>
+            </div>
+          </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* ===== 左 + 中：扇形书架 ===== */}
+          {/* Content */}
+          <div style={{ padding: '32px 28px', flex: 1, overflowY: 'auto' }}>
+            {/* Desk header */}
+            <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, gap: 20, flexWrap: 'wrap' }}>
+              <div>
+                <h1 style={{ fontFamily: "'Noto Serif SC',Georgia,serif", fontSize: 28, color: C.ink, fontWeight: 700, marginBottom: 4 }}>我的书桌</h1>
+                <p style={{ fontSize: 14, color: C.muted }}>案上的每一本书，都是你正在编织的世界。</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 18px', borderRadius: 12, background: 'rgba(196,149,106,.06)', border: '1px solid rgba(196,149,106,.12)', flexShrink: 0 }}>
+                <span style={{ fontSize: 18 }}>✎</span>
+                <div>
+                  <div style={{ fontSize: 11, color: C.muted }}>今日进度</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: C.pri, fontFamily: "'Noto Serif SC',Georgia,serif" }}>{todayDone.toLocaleString()} / {todayTarget.toLocaleString()} 字</div>
+                </div>
+              </div>
+            </header>
 
-          {/* ===== 左 + 中：层叠书架 ===== */}
-          <div className="lg:col-span-2">
-            {bookCount > 0 ? (
-            <div className="relative h-[340px] flex items-end justify-center" style={{ perspective: '1200px', perspectiveOrigin: 'center bottom' }}>
-              {(() => {
-                const colors = [
-                  { bg: 'linear-gradient(150deg, #4a3028, #6a4a3e 40%, #5a3a30)', fg: '#f0e8d8' },
-                  { bg: 'linear-gradient(145deg, #2a3848, #3a4e5c 45%, #304050)', fg: '#dce4ec' },
-                  { bg: 'linear-gradient(160deg, #3a5040, #5a6e5e 45%, #4a604e)', fg: '#e0ece0' },
-                  { bg: 'linear-gradient(150deg, #4a2a2e, #6a3a3e 40%, #5a3034)', fg: '#f8ece8' },
-                  { bg: 'linear-gradient(145deg, #3a3836, #504a3e 35%, #423e3a)', fg: '#e8e6e2' },
-                  { bg: 'linear-gradient(150deg, #3a2e38, #503e48 40%, #42303e)', fg: '#ece0e8' },
-                ]
-                const positions = [
-                  { x: -210, r: -14, z: 1 },
-                  { x: -135, r: -8, z: 2 },
-                  { x: -50, r: -2, z: 3 },
-                  { x: 50, r: 5, z: 5 },
-                  { x: 135, r: 10, z: 4 },
-                  { x: 210, r: 16, z: 3 },
-                ]
-                return books.slice(0, 6).map((book, i) => {
-                  const c = colors[i % colors.length]
-                  const p = positions[i]
-                  const isMain = i === 3
+            {/* 一句话创作 */}
+            <section style={{ marginBottom: 36 }}>
+              <div style={{ border: `1px solid ${C.line}`, borderRadius: 20, padding: 24, background: C.card }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 20, marginBottom: 16 }}>
+                  {/* 小说题材 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>小说题材</span>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {GENRES.map(g => (
+                        <button key={g} onClick={() => setQuickGenre(g)} style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${quickGenre === g ? C.pri : C.line}`, fontSize: 12, cursor: 'pointer', background: quickGenre === g ? C.pri : C.card, color: quickGenre === g ? '#fff' : C.muted, fontFamily: 'inherit', transition: 'all .12s', minHeight: 34, fontWeight: quickGenre === g ? 600 : 400 }}>
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* 目标读者 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>目标读者</span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {AUDIENCES.map(a => (
+                        <button key={a} onClick={() => setQuickAudience(a)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickAudience === a ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickAudience === a ? 'rgba(196,149,106,.08)' : C.card, color: quickAudience === a ? C.pri : C.ink, fontFamily: 'inherit', fontWeight: quickAudience === a ? 600 : 400, minHeight: 32 }}>
+                          {a}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* 作品视角 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>作品视角</span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {PERSPECTIVES.map(p => (
+                        <button key={p} onClick={() => setQuickPerspective(p)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickPerspective === p ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickPerspective === p ? 'rgba(196,149,106,.08)' : C.card, color: quickPerspective === p ? C.pri : C.ink, fontFamily: 'inherit', fontWeight: quickPerspective === p ? 600 : 400, minHeight: 32 }}>
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* 篇幅长短 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>篇幅长短</span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {LENGTHS.map(l => (
+                        <button key={l} onClick={() => setQuickLength(l)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickLength === l ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickLength === l ? 'rgba(196,149,106,.08)' : C.card, color: quickLength === l ? C.pri : C.ink, fontFamily: 'inherit', fontWeight: quickLength === l ? 600 : 400, minHeight: 32 }}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ border: `2px solid ${C.line}`, borderRadius: 12, padding: '14px 16px', transition: 'all .15s', marginBottom: 16 }}>
+                  <textarea value={quickIdea} onChange={e => setQuickIdea(e.target.value)} maxLength={500} placeholder="一个普通外卖员发现自己拥有超能力，从此卷入一场外太空阴谋..." style={{ border: 'none', width: '100%', minHeight: 80, fontSize: 14, fontFamily: 'inherit', color: C.ink, resize: 'vertical', outline: 'none', padding: 0, lineHeight: 1.8, background: 'transparent' }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, background: `linear-gradient(135deg,${C.pri},${C.priDim})`, color: '#fff' }}>墨</span>
+                    <span style={{ fontSize: 11, color: C.muted }}>{quickIdea.length} / 500</span>
+                  </div>
+                  <button onClick={handleQuickCreate} style={{ fontSize: 13, padding: '10px 24px', borderRadius: 8, background: `linear-gradient(135deg,${C.pri},${C.priDim})`, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', minHeight: 42, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    开始创作
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* 继续创作 */}
+            {recentProjects.length > 0 && (
+              <section style={{ marginBottom: 36 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 3, height: 16, borderRadius: 2, background: C.pri }} />
+                    继续创作
+                  </h2>
+                  <Link href="/works" style={{ fontSize: 12, color: C.muted, textDecoration: 'none' }}>全部作品 ›</Link>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
+                  {recentProjects.map((p, i) => (
+                    <article key={p.id} onClick={() => router.push(`/editor/${p.id}`)} style={{ border: `1px solid ${C.line}`, borderRadius: 12, overflow: 'hidden', background: C.card, cursor: 'pointer', transition: 'all .15s' }}>
+                      <div style={{ height: 100, background: COVERS[i % COVERS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                        <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 9, padding: '2px 8px', borderRadius: 8, background: 'rgba(26,24,20,.55)', color: '#fff', letterSpacing: '.06em' }}>{p.genre || '未分类'}</span>
+                      </div>
+                      <div style={{ padding: '14px 16px 10px' }}>
+                        <h3 style={{ fontSize: 13, fontWeight: 600, color: C.ink, fontFamily: "'Noto Serif SC',Georgia,serif", marginBottom: 4 }}>《{p.name}》</h3>
+                        <div style={{ fontSize: 11, color: C.muted, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span>{p.genre || '未分类'}</span>
+                          <span>{(p.totalWords || 0).toLocaleString()}字</span>
+                          <span style={{ marginLeft: 'auto' }}>✎ {new Date(p.updatedAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                        <div style={{ height: 3, borderRadius: 2, background: C.line, marginTop: 8, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', borderRadius: 2, background: C.pri, width: `${Math.min(100, Math.round(((p.totalWords || 0) / 50000) * 100))}%` }} />
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* 创作工坊 4宫格 */}
+            <section style={{ marginBottom: 36 }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+                <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 3, height: 16, borderRadius: 2, background: C.pri }} />
+                  创作工坊
+                </h2>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                {GATEWAYS.map((gw, i) => {
+                  const Wrapper = gw.href ? 'a' : 'button'
                   return (
-                    <div key={book.id}
-                      className="group absolute bottom-0 cursor-pointer"
-                      style={{
-                        width: 148, height: 200,
-                        borderRadius: '4px 12px 12px 4px',
-                        transform: `translateX(${p.x}px) rotate(${p.r}deg)`,
-                        transformOrigin: 'center bottom',
-                        zIndex: p.z,
-                        background: c.bg, color: c.fg,
-                        boxShadow: isMain ? '0 6px 24px rgba(196,149,106,0.12), 0 1px 3px rgba(0,0,0,0.06)' : undefined,
-                        transition: 'transform 0.45s cubic-bezier(0.25,1,0.5,1), box-shadow 0.45s ease, filter 0.45s ease',
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = `translateX(${p.x}px) rotate(${p.r}deg) translateY(-10px) scale(1.03)`
-                        e.currentTarget.style.zIndex = '20'
-                        e.currentTarget.style.boxShadow = '0 16px 40px rgba(196,149,106,0.18), 0 4px 12px rgba(0,0,0,0.08)'
-                        e.currentTarget.style.filter = 'brightness(1.08)'
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = `translateX(${p.x}px) rotate(${p.r}deg)`
-                        e.currentTarget.style.zIndex = String(p.z)
-                        e.currentTarget.style.boxShadow = isMain ? '0 6px 24px rgba(196,149,106,0.12), 0 1px 3px rgba(0,0,0,0.06)' : ''
-                        e.currentTarget.style.filter = ''
-                      }}
-                      onClick={() => router.push(`/editor/${book.id}`)}
-                    >
-                      {isMain && (
-                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: 'linear-gradient(to bottom, rgba(196,149,106,0.4), rgba(196,149,106,0.05))', borderRadius: '4px 0 0 4px' }} />
-                      )}
-                      <div style={{ position: 'relative', zIndex: 1, padding: '16px 14px', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: 9, letterSpacing: '0.12em', opacity: 0.5, marginBottom: 6 }}>{book.genre || '未分类'}</span>
-                        <span style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 18, fontWeight: 700, lineHeight: 1.25 }}>{book.name}</span>
-                        <span style={{ marginTop: 'auto', fontSize: 9, opacity: 0.4 }}>{book.chapterCount || 0}章 · {(book.totalWords || 0) >= 10000 ? ((book.totalWords||0)/10000).toFixed(1)+'万字' : (book.totalWords||0)+'字'}</span>
+                    <Wrapper key={i} href={gw.href ?? undefined}
+                      style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 16px', border: `1px solid ${C.line}`, borderRadius: 12, background: C.card, cursor: 'pointer', transition: 'all .2s', textDecoration: 'none' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.pri; e.currentTarget.style.boxShadow = '0 2px 12px rgba(26,24,20,.04)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = C.line; e.currentTarget.style.boxShadow = 'none' }}>
+                      <span style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0, background: gw.bg, color: gw.color }}>{gw.icon}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{gw.title}</span>
+                        <span style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>{gw.desc}</span>
+                      </div>
+                    </Wrapper>
+                  )
+                })}
+              </div>
+            </section>
+
+            {/* 创作数据 + 每日打卡 */}
+            <section style={{ marginBottom: 36 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {[
+                    { val: totalWords.toLocaleString(), label: `累计字数 · ${projects.length}部作品`, delta: '▲ 较上月 +12,430字', deltaColor: C.green },
+                    { val: `${streak} 天`, label: '连续写作', accent: true, delta: '▲ 距100天还差53天', deltaColor: C.green },
+                    { val: weekWords.toLocaleString(), label: '本周字数 · 日均 ' + Math.round(weekWords / 7).toLocaleString() },
+                    { val: `${progress}%`, label: '今日目标完成度', accent: true, delta: '▼ 低于昨日 88%', deltaColor: C.crimson },
+                  ].map((s, i) => (
+                    <div key={i} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontFamily: "'Noto Serif SC',Georgia,serif", fontSize: 22, fontWeight: 700, color: s.accent ? C.pri : C.ink }}>{s.val}</span>
+                      <span style={{ fontSize: 10, color: C.muted, letterSpacing: '.04em' }}>{s.label}</span>
+                      {s.delta && <span style={{ fontSize: 10, color: s.deltaColor, display: 'flex', alignItems: 'center', gap: 3 }}>{s.delta}</span>}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: '18px 16px', background: C.card, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>每日打卡</span>
+                    <span style={{ fontSize: 10 }}>本周 {checkinDone ? 5 : 4}/7</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                    {days.map((d, i) => {
+                      const done = checkinDays[i] || (i === 3 && checkinDone)
+                      const today = i === 3 && !checkinDone
+                      return (
+                        <span key={d} style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, border: `1px solid ${done ? C.pri : today ? C.pri : C.line}`, background: done ? C.pri : C.card, color: done ? '#fff' : today ? C.pri : C.muted, borderWidth: today ? 2 : 1 }}>
+                          {d}
+                          {done && <span style={{ fontSize: 8, lineHeight: 1 }}>+10</span>}
+                          {today && <span style={{ fontSize: 8, lineHeight: 1 }}>+20</span>}
+                        </span>
+                      )
+                    })}
+                  </div>
+                  <button onClick={() => setCheckinDone(true)} disabled={checkinDone} style={{ fontSize: 12, padding: '8px 0', borderRadius: C.radius, textAlign: 'center', cursor: checkinDone ? 'default' : 'pointer', fontWeight: 600, fontFamily: 'inherit', border: `1px solid ${checkinDone ? C.line : C.pri}`, background: checkinDone ? C.line : C.pri, color: checkinDone ? C.muted : '#fff', minHeight: 36 }}>
+                    {checkinDone ? '✔ 已打卡！' : '✔ 今日打卡 · 得20墨点'}
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* 写作模板 */}
+            <section style={{ marginBottom: 36 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 3, height: 16, borderRadius: 2, background: C.pri }} />
+                  写作模板
+                </h2>
+                <Link href="/templates" style={{ fontSize: 12, color: C.muted, textDecoration: 'none' }}>全部模板 ›</Link>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+                {TEMPLATES.map((t, i) => (
+                  <article key={i} style={{ border: `1px solid ${C.line}`, borderRadius: 12, overflow: 'hidden', background: C.card, cursor: 'pointer', transition: 'all .12s' }}>
+                    <div style={{ padding: '14px 16px 10px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      <span style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, background: t.bg, color: t.color || C.pri }}>{t.icon}</span>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, lineHeight: 1.3, marginBottom: 2 }}>{t.title}</div>
+                        <div style={{ fontSize: 10, color: C.muted }}>{t.meta}</div>
                       </div>
                     </div>
-                  )
-                })
-              })()}
-              {/* 桌面线 */}
-              <div style={{ position: 'absolute', bottom: 0, left: '5%', right: '5%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(196,149,106,0.12) 30%, rgba(196,149,106,0.18) 50%, rgba(196,149,106,0.12) 70%, transparent)' }} />
-            </div>
-            ) : (
-            <div className="h-[340px] flex items-center justify-center">
-              <div className="text-center text-muted-foreground opacity-40" style={{ fontFamily: "'Noto Serif SC', serif" }}>
-                <p className="text-2xl italic mb-3">案头尚无字，待君著新篇</p>
-                <p className="text-sm">点击右上角「开始创作」写下第一个字</p>
+                    <div style={{ padding: '0 16px 12px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {t.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: C.sb, color: C.muted }}>{tag}</span>)}
+                    </div>
+                    <div style={{ padding: '10px 16px', borderTop: `1px solid ${C.line}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: C.muted }}>
+                      <span>● {t.author}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{t.uses} 使用</span>
+                        <button style={{ fontSize: 10, padding: '4px 12px', border: `1px solid ${C.pri}`, borderRadius: 12, color: C.pri, background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>使用</button>
+                      </span>
+                    </div>
+                  </article>
+                ))}
               </div>
-            </div>
-            )}
-          </div>
+            </section>
 
-          <div className="space-y-4">
-            <div className="bg-card rounded-2xl p-6 border border-border shadow-card">
-              <h3 className="text-sm font-semibold text-foreground mb-4 font-serif">今日灵感推荐</h3>
-              <div className="space-y-3">
-                <div className="p-3 bg-secondary rounded-xl text-xs text-muted-foreground leading-relaxed font-serif">
-                  &ldquo;尝试用嗅觉描写开场——雨后的街道，潮湿的泥土混合着远处飘来的炊烟&rdquo;
+            {/* 风云榜 + 创作心得 */}
+            <section style={{ marginBottom: 36 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                    <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ width: 3, height: 16, borderRadius: 2, background: C.pri }} />
+                      创作风云榜
+                    </h2>
+                    <button style={{ fontSize: 12, color: C.muted, background: 'none', border: 'none', cursor: 'pointer' }}>本月 ›</button>
+                  </div>
+                  <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                    <tbody>
+                      {RANKERS.map((r, i) => (
+                        <tr key={i}>
+                          <td style={{ width: 32, fontWeight: 700, color: r.top ? C.pri : C.muted, padding: '8px 12px', borderBottom: `1px solid ${C.line}` }}>{i + 1}</td>
+                          <td style={{ fontWeight: 500, color: C.ink, padding: '8px 12px', borderBottom: `1px solid ${C.line}` }}>{r.name}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 600, color: C.ink, fontFamily: "'Noto Serif SC',Georgia,serif", padding: '8px 12px', borderBottom: `1px solid ${C.line}` }}>{r.words} 字</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="p-3 bg-secondary rounded-xl text-xs text-muted-foreground leading-relaxed font-serif">
-                  &ldquo;给反派一个让读者犹豫的理由：他不是纯粹的恶，只是做出了不同的选择&rdquo;
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                    <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ width: 3, height: 16, borderRadius: 2, background: C.pri }} />
+                      创作心得
+                    </h2>
+                    <button style={{ fontSize: 12, color: C.muted, background: 'none', border: 'none', cursor: 'pointer' }}>更多 ›</button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {TIPS.map((t, i) => (
+                      <article key={i} style={{ padding: '12px 16px', border: `1px solid ${C.line}`, borderRadius: 8, background: C.card, cursor: 'pointer', transition: 'all .12s', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: C.ink, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                        <span style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>{t.date}</span>
+                      </article>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-            <button onClick={() => setShowBrainstorm(true)}
-              className="w-full bg-card rounded-2xl p-6 border border-border shadow-card hover:shadow-hover hover:-translate-y-0.5 transition-all duration-200 text-center group">
-              <div className="w-12 h-12 rounded-full bg-primary-light flex items-center justify-center mx-auto mb-3 group-hover:bg-primary/10 transition-colors">
-                <Sparkles className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-1 font-serif">脑洞喷射</h3>
-              <p className="text-xs text-muted-foreground font-serif">没有灵感？让 AI 帮你开个头</p>
-              <ChevronRight className="w-4 h-4 text-primary mt-2 mx-auto opacity-0 group-hover:opacity-100 transition-all duration-200" />
-            </button>
-
-            {/* 层叠书页装饰 */}
-            <div className="relative h-12">
-              {[0, 1, 2, 3].map(i => (
-                <div key={i}
-                  className="stack-page absolute bottom-0 rounded-lg bg-card border border-border/50 shadow-sm"
-                  style={{
-                    width: `calc(100% - ${i * 14}px)`,
-                    height: `calc(100% - ${i * 4}px)`,
-                    left: `${i * 7}px`,
-                    opacity: 1 - i * 0.2,
-                    zIndex: 4 - i,
-                    transition: 'opacity 0.3s ease',
-                  }} />
-              ))}
-            </div>
+            </section>
           </div>
-        </div>
-
-        {/* ===== 底部：本周创作数据 ===== */}
-        <div className="mt-12 bg-primary rounded-2xl p-8 text-white shadow-modal overflow-hidden relative">
-          {/* 右侧层叠装饰 */}
-          <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-10 pointer-events-none">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="absolute bottom-0 right-0 rounded-md bg-white"
-                style={{
-                  width: '80px', height: '100px',
-                  transform: `rotate(${i * 8 - 8}deg)`,
-                  zIndex: 3 - i,
-                  right: `${i * 6}px`,
-                }} />
-            ))}
-          </div>
-
-          <h2 className="text-xl font-semibold mb-6 relative z-10 font-serif">本周创作数据</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
-            {[
-              { label: '连续写作', value: '12 天' },
-              { label: '本周总字数', value: '1.2 万' },
-              { label: '平均时速', value: '1,860 字' },
-              { label: '今日进度', value: `${progress}%` },
-            ].map((item, i) => (
-              <div key={i} className="text-center">
-                <p className="text-sm text-white/60 mb-1 font-serif">{item.label}</p>
-                <p className="text-2xl font-bold font-serif" style={{ fontFamily: "'Noto Serif SC', serif" }}>{item.value}</p>
-              </div>
-            ))}
-          </div>
-          {/* 分页圆点 + 右侧层叠装饰 */}
-          <div className="flex justify-center gap-2 mt-6 relative z-10">
-            {[0, 1, 2, 3].map(i => (
-              <div key={i} className={`w-2 h-2 rounded-full transition-all ${i === 0 ? 'bg-white scale-125' : 'bg-white/30'}`} />
-            ))}
-          </div>
-        </div>
+        </main>
       </div>
 
-      {/* BrainstormModal */}
-      <BrainstormModal show={showBrainstorm} onClose={() => setShowBrainstorm(false)} bsGenre={bsGenre} onGenreChange={setBsGenre} onGenerate={handleBrainstorm} bsLoading={bsLoading} bsResult={bsResult} />
+      {/* 创建对话框 */}
+      {dlgOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,24,20,.3)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={e => e.target === e.currentTarget && setDlgOpen(false)}>
+          <div style={{ background: C.card, borderRadius: 16, padding: 32, maxWidth: 560, width: 'calc(100% - 32px)', boxShadow: '0 16px 48px rgba(26,24,20,.12)', display: 'flex', flexDirection: 'column', gap: 20, position: 'relative' }}>
+            <button onClick={() => setDlgOpen(false)} aria-label="关闭" style={{ position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: '50%', border: 'none', background: C.sb, cursor: 'pointer', fontSize: 16, color: C.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            <h3 style={{ fontSize: 18, fontFamily: "'Noto Serif SC',Georgia,serif", fontWeight: 700, color: C.ink }}>一句话生成故事</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>一句话描述你想写的故事</label>
+              <textarea value={dlgIdea} onChange={e => setDlgIdea(e.target.value)} maxLength={500} placeholder="一个退隐杀手回到故乡，却发现整座小镇的人都在等他…" style={{ width: '100%', padding: '10px 14px', border: `1px solid ${C.line}`, borderRadius: C.radius, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: C.sb, resize: 'vertical', minHeight: 80, lineHeight: 1.6 }} />
+              <span style={{ fontSize: 10, color: C.muted, textAlign: 'right' }}>{dlgIdea.length} / 500</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {[
+                { label: '题材', value: dlgGenre, set: setDlgGenre, opts: ['都市', '玄幻', '悬疑', '科幻', '历史', '灵异', '言情', '竞技'] },
+                { label: '视角', value: dlgPerspective, set: setDlgPerspective, opts: ['第一人称', '第三人称', '多视角'] },
+                { label: '篇幅', value: dlgLength, set: setDlgLength, opts: ['短篇（<2万字）', '中篇（2-8万字）', '长篇连载（>8万字）'] },
+                { label: '目标读者', value: dlgAudience, set: setDlgAudience, opts: ['不限', '男性向', '女性向'] },
+              ].map(field => (
+                <div key={field.label} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>{field.label}</label>
+                  <select value={field.value} onChange={e => field.set(e.target.value)} style={{ width: '100%', padding: '10px 14px', border: `1px solid ${C.line}`, borderRadius: C.radius, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: C.sb }}>
+                    {field.opts.map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: C.radius, background: 'rgba(196,149,106,.04)', border: '1px dashed rgba(196,149,106,.15)' }}>
+              <span style={{ width: 40, height: 40, borderRadius: '50%', background: `linear-gradient(135deg,${C.pri},${C.priDim})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0, color: '#fff' }}>墨</span>
+              <span style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>「墨灵」将根据你的设定，自动生成大纲、人物关系和开篇第一章。</span>
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+              <button onClick={() => setDlgOpen(false)} style={{ fontSize: 12, padding: '7px 18px', borderRadius: 20, border: `1px solid ${C.line}`, background: C.card, cursor: 'pointer', color: C.ink, fontFamily: 'inherit', minHeight: 34 }}>取消</button>
+              <button onClick={handleDlgCreate} style={{ fontSize: 12, padding: '7px 18px', borderRadius: 20, background: C.pri, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 500, boxShadow: '0 2px 8px rgba(196,149,106,.15)', fontFamily: 'inherit', minHeight: 34 }}>☙ 开始生成</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
