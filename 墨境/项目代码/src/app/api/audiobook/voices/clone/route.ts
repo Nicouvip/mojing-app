@@ -5,12 +5,12 @@ import { MiMoVoiceCloneEngine } from '@/lib/audiobook/mimo-voice-clone'
  * POST /api/audiobook/voices/clone
  * VoiceClone - 基于音频样本精准复刻音色
  * 
- * Body: { sampleBase64: string, sampleMimeType: string, text: string, emotion?: string }
+ * Body: { sampleBase64: string, sampleMimeType: string, text: string, emotion?: string, voice?: string }
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { sampleBase64, sampleMimeType, text, emotion, style } = body
+    const { sampleBase64, sampleMimeType, text, emotion, style, voice } = body
 
     if (!sampleBase64) {
       return NextResponse.json({ error: 'sampleBase64 is required' }, { status: 400 })
@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       text,
       emotion,
       style,
+      voice: voice || 'cloned_voice',
       format: 'wav',
     })
 
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error('[VoiceClone API] Error:', errorMessage)
+    console.error('[Clone API] Error:', errorMessage)
     return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

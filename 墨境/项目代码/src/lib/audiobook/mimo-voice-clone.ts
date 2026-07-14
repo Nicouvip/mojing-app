@@ -17,6 +17,7 @@ export interface VoiceCloneParams {
   text: string
   emotion?: string
   style?: string
+  voice?: string
   format?: 'wav' | 'pcm16'
 }
 
@@ -66,6 +67,7 @@ export class MiMoVoiceCloneEngine {
       model: 'mimo-v2.5-tts-voiceclone',
       messages,
       audio: {
+        voice: params.voice || 'cloned_voice',
         format: params.format || 'wav',
       },
     }

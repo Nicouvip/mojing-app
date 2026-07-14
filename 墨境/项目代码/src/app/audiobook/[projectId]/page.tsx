@@ -399,7 +399,7 @@ export default function AudiobookProjectPage() {
         const res = await fetch('/api/audiobook/voices/clone', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sampleBase64: `data:${mime};base64,${base64}`, sampleMimeType: mime, text: '你好，这是克隆声音的测试。' }),
+          body: JSON.stringify({ sampleBase64: `data:${mime};base64,${base64}`, sampleMimeType: mime, text: '你好，这是克隆声音的测试。', voice: cloneName.trim() }),
         })
         const data = await res.json()
         if (data.success && data.audio) {
