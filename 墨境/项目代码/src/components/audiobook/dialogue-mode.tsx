@@ -1,8 +1,14 @@
 'use client'
 
 import { useState, useMemo, useRef, useCallback } from 'react'
-import { parseChapterText, extractCharacters, CHAR_COLORS, type TextSegment, type DetectedCharacter } from '@/lib/audiobook/text-parser'
 import type { Chapter } from '@/lib/db/types'
+import {
+  type CharacterAnalysis,
+  type SegmentAnalysis,
+  type AnalysisResult,
+  AVAILABLE_VOICES,
+  EMOTION_PRESETS,
+} from '@/lib/audiobook/prompts'
 
 const C = {
   pri: '#c4956a',
@@ -16,20 +22,9 @@ const C = {
   radius: 8,
 }
 
-const VOICES = [
-  { id: '冰糖', name: '冰糖', desc: '甜美女声' },
-  { id: '茉莉', name: '茉莉', desc: '温柔女声' },
-  { id: '苏打', name: '苏打', desc: '阳光男声' },
-  { id: '白桦', name: '白桦', desc: '沉稳男声' },
-  { id: 'Mia', name: 'Mia', desc: 'English Female' },
-  { id: 'Chloe', name: 'Chloe', desc: 'English Gentle' },
-  { id: 'Milo', name: 'Milo', desc: 'English Male' },
-  { id: 'Dean', name: 'Dean', desc: 'English Deep' },
-]
-
-interface SegmentAudio {
-  audioBase64: string
-  duration: number
+const SEGMENT_COLORS = {
+  narration: '#999',
+  dialogue: '#c4956a',
 }
 
 interface Props {
@@ -39,32 +34,116 @@ interface Props {
 }
 
 export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
-  const segments = useMemo(() => {
-    if (!chapter.content) return []
-    return parseChapterText(chapter.content)
-  }, [chapter.content])
+  /* ── 状态 ── */
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analyzeError, setAnalyzeError] = useState('')
+  const [editedSegments, setEditedSegments] = useState<SegmentAnalysis[]>([])
+  const [editedCharacters, setEditedCharacters] = useState<CharacterAnalysis[]>([])
 
-  const characters = useMemo(() => extractCharacters(segments), [segments])
-
-  const [charVoices, setCharVoices] = useState<Record<string, string>>({})
-  const [narratorVoice, setNarratorVoice] = useState(defaultVoice)
-  const [narratorEmotion, setNarratorEmotion] = useState(defaultEmotion)
-  const [audioCache, setAudioCache] = useState<Record<string, SegmentAudio>>({})
+  /* ── 生成状态 ── */
   const [generatingId, setGeneratingId] = useState<string | null>(null)
+  const [audioCache, setAudioCache] = useState<Record<string, { audioBase64: string; duration: number }>>({})
   const [playingId, setPlayingId] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const audioUrlRef = useRef<string | null>(null)
 
-  const getColor = (name: string) => {
-    const idx = characters.findIndex(c => c.name === name)
-    return idx >= 0 ? CHAR_COLORS[idx % CHAR_COLORS.length] : C.muted
+  const segments = editedSegments.length > 0 ? editedSegments : []
+  const characters = editedCharacters.length > 0 ? editedCharacters : []
+
+  /* ── Step 1: AI 分析 ── */
+  const handleAnalyze = async () => {
+    if (!chapter.content) { alert('该章节暂无内容'); return }
+    setAnalyzing(true)
+    setAnalyzeError('')
+    try {
+      const res = await fetch('/api/audiobook/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: chapter.content }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setAnalysisResult(data)
+        setEditedCharacters(data.characters || [])
+        setEditedSegments(data.segments || [])
+      } else {
+        setAnalyzeError(data.error || '分析失败')
+      }
+    } catch (err) {
+      setAnalyzeError(err instanceof Error ? err.message : '网络错误')
+    } finally {
+      setAnalyzing(false)
+    }
   }
 
-  const getVoice = (seg: TextSegment) => {
-    if (seg.type === 'narration') return narratorVoice
-    return (seg.characterName && charVoices[seg.characterName]) || narratorVoice
+  /* ── Step 2: 用户微调角色音色 ── */
+  const updateCharacterVoice = (name: string, voiceId: string) => {
+    setEditedCharacters(prev => prev.map(c => c.name === name ? { ...c, recommendedVoice: voiceId } : c))
+    // 同步更新所有使用该角色的段落
+    setEditedSegments(prev => prev.map(s => s.characterName === name ? { ...s, recommendedVoice: voiceId } : s))
   }
 
+  const updateCharacterEmotion = (name: string, emotion: string) => {
+    setEditedCharacters(prev => prev.map(c => c.name === name ? { ...c, recommendedEmotion: emotion } : c))
+  }
+
+  /* ── Step 2b: 用户微调单段 ── */
+  const updateSegmentEmotion = (index: number, emotion: string) => {
+    setEditedSegments(prev => prev.map((s, i) => i === index ? { ...s, emotion } : s))
+  }
+  const updateSegmentVoice = (index: number, voiceId: string) => {
+    setEditedSegments(prev => prev.map((s, i) => i === index ? { ...s, recommendedVoice: voiceId } : s))
+  }
+  const updateSegmentSpeed = (index: number, speed: 'slow' | 'normal' | 'fast') => {
+    setEditedSegments(prev => prev.map((s, i) => i === index ? { ...s, speed } : s))
+  }
+
+  /* ── Step 3: 生成单段 ── */
+  const generateOne = async (seg: SegmentAnalysis) => {
+    if (generatingId) return
+    const segKey = `seg-${seg.index}`
+    setGeneratingId(segKey)
+    try {
+      const voice = seg.recommendedVoice || defaultVoice
+      const emotion = seg.emotion || defaultEmotion
+      const res = await fetch('/api/audiobook/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: seg.text,
+          voice,
+          emotion: emotion !== '平静' ? emotion : undefined,
+        }),
+      })
+      const data = await res.json()
+      if (data.success && data.audio) {
+        setAudioCache(prev => ({ ...prev, [segKey]: { audioBase64: data.audio, duration: data.duration } }))
+      }
+    } catch (err) {
+      console.error('Generate failed:', err)
+    } finally {
+      setGeneratingId(null)
+    }
+  }
+
+  /* ── 全部生成 ── */
+  const [batchGenerating, setBatchGenerating] = useState(false)
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 })
+
+  const handleGenerateAll = async () => {
+    if (batchGenerating) return
+    setBatchGenerating(true)
+    const todo = segments.filter(s => !audioCache[`seg-${s.index}`])
+    setBatchProgress({ current: 0, total: todo.length })
+    for (let i = 0; i < todo.length; i++) {
+      setBatchProgress({ current: i + 1, total: todo.length })
+      await generateOne(todo[i])
+    }
+    setBatchGenerating(false)
+  }
+
+  /* ── 播放 ── */
   const playBase64 = useCallback((base64: string, id: string) => {
     const bin = atob(base64)
     const bytes = new Uint8Array(bin.length)
@@ -79,109 +158,180 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
     }
   }, [])
 
-  const generateOne = async (seg: TextSegment) => {
-    if (generatingId) return
-    setGeneratingId(seg.id)
-    try {
-      const res = await fetch('/api/audiobook/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: seg.text, voice: getVoice(seg), emotion: seg.type === 'narration' ? narratorEmotion : undefined }),
-      })
-      const data = await res.json()
-      if (data.success && data.audio) {
-        setAudioCache(prev => ({ ...prev, [seg.id]: { audioBase64: data.audio, duration: data.duration } }))
-      }
-    } catch (err) {
-      console.error('Generate failed:', err)
-    } finally {
-      setGeneratingId(null)
-    }
+  const getCharColor = (name: string) => {
+    const idx = characters.findIndex(c => c.name === name)
+    return ['#c4956a', '#3a5279', '#b5454a', '#7a9e7a', '#8e63ce', '#d4a0a0', '#4a86e8', '#eaa041'][idx % 8]
   }
 
-  const generateAll = async () => {
-    const todo = segments.filter(s => !audioCache[s.id])
-    for (let i = 0; i < todo.length; i++) {
-      setGeneratingId('batch')
-      await generateOne(todo[i])
-    }
-    setGeneratingId(null)
+  /* ── 分析状态 ── */
+  if (!analysisResult) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 0' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: C.ink, margin: '0 0 8px' }}>AI 文本分析</h3>
+        <p style={{ fontSize: 13, color: C.muted, margin: '0 0 4px' }}>
+          点击下方按钮，AI 将自动分析「{chapter.title}」的文本结构
+        </p>
+        <p style={{ fontSize: 11, color: C.muted, margin: '0 0 24px' }}>
+          自动识别：角色 / 情绪 / 音色推荐 / 演播指导
+        </p>
+        <button
+          onClick={handleAnalyze}
+          disabled={analyzing}
+          style={{
+            padding: '12px 32px',
+            background: analyzing ? '#ccc' : C.pri,
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            color: '#fff',
+            cursor: analyzing ? 'default' : 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          {analyzing ? '⏳ AI 正在分析...' : '🤖 开始 AI 分析'}
+        </button>
+        {analyzeError && (
+          <div style={{ marginTop: 16, padding: 12, background: 'rgba(181,69,74,.08)', borderRadius: 8, fontSize: 12, color: C.crimson, maxWidth: 400, margin: '16px auto 0' }}>
+            ❌ {analyzeError}
+          </div>
+        )}
+        <div style={{ marginTop: 24, fontSize: 11, color: C.muted, maxWidth: 400, margin: '24px auto 0', lineHeight: 1.8 }}>
+          <p style={{ margin: '0 0 4px' }}>💡 AI 分析完成后，你可以：</p>
+          <p style={{ margin: 0 }}>• 修改每个角色的音色和情绪</p>
+          <p style={{ margin: 0 }}>• 调整单个段落的演播参数</p>
+          <p style={{ margin: 0 }}>• 确认后一键生成全部音频</p>
+        </div>
+      </div>
+    )
   }
 
-  if (segments.length === 0) return <div style={{ textAlign: 'center', padding: 40, color: C.muted }}>该章节暂无内容</div>
-
+  /* ── 分析完成后：左角色列表 + 右段落列表 ── */
   return (
-    <div style={{ display: 'flex', gap: 20 }}>
+    <div style={{ display: 'flex', gap: 20, minHeight: 500 }}>
       <audio ref={audioRef} onEnded={() => setPlayingId(null)} />
 
-      {/* 左侧：角色列表 */}
-      <div style={{ width: 220, flexShrink: 0 }}>
+      {/* ═══ 左侧：角色列表 + 旁白 ═══ */}
+      <div style={{ width: 260, flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: C.ink, margin: 0 }}>🎭 角色音色</h3>
+          <button onClick={() => { setAnalysisResult(null); setEditedCharacters([]); setEditedSegments([]); setAudioCache({}) }}
+            style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+            重新分析
+          </button>
+        </div>
+
+        {/* 旁白 */}
         <div style={{ padding: 10, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius, marginBottom: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: C.ink, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.muted }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#999' }} />
             旁白
           </div>
-          <select value={narratorVoice} onChange={e => setNarratorVoice(e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', marginBottom: 4 }}>
-            {VOICES.map(v => <option key={v.id} value={v.id}>{v.name} — {v.desc}</option>)}
-          </select>
-          <select value={narratorEmotion} onChange={e => setNarratorEmotion(e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit' }}>
-            {['平静', '开心', '悲伤', '愤怒', '温柔', '严肃'].map(em => <option key={em} value={em}>{em}</option>)}
+          <select
+            value={characters.find(c => c.name === '旁白')?.recommendedVoice || defaultVoice}
+            onChange={e => updateCharacterVoice('旁白', e.target.value)}
+            style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', marginBottom: 4 }}
+          >
+            {AVAILABLE_VOICES.map(v => <option key={v.id} value={v.id}>{v.name} — {v.style.split('，')[0]}</option>)}
           </select>
         </div>
 
-        {characters.map(ch => (
-          <div key={ch.name} style={{ padding: 8, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius, marginBottom: 6 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: getColor(ch.name), marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: getColor(ch.name) }} />
-              {ch.name} <span style={{ fontWeight: 400, color: C.muted }}>({ch.count}句)</span>
+        {/* 角色列表 */}
+        {characters.filter(c => c.name !== '旁白').map(ch => (
+          <div key={ch.name} style={{ padding: 10, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius, marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: getCharColor(ch.name), marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: getCharColor(ch.name) }} />
+              {ch.name}
+              <span style={{ fontWeight: 400, color: C.muted }}>({ch.gender === 'male' ? '男' : '女'}·{ch.age === 'young' ? '青年' : ch.age === 'adult' ? '中年' : ch.age === 'child' ? '少年' : '老年'})</span>
             </div>
-            <select value={charVoices[ch.name] || ''} onChange={e => setCharVoices(p => ({ ...p, [ch.name]: e.target.value || defaultVoice }))} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit' }}>
-              <option value="">跟随旁白</option>
-              {VOICES.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{ch.personality}</div>
+            <select value={ch.recommendedVoice} onChange={e => updateCharacterVoice(ch.name, e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', marginBottom: 4 }}>
+              {AVAILABLE_VOICES.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+            <select value={ch.recommendedEmotion} onChange={e => updateCharacterEmotion(ch.name, e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit' }}>
+              {EMOTION_PRESETS.map(em => <option key={em.id} value={em.id}>{em.label}</option>)}
             </select>
           </div>
         ))}
 
-        <button onClick={generateAll} disabled={!!generatingId} style={{ width: '100%', padding: '8px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: generatingId ? 'default' : 'pointer', fontFamily: 'inherit', marginTop: 10, opacity: generatingId ? 0.6 : 1 }}>
-          {generatingId === 'batch' ? '⏳ 生成中...' : '🎵 全部生成'}
-        </button>
+        {/* 操作按钮 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+          <button onClick={handleGenerateAll} disabled={batchGenerating || segments.length === 0} style={{ padding: '8px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: batchGenerating ? 'default' : 'pointer', fontFamily: 'inherit', opacity: batchGenerating || segments.length === 0 ? 0.6 : 1 }}>
+            {batchGenerating ? `⏳ ${batchProgress.current}/${batchProgress.total}` : '🎵 一键生成全部'}
+          </button>
+        </div>
 
-        <div style={{ marginTop: 12, fontSize: 11, color: C.muted }}>
-          <div>段落 {segments.length} · 对话 {segments.filter(s => s.type === 'dialogue').length} · 已生成 {Object.keys(audioCache).length}</div>
+        {/* 统计 */}
+        <div style={{ marginTop: 12, padding: 10, background: 'rgba(26,24,20,.02)', borderRadius: C.radius, fontSize: 11, color: C.muted }}>
+          <div>段落：{segments.length}</div>
+          <div>对话：{segments.filter(s => s.type === 'dialogue').length}</div>
+          <div>叙述：{segments.filter(s => s.type === 'narration').length}</div>
+          <div>已生成：{Object.keys(audioCache).length}/{segments.length}</div>
         </div>
       </div>
 
-      {/* 右侧：段落列表 */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-        {segments.map(seg => {
+      {/* ═══ 右侧：段落列表（带 AI 分析结果 + 可微调） ═══ */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, overflow: 'auto' }}>
+        {segments.map((seg, i) => {
           const isDialogue = seg.type === 'dialogue'
-          const color = isDialogue && seg.characterName ? getColor(seg.characterName) : C.muted
-          const audio = audioCache[seg.id]
-          const isPlaying = playingId === seg.id
-          const isGen = generatingId === seg.id
+          const color = isDialogue && seg.characterName ? getCharColor(seg.characterName) : SEGMENT_COLORS.narration
+          const segKey = `seg-${seg.index}`
+          const audio = audioCache[segKey]
+          const isPlaying = playingId === segKey
+          const isGen = generatingId === segKey
 
           return (
-            <div key={seg.id} style={{
-              padding: '8px 12px', background: isPlaying ? `${color}10` : C.card,
+            <div key={i} style={{
+              padding: '10px 14px',
+              background: isPlaying ? `${color}10` : C.card,
               border: `1px solid ${isPlaying ? color : C.line}`,
-              borderLeft: `3px solid ${color}`, borderRadius: C.radius, transition: 'all .12s',
+              borderLeft: `3px solid ${color}`,
+              borderRadius: C.radius,
+              transition: 'all .12s',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                {isDialogue ? (
+              {/* 标签行 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                {isDialogue && seg.characterName ? (
                   <span style={{ fontSize: 10, padding: '1px 6px', background: `${color}18`, borderRadius: 8, color, fontWeight: 600 }}>{seg.characterName}</span>
                 ) : (
                   <span style={{ fontSize: 10, padding: '1px 6px', background: 'rgba(26,24,20,.06)', borderRadius: 8, color: C.muted }}>叙述</span>
                 )}
+
+                {/* 情绪微调 */}
+                <select value={seg.emotion} onChange={e => updateSegmentEmotion(i, e.target.value)} style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
+                  {EMOTION_PRESETS.map(em => <option key={em.id} value={em.id}>{em.label}</option>)}
+                </select>
+
+                {/* 强度 */}
+                <span style={{ fontSize: 10, color: C.muted }}>强度{seg.emotionIntensity}</span>
+
+                {/* 语速微调 */}
+                <select value={seg.speed} onChange={e => updateSegmentSpeed(i, e.target.value as 'slow' | 'normal' | 'fast')} style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
+                  <option value="slow">慢速</option>
+                  <option value="normal">正常</option>
+                  <option value="fast">快速</option>
+                </select>
+
+                {seg.needsPause && <span style={{ fontSize: 10, color: C.muted }}>⏸停顿</span>}
+                {seg.specialNote && <span style={{ fontSize: 10, color: C.indigo }} title={seg.specialNote}>📝</span>}
+
                 <div style={{ flex: 1 }} />
                 {audio && <span style={{ fontSize: 10, color: C.green }}>✓ {Math.floor(audio.duration)}s</span>}
               </div>
-              <div style={{ fontSize: 13, lineHeight: 1.7, color: C.ink }}>{isDialogue ? `「${seg.text}」` : seg.text}</div>
+
+              {/* 文本 */}
+              <div style={{ fontSize: 13, lineHeight: 1.7, color: C.ink }}>
+                {isDialogue ? `「${seg.text}」` : seg.text}
+              </div>
+
+              {/* 操作行 */}
               <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
                 <button onClick={() => generateOne(seg)} disabled={isGen || !!generatingId} style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: isGen ? C.pri : C.muted, cursor: isGen ? 'default' : 'pointer', fontFamily: 'inherit' }}>
                   {isGen ? '⏳...' : '🎵 生成'}
                 </button>
                 {audio && (
-                  <button onClick={() => playBase64(audio.audioBase64, seg.id)} style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${isPlaying ? C.pri : C.line}`, borderRadius: 4, background: isPlaying ? 'rgba(196,149,106,.12)' : C.card, color: isPlaying ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <button onClick={() => playBase64(audio.audioBase64, segKey)} style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${isPlaying ? C.pri : C.line}`, borderRadius: 4, background: isPlaying ? 'rgba(196,149,106,.12)' : C.card, color: isPlaying ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
                     {isPlaying ? '⏸' : '▶'}
                   </button>
                 )}
