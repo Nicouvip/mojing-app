@@ -548,14 +548,17 @@ export default function AudiobookProjectPage() {
 
             {/* ═══ 生成设置 ═══ */}
             {activeTab === 'settings' && (
-              <div style={{ maxWidth: 400 }}>
+              <div style={{ maxWidth: 480 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* 音色 */}
                   <div>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>默认旁白音色</label>
                     <select value={defaultVoice} onChange={e => setDefaultVoice(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
                       {allVoices.map(v => <option key={v.id} value={v.id}>{v.name} — {v.desc}</option>)}
                     </select>
                   </div>
+
+                  {/* 情绪 */}
                   <div>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>默认情绪</label>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -564,10 +567,63 @@ export default function AudiobookProjectPage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* ── 音频质量 ── */}
+                  <div style={{ padding: 16, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius }}>
+                    <h3 style={{ fontSize: 13, fontWeight: 600, color: C.ink, margin: '0 0 12px' }}>🎛️ 音频质量</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: C.muted, marginBottom: 4 }}>采样率</label>
+                        <select defaultValue="24000" style={{ width: '100%', padding: '6px 10px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
+                          <option value="8000">8,000 Hz（电话音质）</option>
+                          <option value="16000">16,000 Hz（语音识别）</option>
+                          <option value="22050">22,050 Hz（FM 广播）</option>
+                          <option value="24000">24,000 Hz（标准，推荐）</option>
+                          <option value="44100">44,100 Hz（CD 音质）</option>
+                          <option value="48000">48,000 Hz（专业音频）</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: C.muted, marginBottom: 4 }}>位深度</label>
+                        <select defaultValue="16" style={{ width: '100%', padding: '6px 10px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
+                          <option value="8">8-bit（低质量，文件小）</option>
+                          <option value="16">16-bit（标准，推荐）</option>
+                          <option value="24">24-bit（高质量）</option>
+                          <option value="32">32-bit（录音室级别）</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: C.muted, marginBottom: 4 }}>比特率（MP3 导出时生效）</label>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {[64, 96, 128, 160, 192, 224, 256, 320].map(br => (
+                          <button key={br} style={{ padding: '4px 10px', borderRadius: 12, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${br === 192 ? C.pri : C.line}`, background: br === 192 ? 'rgba(196,149,106,.12)' : C.card, color: br === 192 ? C.pri : C.muted, fontWeight: br === 192 ? 600 : 400 }}>{br} kbps</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 12 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: C.muted, marginBottom: 4 }}>导出格式</label>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {[
+                          { key: 'wav', label: 'WAV（无损）' },
+                          { key: 'mp3-128', label: 'MP3 128k' },
+                          { key: 'mp3-192', label: 'MP3 192k' },
+                          { key: 'mp3-320', label: 'MP3 320k' },
+                        ].map(f => (
+                          <button key={f.key} style={{ padding: '4px 10px', borderRadius: 12, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${f.key === 'wav' ? C.pri : C.line}`, background: f.key === 'wav' ? 'rgba(196,149,106,.12)' : C.card, color: f.key === 'wav' ? C.pri : C.muted, fontWeight: f.key === 'wav' ? 600 : 400 }}>{f.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 间隔 */}
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>导出格式</label>
-                    <select defaultValue="wav" style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
-                      <option value="wav">WAV（无损）</option>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>对话间隔</label>
+                    <select defaultValue="500" style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
+                      <option value="300">0.3 秒（紧凑）</option>
+                      <option value="500">0.5 秒（正常）</option>
+                      <option value="800">0.8 秒（舒缓）</option>
+                      <option value="1000">1.0 秒（缓慢）</option>
                     </select>
                   </div>
                 </div>

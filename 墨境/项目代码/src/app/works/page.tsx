@@ -198,6 +198,10 @@ export default function WorksPage() {
                             style={{ fontSize: 10, padding: '3px 10px', border: `1px solid ${C.line}`, borderRadius: 10, background: 'none', color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
                             继续写
                           </button>
+                          <button onClick={e => { e.stopPropagation(); router.push(`/audiobook/${p.id}`) }}
+                            style={{ fontSize: 10, padding: '3px 10px', border: `1px solid ${C.pri}`, borderRadius: 10, background: 'rgba(196,149,106,.08)', color: C.pri, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            🎧 有声书
+                          </button>
                           <button onClick={e => handleDelete(e, p.id, p.name)}
                             style={{ fontSize: 10, padding: '3px 10px', border: `1px solid ${C.line}`, borderRadius: 10, background: 'none', color: C.muted, cursor: 'pointer', fontFamily: 'inherit', transition: 'all .12s' }}
                             onMouseEnter={e => { e.currentTarget.style.borderColor = '#b5454a'; e.currentTarget.style.color = '#b5454a' }}
