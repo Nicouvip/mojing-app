@@ -42,6 +42,10 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
   const [editedSegments, setEditedSegments] = useState<SegmentAnalysis[]>([])
   const [editedCharacters, setEditedCharacters] = useState<CharacterAnalysis[]>([])
 
+  /* ── 筛选 + 多选 ── */
+  const [filterTab, setFilterTab] = useState<string>('all')
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+
   /* ── 分析结果缓存（localStorage） ── */
   const CACHE_KEY = `mojing_analysis_${chapter.id}`
 
@@ -74,6 +78,59 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
     return () => clearInterval(t)
   }, [analyzing])
 
+  /* ── 筛选后的段落列表 ── */
+  const filteredSegments = useMemo(() => {
+    if (filterTab === 'all') return segments
+    if (filterTab === 'narration') return segments.filter(s => s.type === 'narration')
+    return segments.filter(s => s.type === 'dialogue' && s.characterName === filterTab)
+  }, [segments, filterTab])
+
+  /* ── 筛选 Tab 列表 ── */
+  const filterTabs = useMemo(() => {
+    const tabs: Array<{ id: string; label: string; count: number }> = [
+      { id: 'all', label: '全部', count: segments.length },
+      { id: 'narration', label: '🎙️ 旁白', count: segments.filter(s => s.type === 'narration').length },
+    ]
+    const charNames = [...new Set(segments.filter(s => s.type === 'dialogue' && s.characterName).map(s => s.characterName))]
+    for (const name of charNames) {
+      tabs.push({ id: name, label: name, count: segments.filter(s => s.characterName === name).length })
+    }
+    return tabs
+  }, [segments])
+
+  /* ── 多选操作 ── */
+  const toggleSelect = (idx: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(idx)) next.delete(idx)
+      else next.add(idx)
+      return next
+    })
+  }
+  const selectAll = () => setSelectedIds(new Set(filteredSegments.map(s => s.index)))
+  const clearSelection = () => setSelectedIds(new Set())
+
+  /* ── 导出功能 ── */
+  const exportText = (segs: SegmentAnalysis[], title: string) => {
+    const lines = segs.map(s => {
+      const prefix = s.type === 'dialogue' ? `「${s.characterName || '未知'}」` : '【旁白】'
+      return `${prefix}${s.text}`
+    })
+    const text = `=== ${title} ===\n角色数：${characters.length}，段落数：${segs.length}\n\n${lines.join('\n\n')}`
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `${chapter.title}-${title}.txt`; a.click()
+    URL.revokeObjectURL(url)
+  }
+  const exportCurrentFilter = () => exportText(filteredSegments, filterTab === 'all' ? '全部' : filterTab === 'narration' ? '旁白' : filterTab)
+  const exportAllByOrder = () => exportText(segments, '全部（按顺序）')
+  const exportSelected = () => {
+    const sel = segments.filter(s => selectedIds.has(s.index))
+    if (sel.length === 0) { alert('请先勾选要导出的段落'); return }
+    exportText(sel, '选中段落')
+  }
+
   /* ── Step 1: AI 分析 ── */
   const handleAnalyze = async () => {
     if (!chapter.content) { alert('该章节暂无内容'); return }
@@ -90,7 +147,6 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
         setAnalysisResult(data)
         setEditedCharacters(data.characters || [])
         setEditedSegments(data.segments || [])
-        // 缓存分析结果
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch { /* quota exceeded */ }
       } else {
         setAnalyzeError(data.error || '分析失败')
@@ -105,7 +161,6 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
   /* ── Step 2: 用户微调角色音色 ── */
   const updateCharacterVoice = (name: string, voiceId: string) => {
     setEditedCharacters(prev => prev.map(c => c.name === name ? { ...c, recommendedVoice: voiceId } : c))
-    // 同步更新所有使用该角色的段落
     setEditedSegments(prev => prev.map(s => s.characterName === name ? { ...s, recommendedVoice: voiceId } : s))
   }
 
@@ -301,74 +356,113 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
         </div>
       </div>
 
-      {/* ═══ 右侧：段落列表（带 AI 分析结果 + 可微调） ═══ */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, overflow: 'auto' }}>
-        {segments.map((seg, i) => {
-          const isDialogue = seg.type === 'dialogue'
-          const color = isDialogue && seg.characterName ? getCharColor(seg.characterName) : SEGMENT_COLORS.narration
-          const segKey = `seg-${seg.index}`
-          const audio = audioCache[segKey]
-          const isPlaying = playingId === segKey
-          const isGen = generatingId === segKey
+      {/* ═══ 右侧：筛选Tab + 导出 + 段落列表 ═══ */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, overflow: 'hidden' }}>
+        {/* 筛选 Tab 栏 */}
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', padding: '0 0 8px', borderBottom: `1px solid ${C.line}` }}>
+          {filterTabs.map(tab => (
+            <button key={tab.id} onClick={() => { setFilterTab(tab.id); clearSelection() }}
+              style={{ padding: '4px 12px', borderRadius: 14, fontSize: 11, border: 'none', background: filterTab === tab.id ? C.pri : 'rgba(26,24,20,.04)', color: filterTab === tab.id ? '#fff' : C.muted, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', fontWeight: filterTab === tab.id ? 600 : 400 }}>
+              {tab.label} ({tab.count})
+            </button>
+          ))}
+        </div>
 
-          return (
-            <div key={i} style={{
-              padding: '10px 14px',
-              background: isPlaying ? `${color}10` : C.card,
-              border: `1px solid ${isPlaying ? color : C.line}`,
-              borderLeft: `3px solid ${color}`,
-              borderRadius: C.radius,
-              transition: 'all .12s',
-            }}>
-              {/* 标签行 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
-                {isDialogue && seg.characterName ? (
-                  <span style={{ fontSize: 10, padding: '1px 6px', background: `${color}18`, borderRadius: 8, color, fontWeight: 600 }}>{seg.characterName}</span>
-                ) : (
-                  <span style={{ fontSize: 10, padding: '1px 6px', background: 'rgba(26,24,20,.06)', borderRadius: 8, color: C.muted }}>叙述</span>
-                )}
+        {/* 导出按钮行 + 多选控制 */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button onClick={exportCurrentFilter} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+            📋 导出当前筛选
+          </button>
+          <button onClick={exportAllByOrder} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+            📋 按顺序导出全部
+          </button>
+          <button onClick={selectAll} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ☑️ 全选当前
+          </button>
+          <button onClick={clearSelection} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+            取消全选
+          </button>
+          {selectedIds.size > 0 && (
+            <button onClick={exportSelected} style={{ padding: '4px 10px', fontSize: 11, border: 'none', borderRadius: 4, background: C.indigo, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
+              📋 导出选中 ({selectedIds.size})
+            </button>
+          )}
+        </div>
 
-                {/* 情绪微调 */}
-                <select value={seg.emotion} onChange={e => updateSegmentEmotion(i, e.target.value)} style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
-                  {EMOTION_PRESETS.map(em => <option key={em.id} value={em.id}>{em.label}</option>)}
-                </select>
+        {/* 段落列表 */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, overflow: 'auto' }}>
+          {filteredSegments.map((seg) => {
+            const globalIdx = segments.findIndex(s => s.index === seg.index)
+            const isDialogue = seg.type === 'dialogue'
+            const color = isDialogue && seg.characterName ? getCharColor(seg.characterName) : SEGMENT_COLORS.narration
+            const segKey = `seg-${seg.index}`
+            const audio = audioCache[segKey]
+            const isPlaying = playingId === segKey
+            const isGen = generatingId === segKey
+            const isSelected = selectedIds.has(seg.index)
 
-                {/* 强度 */}
-                <span style={{ fontSize: 10, color: C.muted }}>强度{seg.emotionIntensity}</span>
+            return (
+              <div key={seg.index} style={{
+                padding: '10px 14px',
+                background: isSelected ? `${color}10` : isPlaying ? `${color}10` : C.card,
+                border: `1px solid ${isSelected ? color : isPlaying ? color : C.line}`,
+                borderLeft: `3px solid ${color}`,
+                borderRadius: C.radius,
+                transition: 'all .12s',
+              }}>
+                {/* 标签行 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                  {/* 多选复选框 */}
+                  <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(seg.index)}
+                    style={{ accentColor: C.pri, width: 14, height: 14, cursor: 'pointer', flexShrink: 0 }} />
 
-                {/* 语速微调 */}
-                <select value={seg.speed} onChange={e => updateSegmentSpeed(i, e.target.value as 'slow' | 'normal' | 'fast')} style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
-                  <option value="slow">慢速</option>
-                  <option value="normal">正常</option>
-                  <option value="fast">快速</option>
-                </select>
+                  {isDialogue && seg.characterName ? (
+                    <span style={{ fontSize: 10, padding: '1px 6px', background: `${color}18`, borderRadius: 8, color, fontWeight: 600 }}>{seg.characterName}</span>
+                  ) : (
+                    <span style={{ fontSize: 10, padding: '1px 6px', background: 'rgba(26,24,20,.06)', borderRadius: 8, color: C.muted }}>叙述</span>
+                  )}
 
-                {seg.needsPause && <span style={{ fontSize: 10, color: C.muted }}>⏸停顿</span>}
-                {seg.specialNote && <span style={{ fontSize: 10, color: C.indigo }} title={seg.specialNote}>📝</span>}
+                  {/* 情绪微调 */}
+                  <select value={seg.emotion} onChange={e => updateSegmentEmotion(globalIdx, e.target.value)} style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
+                    {EMOTION_PRESETS.map(em => <option key={em.id} value={em.id}>{em.label}</option>)}
+                  </select>
 
-                <div style={{ flex: 1 }} />
-                {audio && <span style={{ fontSize: 10, color: C.green }}>✓ {Math.floor(audio.duration)}s</span>}
-              </div>
+                  <span style={{ fontSize: 10, color: C.muted }}>强度{seg.emotionIntensity}</span>
 
-              {/* 文本 */}
-              <div style={{ fontSize: 13, lineHeight: 1.7, color: C.ink }}>
-                {isDialogue ? `「${seg.text}」` : seg.text}
-              </div>
+                  <select value={seg.speed} onChange={e => updateSegmentSpeed(globalIdx, e.target.value as 'slow' | 'normal' | 'fast')} style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
+                    <option value="slow">慢速</option>
+                    <option value="normal">正常</option>
+                    <option value="fast">快速</option>
+                  </select>
 
-              {/* 操作行 */}
-              <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
-                <button onClick={() => generateOne(seg)} disabled={isGen || !!generatingId} style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: isGen ? C.pri : C.muted, cursor: isGen ? 'default' : 'pointer', fontFamily: 'inherit' }}>
-                  {isGen ? '⏳...' : '🎵 生成'}
-                </button>
-                {audio && (
-                  <button onClick={() => playBase64(audio.audioBase64, segKey)} style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${isPlaying ? C.pri : C.line}`, borderRadius: 4, background: isPlaying ? 'rgba(196,149,106,.12)' : C.card, color: isPlaying ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {isPlaying ? '⏸' : '▶'}
+                  {seg.needsPause && <span style={{ fontSize: 10, color: C.muted }}>⏸停顿</span>}
+                  {seg.specialNote && <span style={{ fontSize: 10, color: C.indigo }} title={seg.specialNote}>📝</span>}
+
+                  <div style={{ flex: 1 }} />
+                  <span style={{ fontSize: 10, color: C.muted }}>#{seg.index + 1}</span>
+                  {audio && <span style={{ fontSize: 10, color: C.green }}>✓ {Math.floor(audio.duration)}s</span>}
+                </div>
+
+                {/* 文本 */}
+                <div style={{ fontSize: 13, lineHeight: 1.7, color: C.ink }}>
+                  {isDialogue ? `「${seg.text}」` : seg.text}
+                </div>
+
+                {/* 操作行 */}
+                <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
+                  <button onClick={() => generateOne(seg)} disabled={isGen || !!generatingId} style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: isGen ? C.pri : C.muted, cursor: isGen ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                    {isGen ? '⏳...' : '🎵 生成'}
                   </button>
-                )}
+                  {audio && (
+                    <button onClick={() => playBase64(audio.audioBase64, segKey)} style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${isPlaying ? C.pri : C.line}`, borderRadius: 4, background: isPlaying ? 'rgba(196,149,106,.12)' : C.card, color: isPlaying ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {isPlaying ? '⏸' : '▶'}
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
     </div>
   )
