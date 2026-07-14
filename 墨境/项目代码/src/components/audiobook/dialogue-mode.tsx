@@ -37,6 +37,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
   /* ── 状态 ── */
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
+  const [analyzingElapsed, setAnalyzingElapsed] = useState(0)
   const [analyzeError, setAnalyzeError] = useState('')
   const [editedSegments, setEditedSegments] = useState<SegmentAnalysis[]>([])
   const [editedCharacters, setEditedCharacters] = useState<CharacterAnalysis[]>([])
@@ -50,6 +51,13 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
 
   const segments = editedSegments.length > 0 ? editedSegments : []
   const characters = editedCharacters.length > 0 ? editedCharacters : []
+
+  /* ── 分析计时器 ── */
+  useEffect(() => {
+    if (!analyzing) { setAnalyzingElapsed(0); return }
+    const t = setInterval(() => setAnalyzingElapsed(s => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [analyzing])
 
   /* ── Step 1: AI 分析 ── */
   const handleAnalyze = async () => {
@@ -190,8 +198,13 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
             fontFamily: 'inherit',
           }}
         >
-          {analyzing ? '⏳ AI 正在分析...' : '🤖 开始 AI 分析'}
+          {analyzing ? `⏳ AI 分析中… ${analyzingElapsed}s` : '🤖 开始 AI 分析'}
         </button>
+        {analyzing && (
+          <p style={{ fontSize: 11, color: C.muted, margin: '8px 0 0', textAlign: 'center' }}>
+            DeepSeek V4 Flash 正在分析章节文本，预计 30-60 秒，请耐心等待…
+          </p>
+        )}
         {analyzeError && (
           <div style={{ marginTop: 16, padding: 12, background: 'rgba(181,69,74,.08)', borderRadius: 8, fontSize: 12, color: C.crimson, maxWidth: 400, margin: '16px auto 0' }}>
             ❌ {analyzeError}

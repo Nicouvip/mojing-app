@@ -7,7 +7,7 @@
 export const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions'
 
 /** DeepSeek 模型名称 */
-export const DEEPSEEK_MODEL = 'deepseek-chat'
+export const DEEPSEEK_MODEL = 'deepseek-v4-pro'
 
 /** 默认超时时间（毫秒） */
 export const DEFAULT_TIMEOUT = 30_000
