@@ -315,7 +315,7 @@ export function createChapter(projectId: string, title: string, volumeId?: strin
   // 默认归入第一个卷
   const targetVolumeId = volumeId || ensureDefaultVolume(projectId).id
   const ch: Chapter = {
-    id: `ch-${Date.now()}`, projectId, title, content: '',
+    id: `ch-${Date.now()}-${Math.random().toString(36).slice(2,8)}`, projectId, title, content: '',
     order: chapters.filter(c => c.projectId === projectId).length + 1,
     wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft',
     volumeId: targetVolumeId,
