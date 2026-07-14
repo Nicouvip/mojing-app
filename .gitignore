@@ -21,6 +21,18 @@ build/
 .env.local
 .env.*.local
 
+# secrets & config
+全局配置/
+env.keys
+*.keys
+
+# backups
+backups/
+墨境/项目代码/backups/
+墨境/backups/
+
+# tmp
+tmp_*/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
@@ -40,3 +52,6 @@ next-env.d.ts
 
 # os junk
 Thumbs.db
+
+# 项目文档（可能含敏感信息）
+墨境/项目文档/
