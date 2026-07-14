@@ -89,6 +89,44 @@ export default function AudiobookProjectPage() {
   const [cloneLoading, setCloneLoading] = useState(false)
   const [clonedVoices, setClonedVoices] = useState<Array<{ id: string; name: string; sampleName: string; audioBase64: string }>>([])
 
+  /* ── 在线录音状态 ── */
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
+
+  /* ── 录音计时器 ── */
+  useEffect(() => {
+    if (!isRecording) { setRecordingTime(0); return }
+    const t = setInterval(() => setRecordingTime(s => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [isRecording])
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      recordedChunksRef.current = []
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data) }
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' })
+        const file = new File([blob], `录音-${new Date().toLocaleTimeString('zh-CN')}.webm`, { type: 'audio/webm' })
+        setCloneSample(file)
+      }
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setIsRecording(true)
+    } catch {
+      alert('无法访问麦克风，请检查浏览器权限设置')
+    }
+  }
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop()
+    setIsRecording(false)
+  }
+
   /* ── 加载项目 ── */
   useEffect(() => {
     if (!projectId || projectId === 'demo-1') {
@@ -718,10 +756,26 @@ export default function AudiobookProjectPage() {
               <button onClick={() => setShowClone(false)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.muted }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ padding: 20, border: `2px dashed ${C.line}`, borderRadius: 8, textAlign: 'center' }}>
-                <p style={{ fontSize: 12, color: C.muted, margin: '0 0 8px' }}>上传样本音频（MP3/WAV，10秒-1分钟）</p>
-                <input type="file" accept="audio/*" onChange={e => setCloneSample(e.target.files?.[0] || null)} style={{ fontSize: 12 }} />
-                {cloneSample && <p style={{ fontSize: 11, color: C.green, margin: '8px 0 0' }}>✓ {cloneSample.name}</p>}
+              <div style={{ display: 'flex', gap: 12 }}>
+                {/* 上传 */}
+                <div style={{ flex: 1, padding: 16, border: `2px dashed ${C.line}`, borderRadius: 8, textAlign: 'center' }}>
+                  <p style={{ fontSize: 12, color: C.muted, margin: '0 0 8px' }}>📁 上传音频文件</p>
+                  <input type="file" accept="audio/*" onChange={e => { setCloneSample(e.target.files?.[0] || null); if (isRecording) stopRecording() }} style={{ fontSize: 11 }} />
+                  {cloneSample && !isRecording && !cloneSample.name.startsWith('录音') && <p style={{ fontSize: 11, color: C.green, margin: '8px 0 0' }}>✓ {cloneSample.name}</p>}
+                </div>
+                {/* 录音 */}
+                <div style={{ flex: 1, padding: 16, border: `2px dashed ${isRecording ? C.crimson : C.line}`, borderRadius: 8, textAlign: 'center', background: isRecording ? 'rgba(181,69,74,.04)' : 'transparent' }}>
+                  <p style={{ fontSize: 12, color: C.muted, margin: '0 0 8px' }}>🎙️ 在线录音</p>
+                  {isRecording ? (
+                    <>
+                      <p style={{ fontSize: 20, fontWeight: 700, color: C.crimson, margin: '0 0 8px' }}>🔴 {recordingTime}s</p>
+                      <button onClick={stopRecording} style={{ padding: '6px 20px', background: C.crimson, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>⏹ 停止录音</button>
+                    </>
+                  ) : (
+                    <button onClick={startRecording} style={{ padding: '6px 20px', background: C.indigo, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>🎙️ 开始录音</button>
+                  )}
+                  {cloneSample && !isRecording && cloneSample.name.startsWith('录音') && <p style={{ fontSize: 11, color: C.green, margin: '8px 0 0' }}>✓ {cloneSample.name}</p>}
+                </div>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>名称</label>
