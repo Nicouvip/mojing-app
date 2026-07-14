@@ -94,7 +94,7 @@ export default function AudiobookPage() {
     const text = await file.text()
     setImportText(text)
 
-    // 自动调 API 预览分章
+    // 解析分章，但不自动跳步，等用户点确认后再跳
     try {
       const res = await fetch('/api/audiobook/import', {
         method: 'POST',
@@ -104,7 +104,6 @@ export default function AudiobookPage() {
       const data = await res.json()
       if (data.success) {
         setImportParsed(data.chapters)
-        setImportStep('preview')
       }
     } catch (err) {
       alert('解析失败：' + (err instanceof Error ? err.message : String(err)))
