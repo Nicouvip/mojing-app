@@ -1,5 +1,14 @@
-import type { Project, Chapter, Volume } from '@/lib/db/types'
+import type { Project, Chapter, Volume, CharacterProfile, WorldSetting, Outline, Foreshadow, CoolingState, WritingPlan } from '@/lib/db/types'
 import { isSupabaseAvailable, supabase } from '@/lib/db/supabase-client'
+import {
+  tursoGetProjects, tursoGetChapters, tursoGetVolumes,
+  tursoGetCharacterProfiles, tursoGetWorldSettings, tursoGetOutlines, tursoGetForeshadows,
+  tursoSaveProject, tursoSaveChapter, tursoSaveVolume,
+  tursoSaveCharacterProfile, tursoSaveWorldSetting, tursoSaveForeshadow,
+  tursoSaveCoolingState, tursoSaveWritingPlan,
+  tursoUpsertOutline, tursoDeleteCharacterProfile,
+  tursoDeleteOutline, tursoDeleteWorldSetting, tursoDeleteForeshadow,
+} from '@/lib/db/turso-store'
 import readingTime from 'reading-time'
 
 // Memory cache for SSR + hydration
@@ -12,10 +21,192 @@ let memChapters: Chapter[] = [
     order: 1, wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft' },
 ]
 let loadedFromSupabase = false
+let loadedFromTurso = false
+/** 当前用户 ID（由客户端在初始化时设置） */
+let currentUserId: string | undefined
+let _tursoAvailable: boolean | null = null
 
 function isClient(): boolean { return typeof window !== 'undefined' }
 
-// Load from Supabase, fall back to localStorage
+/** 判断 Turso 是否可用（缓存结果，只检测一次） */
+export function isTursoAvailable(): boolean {
+  if (_tursoAvailable !== null) return _tursoAvailable
+  const url = process.env.NEXT_PUBLIC_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL
+  const token = process.env.NEXT_PUBLIC_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN
+  _tursoAvailable = !!url && !!token && url.length > 10 && token.length > 10
+  return _tursoAvailable
+}
+
+/**
+ * 设置当前用户 ID，供 syncToSupabase 做行级隔离
+ * 由 AuthProvider 或客户端初始化时调用
+ */
+export function setCurrentUserId(id: string | undefined) {
+  currentUserId = id
+}
+
+/** 获取当前用户 ID */
+export function getCurrentUserId(): string | undefined {
+  if (!isClient()) {
+    return currentUserId
+  }
+  if (!currentUserId && typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('mojing_auth')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        currentUserId = parsed.user?.id
+      }
+    } catch {}
+  }
+  return currentUserId
+}
+
+// ──────────────────────────────────────────────
+// store 初始化 —— 从云端加载数据
+// ──────────────────────────────────────────────
+
+/** 从 Turso 加载数据到内存缓存 + localStorage */
+export async function loadFromTurso(): Promise<boolean> {
+  if (!isTursoAvailable() || loadedFromTurso) return false
+  try {
+    const uid = getCurrentUserId()
+    const projects = await tursoGetProjects(uid)
+    if (projects.length > 0) {
+      memProjects = projects
+      if (isClient()) saveClient('projects', projects)
+    }
+    // 加载所有项目的章节、卷和其他数据
+    const allChapters: Chapter[] = []
+    const allVolumes: Volume[] = []
+    const allCharProfiles: CharacterProfile[] = []
+    const allWorldSettings: WorldSetting[] = []
+    const allOutlines: Outline[] = []
+    const allForeshadows: Foreshadow[] = []
+    for (const proj of (projects.length > 0 ? projects : memProjects)) {
+      const [chapters, volumes, chars, ws, outlines, foreshadows] = await Promise.all([
+        tursoGetChapters(proj.id),
+        tursoGetVolumes(proj.id),
+        tursoGetCharacterProfiles(proj.id),
+        tursoGetWorldSettings(proj.id),
+        tursoGetOutlines(proj.id),
+        tursoGetForeshadows(proj.id),
+      ])
+      allChapters.push(...chapters)
+      allVolumes.push(...volumes)
+      allCharProfiles.push(...chars)
+      allWorldSettings.push(...ws)
+      allOutlines.push(...outlines)
+      allForeshadows.push(...foreshadows)
+    }
+    if (allChapters.length > 0) {
+      memChapters = allChapters
+      if (isClient()) saveClient('chapters', allChapters)
+    }
+    if (allVolumes.length > 0) {
+      memVolumes = allVolumes
+      if (isClient()) saveClient('volumes', allVolumes)
+    }
+    if (allCharProfiles.length > 0 && isClient()) saveClient('character_profiles', allCharProfiles)
+    if (allWorldSettings.length > 0 && isClient()) saveClient('world_settings', allWorldSettings)
+    if (allOutlines.length > 0 && isClient()) saveClient('outlines', allOutlines)
+    if (allForeshadows.length > 0 && isClient()) saveClient('foreshadows', allForeshadows)
+    loadedFromTurso = true
+    return true
+  } catch (err) {
+    console.warn('[store] loadFromTurso 失败：', err)
+    return false
+  }
+}
+
+/** 初始化 store：从 Turso → Supabase → localStorage 依次尝试加载 */
+export async function initStore(): Promise<void> {
+  if (!isClient()) return
+  const uid = getCurrentUserId()
+  if (uid) setCurrentUserId(uid)
+  // 优先 Turso
+  const tursoLoaded = await loadFromTurso()
+  if (!tursoLoaded) {
+    // Turso 不可用时尝试 Supabase
+    await loadFromSupabase()
+  }
+  startCleanupTimer()
+}
+
+// ──────────────────────────────────────────────
+// 数据同步（变更后自动推送）
+// ──────────────────────────────────────────────
+
+/** 将内存数据同步到 Turso */
+async function syncToTurso(): Promise<void> {
+  if (!isTursoAvailable()) return
+  try {
+    const uid = getCurrentUserId()
+    const userProjects = uid
+      ? memProjects.filter(p => !p.userId || p.userId === uid)
+      : memProjects
+    const userChapters = uid
+      ? memChapters.filter(c => !c.userId || c.userId === uid)
+      : memChapters
+    await Promise.all([
+      ...userProjects.map(p => tursoSaveProject(p).catch(() => {})),
+      ...userChapters.map(c => tursoSaveChapter(c).catch(() => {})),
+      ...memVolumes.map(v => tursoSaveVolume(v).catch(() => {})),
+    ])
+  } catch (err) {
+    console.warn('[store] syncToTurso 失败：', err)
+  }
+}
+
+async function loadFromSupabase() {
+  if (!isSupabaseAvailable() || loadedFromSupabase) return
+  try {
+    const uid = getCurrentUserId()
+    let projectsQuery = supabase!.from('projects').select('*')
+    let chaptersQuery = supabase!.from('chapters').select('*')
+    if (uid) {
+      projectsQuery = projectsQuery.eq('userId', uid)
+      chaptersQuery = chaptersQuery.eq('userId', uid)
+    }
+    const { data: projects } = await projectsQuery
+    if (projects && projects.length > 0) memProjects = projects as Project[]
+    const { data: chapters } = await chaptersQuery
+    if (chapters && chapters.length > 0) memChapters = chapters as Chapter[]
+    loadedFromSupabase = true
+  } catch (err) {
+    console.warn('[store] loadFromSupabase 失败：需要配置 SUPABASE 凭据（NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY）', err)
+  }
+}
+
+async function syncToSupabase() {
+  if (!isSupabaseAvailable()) return
+  try {
+    const uid = getCurrentUserId()
+    const userProjects = uid
+      ? memProjects.filter(p => !p.userId || p.userId === uid)
+      : memProjects
+    const userChapters = uid
+      ? memChapters.filter(c => !c.userId || c.userId === uid)
+      : memChapters
+    if (userProjects.length > 0) {
+      await supabase!.from('projects').upsert(
+        uid ? userProjects.map(p => ({ ...p, userId: uid })) : userProjects
+      )
+    }
+    if (userChapters.length > 0) {
+      await supabase!.from('chapters').upsert(
+        uid ? userChapters.map(c => ({ ...c, userId: uid })) : userChapters
+      )
+    }
+  } catch (err) {
+    console.warn('[store] syncToSupabase 失败：需要配置 SUPABASE 凭据', err)
+  }
+}
+
+// ──────────────────────────────────────────────
+// localStorage 读写
+// ──────────────────────────────────────────────
+
 function loadClient<T>(key: string, fallback: T): T {
   try {
     const d = localStorage.getItem('mojing_' + key)
@@ -27,28 +218,9 @@ function saveClient<T>(key: string, data: T) {
   try { localStorage.setItem('mojing_' + key, JSON.stringify(data)) } catch {}
 }
 
-async function loadFromSupabase() {
-  if (!isSupabaseAvailable() || loadedFromSupabase) return
-  try {
-    const { data: projects } = await supabase!.from('projects').select('*')
-    if (projects && projects.length > 0) memProjects = projects as Project[]
-    const { data: chapters } = await supabase!.from('chapters').select('*')
-    if (chapters && chapters.length > 0) memChapters = chapters as Chapter[]
-    loadedFromSupabase = true
-  } catch (err) {
-    console.warn('[store] loadFromSupabase 失败：需要配置 SUPABASE 凭据（NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY）', err)
-  }
-}
-
-async function syncToSupabase() {
-  if (!isSupabaseAvailable()) return
-  try {
-    await supabase!.from('projects').upsert(memProjects)
-    await supabase!.from('chapters').upsert(memChapters)
-  } catch (err) {
-    console.warn('[store] syncToSupabase 失败：需要配置 SUPABASE 凭据', err)
-  }
-}
+// ──────────────────────────────────────────────
+// 项目（Project）CRUD
+// ──────────────────────────────────────────────
 
 function getProjectsAll(includeDeleted = false): Project[] {
   let list: Project[]
@@ -61,19 +233,7 @@ function setProjectsAll(p: Project[]) {
   memProjects = p
   if (isClient()) saveClient('projects', p)
   syncToSupabase()
-}
-
-function getChaptersAll(includeDeleted = false): Chapter[] {
-  let list: Chapter[]
-  if (isClient()) list = loadClient('chapters', memChapters)
-  else list = memChapters
-  if (!includeDeleted) list = list.filter(c => !c.deletedAt)
-  return list
-}
-function setChaptersAll(c: Chapter[]) {
-  memChapters = c
-  if (isClient()) saveClient('chapters', c)
-  syncToSupabase()
+  syncToTurso()
 }
 
 export function getProjects(): Project[] {
@@ -90,9 +250,20 @@ export function getProject(id: string): Project | undefined {
   return getProjectsAll().find(p => p.id === id)
 }
 
-export function createProject(name: string, genre: string): Project {
+export function createProject(name: string, genre: string, options?: {
+  audience?: string
+  perspective?: string
+  length?: string
+  idea?: string
+}): Project {
   const projects = getProjectsAll(true)
-  const p: Project = { id: `proj-${Date.now()}`, name, genre, description: '',
+  const desc = [
+    options?.audience ? `目标读者：${options.audience}` : '',
+    options?.perspective ? `视角：${options.perspective}` : '',
+    options?.length ? `篇幅：${options.length}` : '',
+    options?.idea ? `创意：${options.idea}` : '',
+  ].filter(Boolean).join(' | ')
+  const p: Project = { id: `proj-${Date.now()}`, name, genre, description: desc,
     createdAt: Date.now(), updatedAt: Date.now(), chapterCount: 1, totalWords: 0 }
   projects.push(p)
   setProjectsAll(projects)
@@ -136,11 +307,28 @@ export function restoreProject(id: string): void {
   setChaptersAll(chapters)
 }
 
+// ──────────────────────────────────────────────
+// 章节（Chapter）CRUD
+// ──────────────────────────────────────────────
+
+function getChaptersAll(includeDeleted = false): Chapter[] {
+  let list: Chapter[]
+  if (isClient()) list = loadClient('chapters', memChapters)
+  else list = memChapters
+  if (!includeDeleted) list = list.filter(c => !c.deletedAt)
+  return list
+}
+function setChaptersAll(c: Chapter[]) {
+  memChapters = c
+  if (isClient()) saveClient('chapters', c)
+  syncToSupabase()
+  syncToTurso()
+}
+
 export function createChapter(projectId: string, title: string, volumeId?: string): Chapter | undefined {
   const proj = getProjectsAll().find(p => p.id === projectId)
   if (!proj) return undefined
   const chapters = getChaptersAll(true)
-  // 默认归入第一个卷
   const targetVolumeId = volumeId || ensureDefaultVolume(projectId).id
   const ch: Chapter = {
     id: `ch-${Date.now()}`, projectId, title, content: '',
@@ -171,9 +359,6 @@ export function deleteChapter(id: string): void {
 export function getTrash(): Chapter[] {
   if (typeof window === 'undefined') return []
   return getChaptersAll(true).filter(c => c.deletedAt)
-}
-function saveTrash(t: Chapter[]) {
-  // 不再使用独立 trash 存储，deletedAt 已内联到 chapters
 }
 
 export function restoreChapter(id: string): void {
@@ -221,7 +406,10 @@ export function updateChapterContent(id: string, content: string): Chapter | und
   return ch
 }
 
-// ── 卷管理 ──────────────────────────────────────────
+// ──────────────────────────────────────────────
+// 卷（Volume）管理
+// ──────────────────────────────────────────────
+
 let memVolumes: Volume[] = []
 
 function getVolumesAll(): Volume[] {
@@ -232,6 +420,7 @@ function setVolumesAll(v: Volume[]) {
   memVolumes = v
   if (isClient()) saveClient('volumes', v)
   syncToSupabase()
+  syncToTurso()
 }
 
 /** 按 order 排序返回项目的卷列表 */
@@ -290,7 +479,10 @@ export function ensureDefaultVolume(projectId: string): Volume {
   return vols[0]
 }
 
-// ── 30天自动清理软删除数据 ──────────────────────────────
+// ──────────────────────────────────────────────
+// 30天自动清理软删除数据
+// ──────────────────────────────────────────────
+
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
 /** 永久清除超过30天的软删除数据 */
@@ -332,8 +524,7 @@ export function startCleanupTimer(): void {
   if (cleanupTimer || typeof window === 'undefined') return
   cleanupTimer = setInterval(() => {
     purgeExpiredDeletes()
-  }, 60 * 60 * 1000) // 1 小时
-  // 启动后立即执行一次
+  }, 60 * 60 * 1000)
   purgeExpiredDeletes()
 }
 
@@ -345,7 +536,202 @@ export function stopCleanupTimer(): void {
   }
 }
 
-// 客户端自动启动
-if (typeof window !== 'undefined') {
-  startCleanupTimer()
+// ═══════════════════════════════════════════
+// P1 新增：写作引擎 CRUD 函数
+// 跟随现有模式：localStorage + Turso sync
+// ═══════════════════════════════════════════
+
+// ── 角色档案 ──
+
+export function getCharacterProfiles(projectId: string): CharacterProfile[] {
+  if (!isClient()) return []
+  const all = loadClient<CharacterProfile[]>('character_profiles', [])
+  return all.filter(c => c.projectId === projectId)
+}
+
+export function getCharacterProfile(id: string): CharacterProfile | undefined {
+  if (!isClient()) return undefined
+  const all = loadClient<CharacterProfile[]>('character_profiles', [])
+  return all.find(c => c.id === id)
+}
+
+export function createCharacterProfile(input: Omit<CharacterProfile, 'id' | 'createdAt' | 'updatedAt' | 'growthHistory'>): CharacterProfile {
+  const all = isClient() ? loadClient<CharacterProfile[]>('character_profiles', []) : []
+  const profile: CharacterProfile = {
+    ...input,
+    id: `char-${Date.now()}`,
+    growthHistory: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }
+  all.push(profile)
+  if (isClient()) saveClient('character_profiles', all)
+  if (isTursoAvailable()) { tursoSaveCharacterProfile(profile).catch(() => {}) }
+  return profile
+}
+
+export function updateCharacterProfile(id: string, patch: Partial<CharacterProfile>): CharacterProfile | undefined {
+  if (!isClient()) return undefined
+  const all = loadClient<CharacterProfile[]>('character_profiles', [])
+  const idx = all.findIndex(c => c.id === id)
+  if (idx < 0) return undefined
+  all[idx] = { ...all[idx], ...patch, updatedAt: Date.now() }
+  saveClient('character_profiles', all)
+  if (isTursoAvailable()) { tursoSaveCharacterProfile(all[idx]).catch(() => {}) }
+  return all[idx]
+}
+
+export function deleteCharacterProfile(id: string): void {
+  if (!isClient()) return
+  const all = loadClient<CharacterProfile[]>('character_profiles', [])
+  saveClient('character_profiles', all.filter(c => c.id !== id))
+  if (isTursoAvailable()) { tursoDeleteCharacterProfile(id).catch(() => {}) }
+}
+
+// ── 世界观设定 ──
+
+export function getWorldSettings(projectId: string): WorldSetting[] {
+  if (!isClient()) return []
+  const all = loadClient<WorldSetting[]>('world_settings', [])
+  return all.filter(w => w.projectId === projectId).sort((a, b) => a.order - b.order)
+}
+
+export function createWorldSetting(input: Omit<WorldSetting, 'id' | 'createdAt' | 'updatedAt'>): WorldSetting {
+  const all = isClient() ? loadClient<WorldSetting[]>('world_settings', []) : []
+  const ws: WorldSetting = { ...input, id: `ws-${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now() }
+  all.push(ws)
+  if (isClient()) saveClient('world_settings', all)
+  if (isTursoAvailable()) { tursoSaveWorldSetting(ws).catch(() => {}) }
+  return ws
+}
+
+export function updateWorldSetting(id: string, patch: Partial<WorldSetting>): WorldSetting | undefined {
+  if (!isClient()) return undefined
+  const all = loadClient<WorldSetting[]>('world_settings', [])
+  const idx = all.findIndex(w => w.id === id)
+  if (idx < 0) return undefined
+  all[idx] = { ...all[idx], ...patch, updatedAt: Date.now() }
+  saveClient('world_settings', all)
+  if (isTursoAvailable()) { tursoSaveWorldSetting(all[idx]).catch(() => {}) }
+  return all[idx]
+}
+
+export function deleteWorldSetting(id: string): void {
+  if (!isClient()) return
+  const all = loadClient<WorldSetting[]>('world_settings', [])
+  saveClient('world_settings', all.filter(w => w.id !== id))
+  if (isTursoAvailable()) { tursoDeleteWorldSetting(id).catch(() => {}) }
+}
+
+// ── 大纲节点 ──
+
+export function getOutlines(projectId: string): Outline[] {
+  if (!isClient()) return []
+  const all = loadClient<Outline[]>('outlines', [])
+  return all.filter(o => o.projectId === projectId).sort((a, b) => a.chapterOrder - b.chapterOrder)
+}
+
+export function getOutline(projectId: string, chapterOrder: number): Outline | undefined {
+  if (!isClient()) return undefined
+  const all = loadClient<Outline[]>('outlines', [])
+  return all.find(o => o.projectId === projectId && o.chapterOrder === chapterOrder)
+}
+
+export function upsertOutline(input: Omit<Outline, 'id' | 'createdAt' | 'updatedAt'>): Outline {
+  const all = isClient() ? loadClient<Outline[]>('outlines', []) : []
+  const idx = all.findIndex(o => o.projectId === input.projectId && o.chapterOrder === input.chapterOrder)
+  if (idx >= 0) {
+    all[idx] = { ...all[idx], ...input, updatedAt: Date.now() }
+    if (isClient()) saveClient('outlines', all)
+    return all[idx]
+  }
+  const outline: Outline = { ...input, id: `ol-${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now() }
+  all.push(outline)
+  if (isClient()) saveClient('outlines', all)
+  if (isTursoAvailable()) { tursoUpsertOutline(outline).catch(() => {}) }
+  return outline
+}
+
+export function deleteOutline(id: string): void {
+  if (!isClient()) return
+  const all = loadClient<Outline[]>('outlines', [])
+  saveClient('outlines', all.filter(o => o.id !== id))
+  if (isTursoAvailable()) { tursoDeleteOutline(id).catch(() => {}) }
+}
+
+// ── 伏笔 ──
+
+export function getForeshadows(projectId: string): Foreshadow[] {
+  if (!isClient()) return []
+  const all = loadClient<Foreshadow[]>('foreshadows', [])
+  return all.filter(f => f.projectId === projectId)
+}
+
+export function getActiveForeshadows(projectId: string): Foreshadow[] {
+  return getForeshadows(projectId).filter(f => f.status === 'active')
+}
+
+export function createForeshadow(input: Omit<Foreshadow, 'id' | 'createdAt' | 'updatedAt'>): Foreshadow {
+  const all = isClient() ? loadClient<Foreshadow[]>('foreshadows', []) : []
+  const fs: Foreshadow = { ...input, id: `fs-${Date.now()}`, createdAt: Date.now(), updatedAt: Date.now() }
+  all.push(fs)
+  if (isClient()) saveClient('foreshadows', all)
+  if (isTursoAvailable()) { tursoSaveForeshadow(fs).catch(() => {}) }
+  return fs
+}
+
+export function updateForeshadow(id: string, patch: Partial<Foreshadow>): Foreshadow | undefined {
+  if (!isClient()) return undefined
+  const all = loadClient<Foreshadow[]>('foreshadows', [])
+  const idx = all.findIndex(f => f.id === id)
+  if (idx < 0) return undefined
+  all[idx] = { ...all[idx], ...patch, updatedAt: Date.now() }
+  saveClient('foreshadows', all)
+  if (isTursoAvailable()) { tursoSaveForeshadow(all[idx]).catch(() => {}) }
+  return all[idx]
+}
+
+export function resolveForeshadow(id: string, chapterOrder: number): void {
+  updateForeshadow(id, { status: 'resolved', chapterResolved: chapterOrder })
+}
+
+export function abandonForeshadow(id: string): void {
+  updateForeshadow(id, { status: 'abandoned' })
+}
+
+// ── 冷却状态 ──
+
+export function getCoolingState(projectId: string): CoolingState | null {
+  if (!isClient()) return null
+  const all = loadClient<CoolingState[]>('cooling_states', [])
+  return all.find(c => c.projectId === projectId) || null
+}
+
+export function saveCoolingState(state: CoolingState): void {
+  if (!isClient()) return
+  const all = loadClient<CoolingState[]>('cooling_states', [])
+  const idx = all.findIndex(c => c.projectId === state.projectId)
+  state.updatedAt = Date.now()
+  if (idx >= 0) all[idx] = state
+  else all.push(state)
+  saveClient('cooling_states', all)
+  if (isTursoAvailable()) { tursoSaveCoolingState(state).catch(() => {}) }
+}
+
+// ── 写作计划 ──
+
+export function getWritingPlan(projectId: string, chapterOrder: number): WritingPlan | null {
+  if (!isClient()) return null
+  const all = loadClient<WritingPlan[]>('writing_plans', [])
+  return all.find(w => w.projectId === projectId && w.chapterOrder === chapterOrder) || null
+}
+
+export function saveWritingPlan(plan: WritingPlan): void {
+  if (!isClient()) return
+  const all = loadClient<WritingPlan[]>('writing_plans', [])
+  const idx = all.findIndex(w => w.projectId === plan.projectId && w.chapterOrder === plan.chapterOrder)
+  if (idx >= 0) all[idx] = plan
+  else all.push(plan)
+  saveClient('writing_plans', all)
+  if (isTursoAvailable()) { tursoSaveWritingPlan(plan).catch(() => {}) }
 }

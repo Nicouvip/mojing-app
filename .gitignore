@@ -55,3 +55,18 @@ Thumbs.db
 
 # 项目文档（可能含敏感信息）
 墨境/项目文档/
+
+# tooling / meta
+.kunsdd/
+.reasonix/
+.agents/
+logo/
+tmp_browser/
+skills-lock.json
+
+# backup / temp files
+*.bak
+pnpm-lock.yaml.bak
+
+# scripts
+scripts/
