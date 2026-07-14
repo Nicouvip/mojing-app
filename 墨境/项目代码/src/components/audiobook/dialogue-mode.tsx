@@ -42,6 +42,21 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
   const [editedSegments, setEditedSegments] = useState<SegmentAnalysis[]>([])
   const [editedCharacters, setEditedCharacters] = useState<CharacterAnalysis[]>([])
 
+  /* ── 分析结果缓存（localStorage） ── */
+  const CACHE_KEY = `mojing_analysis_${chapter.id}`
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY)
+      if (cached) {
+        const data = JSON.parse(cached)
+        setAnalysisResult(data)
+        setEditedCharacters(data.characters || [])
+        setEditedSegments(data.segments || [])
+      }
+    } catch { /* ignore corrupted cache */ }
+  }, [chapter.id])
+
   /* ── 生成状态 ── */
   const [generatingId, setGeneratingId] = useState<string | null>(null)
   const [audioCache, setAudioCache] = useState<Record<string, { audioBase64: string; duration: number }>>({})
@@ -75,6 +90,8 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
         setAnalysisResult(data)
         setEditedCharacters(data.characters || [])
         setEditedSegments(data.segments || [])
+        // 缓存分析结果
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch { /* quota exceeded */ }
       } else {
         setAnalyzeError(data.error || '分析失败')
       }
@@ -229,7 +246,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
       <div style={{ width: 260, flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: C.ink, margin: 0 }}>🎭 角色音色</h3>
-          <button onClick={() => { setAnalysisResult(null); setEditedCharacters([]); setEditedSegments([]); setAudioCache({}) }}
+          <button onClick={() => { setAnalysisResult(null); setEditedCharacters([]); setEditedSegments([]); setAudioCache({}); try { localStorage.removeItem(CACHE_KEY) } catch {} }}
             style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
             重新分析
           </button>
