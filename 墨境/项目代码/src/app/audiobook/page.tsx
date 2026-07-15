@@ -40,6 +40,22 @@ const GENRE_ICONS: Record<string, string> = {
   '历史': '📜', '灵异': '👻', '言情': '💕', '竞技': '⚡',
 }
 
+/* ── 音色相关常量 ── */
+const PRESET_VOICES = [
+  { id: '冰糖', name: '冰糖', gender: 'female', desc: '甜美女声·旁白', icon: '🎤' },
+  { id: '茉莉', name: '茉莉', gender: 'female', desc: '温柔女声·对话', icon: '🗣️' },
+  { id: '苏打', name: '苏打', gender: 'male', desc: '阳光男声·青年', icon: '🎤' },
+  { id: '白桦', name: '白桦', gender: 'male', desc: '沉稳男声·中年', icon: '🗣️' },
+  { id: 'Mia', name: 'Mia', gender: 'female', desc: 'English Female', icon: '🎤' },
+  { id: 'Chloe', name: 'Chloe', gender: 'female', desc: 'English Gentle', icon: '🗣️' },
+  { id: 'Milo', name: 'Milo', gender: 'male', desc: 'English Male', icon: '🎤' },
+  { id: 'Dean', name: 'Dean', gender: 'male', desc: 'English Deep', icon: '🗣️' },
+] as const
+
+const EMOTIONS = ['平静', '开心', '悲伤', '愤怒', '温柔', '严肃', '恐惧', '惊讶', '冷漠']
+
+const RECORDING_TEMPLATE = '春天的花开，秋天的月，夏天的风，冬天的雪。我在微风中轻轻吟唱，那是一首关于时光和记忆的歌。窗外的雨滴落在玻璃上，像是大自然写给大地的情书。'
+
 interface ProjectWithChapters extends Project {
   chapters: Chapter[]
 }
@@ -69,6 +85,191 @@ export default function AudiobookPage() {
   const [importLoading, setImportLoading] = useState(false)
   const [importStep, setImportStep] = useState<'upload' | 'preview' | 'done'>('upload')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  /* ── 音色管理状态 ── */
+  const [showVoicePanel, setShowVoicePanel] = useState(false)
+  const [defaultVoice, setDefaultVoice] = useState('冰糖')
+  const [defaultEmotion, setDefaultEmotion] = useState('平静')
+
+  /* ── VoiceDesign 弹窗 ── */
+  const [showDesign, setShowDesign] = useState(false)
+  const [designDesc, setDesignDesc] = useState('')
+  const [designText, setDesignText] = useState('你好，这是音色预览。')
+  const [designLoading, setDesignLoading] = useState(false)
+  const [designedVoices, setDesignedVoices] = useState<Array<{ id: string; name: string; desc: string; audioBase64: string }>>([])
+
+  /* ── VoiceClone 弹窗 ── */
+  const [showClone, setShowClone] = useState(false)
+  const [cloneSample, setCloneSample] = useState<File | null>(null)
+  const [cloneName, setCloneName] = useState('')
+  const [cloneLoading, setCloneLoading] = useState(false)
+  const [clonedVoices, setClonedVoices] = useState<Array<{ id: string; name: string; sampleName: string; audioBase64: string }>>([])
+
+  /* ── 录音状态 ── */
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
+
+  useEffect(() => { if (!isRecording) { setRecordingTime(0); return }; const t = setInterval(() => setRecordingTime(s => s + 1), 1000); return () => clearInterval(t) }, [isRecording])
+
+  /* ── WAV 编码 ── */
+  function encodeWAV(audioBuf: AudioBuffer): Blob {
+    const numCh = audioBuf.numberOfChannels
+    const sampleRate = audioBuf.sampleRate
+    const format = 1
+    const bitsPerSample = 16
+    const bytesPerSample = bitsPerSample / 8
+    const blockAlign = numCh * bytesPerSample
+    const dataLength = audioBuf.length * blockAlign
+    const buffer = new ArrayBuffer(44 + dataLength)
+    const view = new DataView(buffer)
+    const writeStr = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)) }
+    writeStr(0, 'RIFF'); view.setUint32(4, 36 + dataLength, true); writeStr(8, 'WAVE')
+    writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, format, true); view.setUint16(22, numCh, true)
+    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * blockAlign, true); view.setUint16(32, blockAlign, true); view.setUint16(34, bitsPerSample, true)
+    writeStr(36, 'data'); view.setUint32(40, dataLength, true)
+    const channels: Float32Array[] = []
+    for (let ch = 0; ch < numCh; ch++) channels.push(audioBuf.getChannelData(ch))
+    let offset = 44
+    for (let i = 0; i < audioBuf.length; i++) {
+      for (let ch = 0; ch < numCh; ch++) {
+        const sample = Math.max(-1, Math.min(1, channels[ch][i]))
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true)
+        offset += 2
+      }
+    }
+    return new Blob([buffer], { type: 'audio/wav' })
+  }
+
+  /* ── 播放音频 ── */
+  const audioUrlRef = useRef<string | null>(null)
+  const playBase64Audio = (base64: string, mime: string) => {
+    const bin = atob(base64)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    const blob = new Blob([bytes], { type: mime })
+    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current)
+    const url = URL.createObjectURL(blob)
+    audioUrlRef.current = url
+    const audio = new Audio(url)
+    audio.play()
+  }
+
+  /* ── 试听音色 ── */
+  const handlePreviewVoice = async (voiceId: string) => {
+    try {
+      const res = await fetch('/api/audiobook/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: '你好，这是音色试听。很高兴为你服务。', voice: voiceId }),
+      })
+      const data = await res.json()
+      if (data.success && data.audio) playBase64Audio(data.audio, 'audio/wav')
+    } catch (err) {
+      alert('试听失败：' + (err instanceof Error ? err.message : String(err)))
+    }
+  }
+
+  /* ── 录音 ── */
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
+      recordedChunksRef.current = []
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        const webmBlob = new Blob(recordedChunksRef.current, { type: 'audio/webm' })
+        try {
+          const arrayBuf = await webmBlob.arrayBuffer()
+          const audioCtx = new AudioContext()
+          const audioBuf = await audioCtx.decodeAudioData(arrayBuf)
+          const wavBlob = encodeWAV(audioBuf)
+          audioCtx.close()
+          const file = new File([wavBlob], `录音-${new Date().toLocaleTimeString('zh-CN')}.wav`, { type: 'audio/wav' })
+          setCloneSample(file)
+        } catch {
+          const file = new File([webmBlob], `录音-${new Date().toLocaleTimeString('zh-CN')}.webm`, { type: 'audio/webm' })
+          setCloneSample(file)
+          alert('wav转换失败，已保存为webm格式')
+        }
+      }
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setIsRecording(true)
+    } catch {
+      alert('无法访问麦克风，请检查浏览器权限设置')
+    }
+  }
+
+  const stopRecording = () => { mediaRecorderRef.current?.stop(); setIsRecording(false) }
+
+  /* ── VoiceDesign 生成 ── */
+  const handleDesignVoice = async () => {
+    if (!designDesc.trim()) { alert('请输入音色描述'); return }
+    setDesignLoading(true)
+    try {
+      const res = await fetch('/api/audiobook/voices/design', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: designDesc, text: designText }),
+      })
+      const data = await res.json()
+      if (data.success && data.audio) {
+        const id = `design-${Date.now()}`
+        setDesignedVoices(prev => [...prev, { id, name: designDesc.slice(0, 20), desc: designDesc, audioBase64: data.audio }])
+        playBase64Audio(data.audio, 'audio/wav')
+      } else {
+        alert('设计失败：' + (data.error || '未知错误'))
+      }
+    } catch (err) {
+      alert('设计失败：' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setDesignLoading(false)
+    }
+  }
+
+  /* ── VoiceClone 生成 ── */
+  const handleCloneVoice = async () => {
+    if (!cloneSample) { alert('请先上传或录制音频样本'); return }
+    if (!cloneName.trim()) { alert('请输入音色名称'); return }
+    setCloneLoading(true)
+    try {
+      const reader = new FileReader()
+      reader.readAsDataURL(cloneSample)
+      reader.onload = async () => {
+        const sampleBase64 = reader.result as string
+        try {
+          const res = await fetch('/api/audiobook/voices/clone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sampleBase64,
+              sampleMimeType: cloneSample.type,
+              text: designText || '你好，这是克隆音色试听。',
+              voice: sampleBase64, // 传 DataURL
+            }),
+          })
+          const data = await res.json()
+          if (data.success && data.audio) {
+            const id = `clone-${Date.now()}`
+            setClonedVoices(prev => [...prev, { id, name: cloneName.trim(), sampleName: cloneSample.name, audioBase64: data.audio }])
+            playBase64Audio(data.audio, 'audio/wav')
+          } else {
+            alert('克隆失败：' + (data.error || '未知错误'))
+          }
+        } catch (err) {
+          alert('克隆失败：' + (err instanceof Error ? err.message : String(err)))
+        } finally {
+          setCloneLoading(false)
+        }
+      }
+    } catch (err) {
+      alert('克隆失败：' + (err instanceof Error ? err.message : String(err)))
+      setCloneLoading(false)
+    }
+  }
 
   useEffect(() => {
     const projs = getProjects().filter(p => !p.deletedAt).sort((a, b) => b.updatedAt - a.updatedAt)
@@ -187,6 +388,9 @@ export default function AudiobookPage() {
                 <span style={{ color: C.muted, fontSize: 13 }}>🔍</span>
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索作品..." style={{ border: 'none', background: 'none', outline: 'none', fontSize: 12, color: C.ink, width: 180, fontFamily: 'inherit' }} />
               </div>
+              <button onClick={() => setShowVoicePanel(v => !v)} style={{ padding: '7px 16px', background: showVoicePanel ? C.pri : C.card, border: `1px solid ${showVoicePanel ? C.pri : C.line}`, borderRadius: 20, fontSize: 12, color: showVoicePanel ? '#fff' : C.ink, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
+                🎛️ 音色管理
+              </button>
               <button onClick={() => { setShowImport(true); setImportStep('upload'); setImportParsed(null); setImportText(''); setImportFileName('') }} style={{ padding: '7px 16px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 20, fontSize: 12, color: C.ink, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
                 📥 导入小说文本
               </button>
@@ -201,6 +405,54 @@ export default function AudiobookPage() {
               </button>
             ))}
           </div>
+
+          {/* ═══ 音色管理面板 ═══ */}
+          {showVoicePanel && (
+            <div style={{ padding: '16px 28px', borderBottom: `1px solid ${C.line}`, background: 'rgba(196,149,106,.03)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h3 style={{ fontSize: 13, fontWeight: 600, color: C.ink, margin: 0 }}>🎛️ 音色管理</h3>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => setShowDesign(true)} style={{ padding: '5px 14px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 11, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>✨ 设计音色</button>
+                  <button onClick={() => setShowClone(true)} style={{ padding: '5px 14px', background: C.pri, border: 'none', borderRadius: 6, fontSize: 11, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>🎤 克隆声音</button>
+                </div>
+              </div>
+
+              {/* 默认音色选择 */}
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 11, color: C.muted }}>默认音色：</span>
+                {PRESET_VOICES.slice(0, 6).map(v => (
+                  <button key={v.id} onClick={() => setDefaultVoice(v.id)} style={{ padding: '4px 10px', borderRadius: 12, fontSize: 11, border: 'none', background: defaultVoice === v.id ? C.pri : 'rgba(26,24,20,.04)', color: defaultVoice === v.id ? '#fff' : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {v.icon} {v.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* 自定义音色列表 */}
+              {(designedVoices.length + clonedVoices.length) > 0 && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {[...designedVoices, ...clonedVoices.map(v => ({ id: v.id, name: v.name, desc: v.sampleName, audioBase64: v.audioBase64 }))].map(v => (
+                    <div key={v.id} style={{ padding: '6px 12px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: C.ink }}>{v.name}</span>
+                      <span style={{ fontSize: 10, color: C.muted }}>{v.desc}</span>
+                      <button onClick={() => playBase64Audio((v as { audioBase64: string }).audioBase64, 'audio/wav')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 10, border: `1px solid ${C.line}`, background: C.card, color: C.pri, cursor: 'pointer', fontFamily: 'inherit' }}>▶ 试听</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 生成设置 */}
+              <div style={{ marginTop: 12, padding: 12, background: C.card, border: `1px solid ${C.line}`, borderRadius: 8 }}>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, color: C.muted }}>默认情绪：</span>
+                  {EMOTIONS.slice(0, 7).map(em => (
+                    <button key={em} onClick={() => setDefaultEmotion(em)} style={{ padding: '3px 10px', borderRadius: 12, fontSize: 11, border: 'none', background: defaultEmotion === em ? C.pri : 'rgba(26,24,20,.04)', color: defaultEmotion === em ? '#fff' : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {em}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── 作品列表 ── */}
           <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
@@ -385,6 +637,77 @@ export default function AudiobookPage() {
                 <p style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>接下来：进入作品 → 勾选章节 → 生成有声书</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ VoiceDesign 弹窗 ═══ */}
+      {showDesign && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowDesign(false)}>
+          <div style={{ width: '100%', maxWidth: 460, background: C.card, borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,.12)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: 0 }}>✨ 设计新音色</h2>
+              <button onClick={() => setShowDesign(false)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.muted }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>音色描述（1-4句）</label>
+                <textarea value={designDesc} onChange={e => setDesignDesc(e.target.value)} placeholder="例：年轻女性，声音清亮，充满活力，适合旁白" style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', minHeight: 80, resize: 'vertical', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>预览文本</label>
+                <input value={designText} onChange={e => setDesignText(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              </div>
+              <button onClick={handleDesignVoice} disabled={designLoading} style={{ padding: '10px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, color: '#fff', cursor: designLoading ? 'default' : 'pointer', fontFamily: 'inherit', opacity: designLoading ? 0.6 : 1 }}>
+                {designLoading ? '⏳ 生成中...' : '🎵 生成并试听'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ VoiceClone 弹窗 ═══ */}
+      {showClone && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowClone(false)}>
+          <div style={{ width: '100%', maxWidth: 460, background: C.card, borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,.12)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: 0 }}>🎤 克隆声音</h2>
+              <button onClick={() => setShowClone(false)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.muted }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1, padding: 16, border: `2px dashed ${C.line}`, borderRadius: 8, textAlign: 'center' }}>
+                  <p style={{ fontSize: 12, color: C.muted, margin: '0 0 8px' }}>📁 上传音频文件</p>
+                  <input type="file" accept="audio/*" onChange={e => { setCloneSample(e.target.files?.[0] || null); if (isRecording) stopRecording() }} style={{ fontSize: 11 }} />
+                  {cloneSample && !isRecording && !cloneSample.name.startsWith('录音') && <p style={{ fontSize: 11, color: C.green, margin: '8px 0 0' }}>✓ {cloneSample.name}</p>}
+                </div>
+                <div style={{ flex: 1, padding: 16, border: `2px dashed ${isRecording ? C.crimson : C.line}`, borderRadius: 8, textAlign: 'center', background: isRecording ? 'rgba(181,69,74,.04)' : 'transparent' }}>
+                  <p style={{ fontSize: 12, color: C.muted, margin: '0 0 4px' }}>🎙️ 在线录音</p>
+                  <p style={{ fontSize: 10, color: C.muted, margin: '0 0 8px' }}>最少录制 10 秒，请照以下范本朗读</p>
+                  {isRecording && (
+                    <div style={{ padding: '8px 10px', background: 'rgba(58,82,121,.06)', borderRadius: 6, fontSize: 11, color: C.indigo, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left', fontStyle: 'italic' }}>
+                      「{RECORDING_TEMPLATE}」
+                    </div>
+                  )}
+                  {isRecording ? (
+                    <>
+                      <p style={{ fontSize: 20, fontWeight: 700, color: recordingTime < 10 ? C.crimson : C.green, margin: '0 0 4px' }}>🔴 {recordingTime}s{recordingTime < 10 ? ` (还需${10 - recordingTime}s)` : ' ✓'}</p>
+                      <button onClick={stopRecording} disabled={recordingTime < 3} style={{ padding: '6px 20px', background: recordingTime < 3 ? '#ccc' : C.crimson, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: recordingTime < 3 ? 'default' : 'pointer', fontFamily: 'inherit' }}>⏹ 停止录音</button>
+                    </>
+                  ) : (
+                    <button onClick={startRecording} style={{ padding: '6px 20px', background: C.indigo, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>🎙️ 开始录音</button>
+                  )}
+                  {cloneSample && !isRecording && cloneSample.name.startsWith('录音') && <p style={{ fontSize: 11, color: C.green, margin: '8px 0 0' }}>✓ {cloneSample.name} (已转为wav格式)</p>}
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>名称</label>
+                <input value={cloneName} onChange={e => setCloneName(e.target.value)} placeholder="例：我的声音" style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              </div>
+              <button onClick={handleCloneVoice} disabled={cloneLoading || !cloneSample} style={{ padding: '10px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, color: '#fff', cursor: cloneLoading ? 'default' : 'pointer', fontFamily: 'inherit', opacity: cloneLoading || !cloneSample ? 0.6 : 1 }}>
+                {cloneLoading ? '⏳ 克隆中...' : '🎵 克隆并试听'}
+              </button>
+            </div>
           </div>
         </div>
       )}
