@@ -210,6 +210,9 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
   /* ── 全部生成 ── */
   const [batchGenerating, setBatchGenerating] = useState(false)
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 })
+  /* ── 合并导出 ── */
+  const [merging, setMerging] = useState(false)
+  const [exportFormat, setExportFormat] = useState<'wav' | 'mp3'>('wav')
 
   const handleGenerateAll = async () => {
     if (batchGenerating) return
@@ -221,6 +224,40 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
       await generateOne(todo[i])
     }
     setBatchGenerating(false)
+  }
+
+  /* ── 合并全部并导出 ── */
+  const handleMergeExport = async () => {
+    const audioKeys = Object.keys(audioCache)
+    if (audioKeys.length === 0) { alert('请先生成音频'); return }
+    setMerging(true)
+    try {
+      const segments = audioKeys.map(k => ({ audioBase64: audioCache[k].audioBase64, duration: audioCache[k].duration }))
+      const res = await fetch('/api/audiobook/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ segments, format: exportFormat }),
+      })
+      const data = await res.json()
+      if (data.success && data.audio) {
+        const mime = exportFormat === 'mp3' ? 'audio/mpeg' : 'audio/wav'
+        const ext = exportFormat === 'mp3' ? 'mp3' : 'wav'
+        const bin = atob(data.audio)
+        const bytes = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+        const blob = new Blob([bytes], { type: mime })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url; a.download = `${chapter.title || '有声书'}.${ext}`; a.click()
+        URL.revokeObjectURL(url)
+      } else {
+        alert('合并失败：' + (data.error || '未知错误'))
+      }
+    } catch (err) {
+      alert('合并失败：' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setMerging(false)
+    }
   }
 
   /* ── 播放 ── */
@@ -386,6 +423,18 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
           <button onClick={handleGenerateAll} disabled={batchGenerating || segments.length === 0} style={{ padding: '8px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: batchGenerating ? 'default' : 'pointer', fontFamily: 'inherit', opacity: batchGenerating || segments.length === 0 ? 0.6 : 1 }}>
             {batchGenerating ? `⏳ ${batchProgress.current}/${batchProgress.total}` : '🎵 一键生成全部'}
           </button>
+          {/* 合并导出 */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            <select value={exportFormat} onChange={e => setExportFormat(e.target.value as 'wav' | 'mp3')}
+              style={{ padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card, flex: 1 }}>
+              <option value="wav">WAV 无损</option>
+              <option value="mp3">MP3 压缩</option>
+            </select>
+            <button onClick={handleMergeExport} disabled={merging || Object.keys(audioCache).length === 0}
+              style={{ padding: '8px 12px', background: C.indigo, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 500, color: '#fff', cursor: merging || Object.keys(audioCache).length === 0 ? 'default' : 'pointer', fontFamily: 'inherit', opacity: merging || Object.keys(audioCache).length === 0 ? 0.6 : 1, flex: 2 }}>
+              {merging ? '⏳ 合并中...' : `🔗 合并导出 (${Object.keys(audioCache).length}段)`}
+            </button>
+          </div>
         </div>
 
         {/* 统计 */}
