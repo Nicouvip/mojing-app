@@ -71,39 +71,79 @@ export class MiMoVoiceCloneEngine {
       },
     }
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': this.apiKey,
-      },
-      body: JSON.stringify(body),
-    })
+    // 带指数退避的重试逻辑（应对 429 频率限制）
+    const maxRetries = 3
+    let lastError: Error | null = null
 
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`MiMo VoiceClone error: ${response.status} - ${error}`)
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (attempt > 0) {
+        // 指数退避：1s → 2s → 4s
+        const waitMs = Math.min(1000 * Math.pow(2, attempt - 1), 4000)
+        console.warn(`[VoiceClone] 429 rate limited, retry ${attempt}/${maxRetries} after ${waitMs}ms`)
+        await new Promise(r => setTimeout(r, waitMs))
+      }
+
+      try {
+        const response = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': this.apiKey,
+          },
+          body: JSON.stringify(body),
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+
+          // 解析音频数据
+          const audioData = result.choices?.[0]?.message?.audio?.data
+          if (!audioData) {
+            throw new Error('No audio data in response')
+          }
+
+          // Base64 解码
+          const audioBuffer = Buffer.from(audioData, 'base64')
+
+          // 估算时长（24kHz PCM16 mono = 2 bytes per sample）
+          const duration = audioBuffer.length / (24000 * 2)
+
+          return {
+            audioBuffer,
+            duration,
+            format: params.format || 'wav',
+          }
+        }
+
+        // 429 频率限制 → 重试
+        if (response.status === 429 && attempt < maxRetries) {
+          const errorText = await response.text()
+          lastError = new Error(`MiMo VoiceClone error: ${response.status} - ${errorText}`)
+          continue
+        }
+
+        // 其他错误 → 直接抛出
+        const error = await response.text()
+        throw new Error(`MiMo VoiceClone error: ${response.status} - ${error}`)
+      } catch (err) {
+        // 429 已经被上面捕获并设置了 lastError，这里跳过
+        if (err instanceof Error && err.message.startsWith('MiMo VoiceClone error: 429')) {
+          continue
+        }
+        // 非 429 错误直接抛出
+        if (!(err instanceof Error && err.message.startsWith('MiMo VoiceClone'))) {
+          // 网络错误等 → 重试
+          if (attempt < maxRetries) {
+            console.warn(`[VoiceClone] network error, retry ${attempt + 1}/${maxRetries}:`, err)
+            lastError = err instanceof Error ? err : new Error(String(err))
+            continue
+          }
+        }
+        throw err
+      }
     }
 
-    const result = await response.json()
-    
-    // 解析音频数据
-    const audioData = result.choices?.[0]?.message?.audio?.data
-    if (!audioData) {
-      throw new Error('No audio data in response')
-    }
-
-    // Base64 解码
-    const audioBuffer = Buffer.from(audioData, 'base64')
-    
-    // 估算时长（24kHz PCM16 mono = 2 bytes per sample）
-    const duration = audioBuffer.length / (24000 * 2)
-
-    return {
-      audioBuffer,
-      duration,
-      format: params.format || 'wav',
-    }
+    throw lastError || new Error('VoiceClone failed after retries')
   }
 
   /**
