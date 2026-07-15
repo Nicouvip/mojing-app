@@ -439,7 +439,9 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
               <div key={seg.index} style={{
                 padding: '10px 14px',
                 background: isSelected ? `${color}10` : isPlaying ? `${color}10` : C.card,
-                border: `1px solid ${isSelected ? color : isPlaying ? color : C.line}`,
+                borderTop: `1px solid ${isSelected ? color : isPlaying ? color : C.line}`,
+                borderRight: `1px solid ${isSelected ? color : isPlaying ? color : C.line}`,
+                borderBottom: `1px solid ${isSelected ? color : isPlaying ? color : C.line}`,
                 borderLeft: `3px solid ${color}`,
                 borderRadius: C.radius,
                 transition: 'all .12s',
