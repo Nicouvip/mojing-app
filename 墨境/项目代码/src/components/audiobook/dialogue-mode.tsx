@@ -306,6 +306,13 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
         >
           {analyzing ? `⏳ AI 分析中… ${analyzingElapsed}s` : '🤖 开始 AI 分析'}
         </button>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 10 }}>
+          <input ref={importBookRef} type="file" accept=".txt,.json" onChange={handleImportBook} style={{ display: 'none' }} />
+          <button onClick={() => importBookRef.current?.click()} disabled={importBookLoading || analyzing}
+            style={{ padding: '8px 20px', background: C.indigo, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: importBookLoading ? 'default' : 'pointer', fontFamily: 'inherit', opacity: importBookLoading ? 0.6 : 1 }}>
+            {importBookLoading ? '⏳ 导入中...' : '📄 导入画本（跳过AI）'}
+          </button>
+        </div>
         {analyzing && (
           <p style={{ fontSize: 11, color: C.muted, margin: '8px 0 0', textAlign: 'center' }}>
             DeepSeek V4 Flash 正在分析章节文本，预计 30-60 秒，请耐心等待…
