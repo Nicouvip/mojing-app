@@ -243,6 +243,40 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
     return ['#c4956a', '#3a5279', '#b5454a', '#7a9e7a', '#8e63ce', '#d4a0a0', '#4a86e8', '#eaa041'][idx % 8]
   }
 
+
+  /* ── 导入画本 ── */
+  const importBookRef = useRef<HTMLInputElement>(null)
+  const [importBookLoading, setImportBookLoading] = useState(false)
+
+  const handleImportBook = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportBookLoading(true)
+    try {
+      const fileContent = await file.text()
+      const isJson = file.name.endsWith('.json')
+      const res = await fetch('/api/audiobook/import-book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format: isJson ? 'json' : 'txt', content: fileContent }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setAnalysisResult(data)
+        setEditedCharacters(data.characters || [])
+        setEditedSegments(data.segments || [])
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
+      } else {
+        alert('导入画本失败：' + (data.error || '格式错误'))
+      }
+    } catch (err) {
+      alert('导入失败：' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setImportBookLoading(false)
+      if (importBookRef.current) importBookRef.current.value = ''
+    }
+  }
+
   /* ── 分析状态 ── */
   if (!analysisResult) {
     return (
