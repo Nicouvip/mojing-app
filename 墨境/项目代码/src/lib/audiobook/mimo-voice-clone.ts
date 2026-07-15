@@ -49,19 +49,18 @@ export class MiMoVoiceCloneEngine {
     // 转换为 Base64 并添加前缀
     const base64Audio = `data:${params.sampleMimeType};base64,${params.sampleAudioBuffer.toString('base64')}`
 
-    const messages: Array<{ role: string; content: string }> = []
+    // 音频样本仅通过 audio.voice 字段传递，messages 中只放文本指令
+    // （同时放到 messages 中会导致 tokens 远超 context length 8192 限制）
+    const styleText = [params.emotion, params.style].filter(Boolean).join('，')
+    const systemHint = styleText ? `请用${styleText}的风格` : ''
+    const userContent = systemHint
+      ? `请基于提供的音频样本，${systemHint}朗读以下内容。`
+      : `请基于提供的音频样本，自然地朗读以下内容。`
 
-    // 音频样本放在 user 消息中
-    messages.push({ role: 'user', content: base64Audio })
-
-    // 如果有情绪/风格控制，也放在 user 消息中（追加）
-    if (params.emotion || params.style) {
-      const styleText = [params.emotion, params.style].filter(Boolean).join('，')
-      messages[messages.length - 1].content += `\n\n请用${styleText}的风格朗读以下内容`
-    }
-
-    // 目标文本放在 assistant 消息中
-    messages.push({ role: 'assistant', content: params.text })
+    const messages: Array<{ role: string; content: string }> = [
+      { role: 'user', content: userContent },
+      { role: 'assistant', content: params.text },
+    ]
 
     const body = {
       model: 'mimo-v2.5-tts-voiceclone',
