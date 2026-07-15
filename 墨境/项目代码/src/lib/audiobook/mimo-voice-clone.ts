@@ -67,7 +67,7 @@ export class MiMoVoiceCloneEngine {
       model: 'mimo-v2.5-tts-voiceclone',
       messages,
       audio: {
-        voice: params.voice || 'cloned_voice',
+        voice: base64Audio,
         format: params.format || 'wav',
       },
     }
