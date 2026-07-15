@@ -34,7 +34,7 @@ export interface MiMoASRResponse {
  * MiMo ASR 引擎类
  */
 export class MiMoASREngine {
-  private baseUrl = 'https://api.xiaomimimo.com/v1'
+  private baseUrl = 'https://token-plan-cn.xiaomimimo.com/v1'
   private apiKey: string
 
   constructor(apiKey?: string) {
