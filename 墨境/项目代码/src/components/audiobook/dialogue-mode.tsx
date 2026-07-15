@@ -290,7 +290,10 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
     if (!file) return
     setImportBookLoading(true)
     try {
-      const fileContent = await file.text()
+      const arrayBuf = await file.arrayBuffer()
+      let fileContent = new TextDecoder('utf-8').decode(arrayBuf)
+      const ffdCount = (fileContent.match(/\uFFFD/g) || []).length
+      if (ffdCount > 10) fileContent = new TextDecoder('gbk').decode(arrayBuf)
       const isJson = file.name.endsWith('.json')
       const res = await fetch('/api/audiobook/import-book', {
         method: 'POST',
