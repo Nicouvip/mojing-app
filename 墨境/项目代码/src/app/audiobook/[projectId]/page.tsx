@@ -177,15 +177,7 @@ export default function AudiobookProjectPage() {
 
   /* ── 加载项目 ── */
   useEffect(() => {
-    if (!projectId || projectId === 'demo-1') {
-      setProject({ id: 'demo-1', name: '未命名作品', genre: '都市', description: '', createdAt: Date.now(), updatedAt: Date.now(), chapterCount: 3, totalWords: 9000 })
-      setChapters([
-        { id: 'ch-1', projectId: 'demo-1', title: '第一章 楔子', content: '她没敲门。门虚掩着。推开时带进一阵走廊的风，桌上的纸被掀起一角，又落回去。', order: 1, wordCount: 3000, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft' },
-        { id: 'ch-2', projectId: 'demo-1', title: '第二章 夜雨', content: '窗外的雨声突然变大了。他放下手中的笔，望向窗外。', order: 2, wordCount: 3000, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft' },
-        { id: 'ch-3', projectId: 'demo-1', title: '第三章 归途', content: '她站在门口，没有再往前走。空气里弥漫着旧书的味道。', order: 3, wordCount: 3000, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft' },
-      ])
-      return
-    }
+    if (!projectId) return
     const p = getProject(projectId)
     if (p) {
       setProject(p)
