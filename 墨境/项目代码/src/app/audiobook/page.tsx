@@ -271,13 +271,21 @@ export default function AudiobookPage() {
     }
   }
 
-  useEffect(() => {
+  const loadProjects = () => {
     const projs = getProjects().filter(p => !p.deletedAt).sort((a, b) => b.updatedAt - a.updatedAt)
     const withChapters = projs.map(p => ({
       ...p,
       chapters: getChapters(p.id).filter(c => !c.deletedAt).sort((a, b) => a.order - b.order),
     }))
     setProjects(withChapters)
+  }
+
+  useEffect(() => {
+    loadProjects()
+    // 页面可见时自动刷新数据（从别的页面改完内容切回来）
+    const onVisible = () => { if (document.visibilityState === 'visible') loadProjects() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
   const filtered = projects.filter(p => {
