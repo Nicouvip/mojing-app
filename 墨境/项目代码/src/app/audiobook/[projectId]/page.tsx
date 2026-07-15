@@ -64,6 +64,9 @@ export default function AudiobookProjectPage() {
 
   /* ── 生成状态 ── */
   const [generating, setGenerating] = useState(false)
+  /* ── 合并导出章节音频 ── */
+  const [mergingChapters, setMergingChapters] = useState(false)
+  const [chapterExportFormat, setChapterExportFormat] = useState<'wav' | 'mp3'>('wav')
   const [generateProgress, setGenerateProgress] = useState({ current: 0, total: 0, currentChapter: '' })
   const [generatedChapters, setGeneratedChapters] = useState<Map<string, { audioBase64: string; duration: number; subtitles: SubtitleLine[] }>>(new Map())
 
@@ -342,6 +345,43 @@ export default function AudiobookProjectPage() {
   }
 
   /* ── 下载字幕 ── */
+  /* ── 合并已生成章节音频 ── */
+  const handleMergeChapters = async () => {
+    if (generatedChapters.size === 0) { alert('请先生成音频'); return }
+    setMergingChapters(true)
+    try {
+      const segments: Array<{ audioBase64: string; duration?: number }> = []
+      generatedChapters.forEach((gen, chId) => {
+        segments.push({ audioBase64: gen.audioBase64, duration: gen.duration })
+      })
+      const res = await fetch('/api/audiobook/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ segments, format: chapterExportFormat }),
+      })
+      const data = await res.json()
+      if (data.success && data.audio) {
+        const mime = chapterExportFormat === 'mp3' ? 'audio/mpeg' : 'audio/wav'
+        const ext = chapterExportFormat === 'mp3' ? 'mp3' : 'wav'
+        const bin = atob(data.audio)
+        const bytes = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+        const blob = new Blob([bytes], { type: mime })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url; a.download = `${project?.name || '有声书'}.${ext}`; a.click()
+        URL.revokeObjectURL(url)
+      } else {
+        alert('合并失败：' + (data.error || '未知错误'))
+      }
+    } catch (err) {
+      alert('合并失败：' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setMergingChapters(false)
+    }
+  }
+
+  /* ── 下载字幕 ── */
   const handleDownloadSubtitle = (chapterId: string) => {
     const gen = generatedChapters.get(chapterId)
     if (!gen || gen.subtitles.length === 0) return
@@ -524,9 +564,24 @@ export default function AudiobookProjectPage() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>勾选章节 → 选择音色 → 点击「生成」→ 播放/下载</p>
-                  <button onClick={selectAll} style={{ fontSize: 11, color: C.pri, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {selectedChapters.size === chapters.length ? '取消全选' : '全选'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <button onClick={selectAll} style={{ fontSize: 11, color: C.pri, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {selectedChapters.size === chapters.length ? '取消全选' : '全选'}
+                    </button>
+                    {generatedChapters.size > 0 && (
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <select value={chapterExportFormat} onChange={e => setChapterExportFormat(e.target.value as 'wav' | 'mp3')}
+                          style={{ padding: '3px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
+                          <option value="wav">WAV</option>
+                          <option value="mp3">MP3</option>
+                        </select>
+                        <button onClick={handleMergeChapters} disabled={mergingChapters}
+                          style={{ padding: '4px 12px', background: C.indigo, border: 'none', borderRadius: 4, fontSize: 10, fontWeight: 500, color: '#fff', cursor: mergingChapters ? 'default' : 'pointer', fontFamily: 'inherit', opacity: mergingChapters ? 0.6 : 1 }}>
+                          {mergingChapters ? '⏳' : '🔗 合并全部'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
