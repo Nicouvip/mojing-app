@@ -26,7 +26,7 @@ from pydantic import BaseModel
 
 # ─── 配置 ────────────────────────────────────────────────────────────
 MIMO_API_BASE = "https://token-plan-cn.xiaomimimo.com/v1"
-MIMO_API_KEY = os.environ.get("MIMO_API_KEY", "tp-c233nqeu5oovmyuhzdml2bsfs2vjwuey53g74trfpf4ov5m7")
+MIMO_API_KEY = "tp-c233nqeu5oovmyuhzdml2bsfs2vjwuey53g74trfpf4ov5m7"
 DEEPSEEK_API_BASE = "https://api.deepseek.com"
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
@@ -302,21 +302,15 @@ def call_tts_api(
     voice_mime: Optional[str] = None,
     style: Optional[str] = None,
 ) -> bytes:
-    """调用 MiMo TTS API。"""
-    client = OpenAI(
-        api_key=MIMO_API_KEY,
-        base_url=MIMO_API_BASE,
-        default_headers={"api-key": MIMO_API_KEY},
-    )
+    """调用 MiMo TTS API（使用 httpx 直接请求，避免 SDK header 冲突）。"""
+    import httpx
 
     # 构建 user message（风格指令）
     user_content = ""
-    if emotion and not style:
-        user_content = emotion
-    elif style:
+    if style:
         user_content = style
     elif emotion:
-        user_content = f"用{emotion}的语气朗读"
+        user_content = emotion
 
     messages = []
     if user_content:
@@ -330,17 +324,33 @@ def call_tts_api(
     else:
         audio_param["voice"] = voice_id
 
-    completion = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        audio=audio_param,
+    payload = {
+        "model": model,
+        "messages": messages,
+        "audio": audio_param,
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "api-key": MIMO_API_KEY,
+    }
+
+    resp = httpx.post(
+        f"{MIMO_API_BASE}/chat/completions",
+        json=payload,
+        headers=headers,
+        timeout=60.0,
     )
 
-    message = completion.choices[0].message
-    if not hasattr(message, "audio") or not message.audio:
-        raise RuntimeError(f"API 未返回音频数据")
+    if resp.status_code != 200:
+        raise RuntimeError(f"API 错误 {resp.status_code}: {resp.text[:200]}")
 
-    return base64.b64decode(message.audio.data)
+    result = resp.json()
+    audio_data = result.get("choices", [{}])[0].get("message", {}).get("audio", {}).get("data")
+    if not audio_data:
+        raise RuntimeError(f"API 未返回音频数据: {str(result)[:200]}")
+
+    return base64.b64decode(audio_data)
 
 
 def wav_bytes_to_pcm(wav_bytes: bytes) -> np.ndarray:
@@ -630,6 +640,8 @@ async def voice_clone(
 
     voice_b64 = base64.b64encode(audio_bytes).decode("utf-8")
     chunks = chunk_text(text)
+    if not chunks:
+        return JSONResponse(status_code=400, content={"error": "文本处理后为空"})
     all_pcm = []
 
     for chunk in chunks:

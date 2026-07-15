@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>墨境有声书工坊</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css?v=2" />
 </head>
 <body>
   <div id="app">
@@ -269,6 +269,15 @@
 
           <div class="upload-tips">💡 录音建议：10~60 秒清晰的说话声，避免背景噪音</div>
 
+          <div class="form-group" style="margin-top:12px;">
+            <label>要合成的文本</label>
+            <textarea id="cloneText" class="form-textarea" rows="3" placeholder="输入要用克隆声音朗读的文本...">你好，这是克隆声音的预览。</textarea>
+          </div>
+          <div class="form-group">
+            <label>风格指令 <span class="optional">(可选)</span></label>
+            <input type="text" id="cloneStyle" class="form-input" placeholder="例如：温柔舒缓的语气">
+          </div>
+
           <div id="cloneResult" style="display:none;margin-top:12px;">
             <audio id="clonePlayer" controls class="audio-player"></audio>
           </div>
@@ -284,6 +293,6 @@
     <div id="toast" class="toast" style="display:none;"></div>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=3"></script>
 </body>
 </html>

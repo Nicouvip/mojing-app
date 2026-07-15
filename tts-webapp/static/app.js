@@ -99,7 +99,10 @@ function switchProjectTab(tab) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
   ["Chapters", "Dialogue", "Voices", "Settings"].forEach(name => {
     const el = document.getElementById("tab" + name);
-    if (el) el.style.display = name.toLowerCase() === tab ? "block" : "none";
+    if (el) {
+      el.style.display = "";  // 清除内联样式
+      el.classList.toggle("active", name.toLowerCase() === tab);
+    }
   });
 }
 
@@ -313,8 +316,8 @@ function renderFilterTabs() {
   const tabs = document.getElementById("filterTabs");
   let html = '<button class="filter-tab active" data-filter="all" onclick="filterSegments(\'all\')">全部</button>';
   // 按角色分组
-  const角色Set = new Set(editedSegments.map(s => s.characterName));
-  角色Set.forEach(name => {
+  const charSet = new Set(editedSegments.map(s => s.characterName));
+  charSet.forEach(name => {
     html += `<button class="filter-tab" data-filter="${esc(name)}" onclick="filterSegments('${esc(name)}')">${esc(name)}</button>`;
   });
   tabs.innerHTML = html;
@@ -655,9 +658,12 @@ async function cloneVoice() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> 生成中...';
 
+  const cloneText = document.getElementById("cloneText").value.trim() || "你好，这是克隆声音的预览。";
+  const cloneStyle = document.getElementById("cloneStyle").value.trim();
+
   const fd = new FormData();
-  fd.append("text", "你好，这是克隆声音的预览。请听一下效果是否满意。");
-  fd.append("style", "");
+  fd.append("text", cloneText);
+  fd.append("style", cloneStyle);
   fd.append("voice_file", voiceSampleFile);
 
   try {

@@ -4,3 +4,4 @@ openai
 numpy
 soundfile
 python-multipart
+httpx

@@ -1,0 +1,36 @@
+🎧 AutoTrack - 启动说明
+======================
+
+方式一：双击脚本（推荐）
+  双击「启动后端.bat」
+  然后浏览器打开 http://127.0.0.1:5000
+
+方式二：手动启动（最可靠）
+  1. 按 Win+R → 输入 cmd → 回车
+  2. 在黑窗口里依次输入（一行一回车）：
+     cd D:\codexvip\自动语音项目\backend
+     python app.py
+  3. 打开浏览器，访问 http://127.0.0.1:5000
+
+方式三：命令行界面模式（如果浏览器打不开）
+  1. 按 Win+R → 输入 cmd → 回车
+  2. 输入：
+     cd D:\codexvip\自动语音项目\backend
+     python
+  3. 然后输入：
+     from app import app
+     app.run(host="127.0.0.1", port=5000)
+  4. 浏览器打开 http://127.0.0.1:5000
+
+首次使用需要先安装依赖：
+  cd D:\codexvip\自动语音项目\backend
+  pip install -r requirements.txt
+
+启动后需要做的事情：
+  1. 在左侧「ASR 识别配置」填入你的 MiMo Key
+  2. 粘贴剧本
+  3. 上传各 CV 的录音文件
+  4. 点击「全部转写」
+  5. 点击「一键对齐」
+  6. 调整参数
+  7. 导出成品
