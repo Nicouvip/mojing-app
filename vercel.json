@@ -1,6 +1,3 @@
 {
-  "buildCommand": "cd 墨境/项目代码 && npm install && npm run build",
-  "installCommand": "cd 墨境/项目代码 && npm install",
-  "framework": "nextjs",
-  "rootDirectory": "墨境/项目代码"
+  "framework": "nextjs"
 }
