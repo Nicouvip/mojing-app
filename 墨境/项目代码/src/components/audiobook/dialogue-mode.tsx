@@ -91,7 +91,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
       { id: 'all', label: '全部', count: segments.length },
       { id: 'narration', label: '🎙️ 旁白', count: segments.filter(s => s.type === 'narration').length },
     ]
-    const charNames = [...new Set(segments.filter(s => s.type === 'dialogue' && s.characterName).map(s => s.characterName))]
+    const charNames = [...new Set(segments.filter(s => s.type === 'dialogue' && s.characterName).map(s => s.characterName!))].filter(Boolean)
     for (const name of charNames) {
       tabs.push({ id: name, label: name, count: segments.filter(s => s.characterName === name).length })
     }
