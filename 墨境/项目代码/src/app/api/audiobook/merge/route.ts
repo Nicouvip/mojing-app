@@ -99,9 +99,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '没有可合并的音频数据' }, { status: 400 })
     }
 
+    // 生成静音片段（指定秒数）
+    const generateSilence = (sec: number) => Buffer.alloc(Math.floor(sec * SAMPLE_RATE * (BITS_PER_SAMPLE / 8)), 0)
+
+    // 判断两段之间是否需要插入停顿
+    // 在片段间插入静音
+    const chunksWithPause: Buffer[] = []
+    for (let i = 0; i < rawChunks.length; i++) {
+      if (i > 0) {
+        // 判断角色切换 vs 同角色继续
+        const prevSeg = segments[i - 1]
+        const currSeg = segments[i]
+        const isDifferentSpeaker = prevSeg?.characterName && currSeg?.characterName && prevSeg.characterName !== currSeg.characterName
+        chunksWithPause.push(isDifferentSpeaker ? generateSilence(0.5) : generateSilence(0.25))
+      }
+      chunksWithPause.push(rawChunks[i])
+    }
+
     // 合并裸 PCM 数据
-    const rawDataLength = rawChunks.reduce((sum, c) => sum + c.length, 0)
-    const mergedRaw = Buffer.concat(rawChunks, rawDataLength)
+    const rawDataLength = chunksWithPause.reduce((sum, c) => sum + c.length, 0)
+    const mergedRaw = Buffer.concat(chunksWithPause, rawDataLength)
 
     // 添加 WAV 头
     const wavHeader = createWavHeader(rawDataLength, SAMPLE_RATE, NUM_CHANNELS, BITS_PER_SAMPLE)

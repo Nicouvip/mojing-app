@@ -8,6 +8,7 @@ import DeskSidebar from '@/components/desk-sidebar'
 import { getProject, getChapters } from '@/lib/db/store'
 import type { Project, Chapter } from '@/lib/db/types'
 import { DialogueMode } from '@/components/audiobook/dialogue-mode'
+import { generateSRT } from '@/lib/audiobook/srt-generator'
 
 /* ── 设计令牌 ── */
 const C = {
@@ -336,7 +337,23 @@ export default function AudiobookProjectPage() {
     URL.revokeObjectURL(url)
   }
 
-  /* ── 下载字幕 ── */
+  /* ── 下载 SRT 字幕 ── */
+  const handleDownloadSRT = (chapterId: string) => {
+    const gen = generatedChapters.get(chapterId)
+    if (!gen || gen.subtitles.length === 0) return
+    const chapter = chapters.find(c => c.id === chapterId)
+    const timestamps = gen.subtitles.map(s => ({ start: s.startSec, end: s.endSec, text: s.text }))
+    const srt = generateSRT(timestamps)
+    const blob = new Blob([srt], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${chapter?.title || chapterId}.srt`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  /* ── 下载 LRC 字幕 ── */
   /* ── 合并已生成章节音频 ── */
   const handleMergeChapters = async () => {
     if (generatedChapters.size === 0) { alert('请先生成音频'); return }
@@ -606,7 +623,8 @@ export default function AudiobookProjectPage() {
                                 {isPlayingThis ? '⏸' : '▶'}
                               </button>
                               <button onClick={(e) => { e.stopPropagation(); handleDownload(ch.id) }} style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(26,24,20,.04)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }} title="下载音频">📥</button>
-                              <button onClick={(e) => { e.stopPropagation(); handleDownloadSubtitle(ch.id) }} style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(26,24,20,.04)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }} title="下载字幕">📝</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleDownloadSubtitle(ch.id) }} style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(26,24,20,.04)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }} title="下载字幕(LRC)">📝</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleDownloadSRT(ch.id) }} style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(26,24,20,.04)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }} title="下载字幕(SRT)">🎬</button>
                             </div>
                           )}
 
