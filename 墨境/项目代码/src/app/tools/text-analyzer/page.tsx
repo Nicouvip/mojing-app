@@ -53,6 +53,9 @@ export default function TextAnalyzerPage() {
 
   /* ── 导出格式 ── */
   const [exportFormat, setExportFormat] = useState<'text' | 'json' | 'audio'>('text')
+  const [batchGenerating, setBatchGenerating] = useState(false)
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 })
+  const [merging, setMerging] = useState(false)
   const [exportVoice, setExportVoice] = useState('冰糖')
   const [exportEmotion, setExportEmotion] = useState('平静')
 
@@ -148,6 +151,51 @@ export default function TextAnalyzerPage() {
       }
     } catch { /* ignore */ }
     setGeneratingId(null)
+  }
+
+  /* ── 一键生成全部 ── */
+  const handleGenerateAll = async () => {
+    const todo = segments.filter(s => !audioCache[`seg-${s.index}`])
+    if (todo.length === 0) { alert('所有段落已生成'); return }
+    setBatchGenerating(true)
+    setBatchProgress({ current: 0, total: todo.length })
+    for (let i = 0; i < todo.length; i++) {
+      setBatchProgress({ current: i + 1, total: todo.length })
+      await generateOne(todo[i])
+    }
+    setBatchGenerating(false)
+  }
+
+  /* ── 合并导出 ── */
+  const handleMergeExport = async () => {
+    const audioKeys = Object.keys(audioCache)
+    if (audioKeys.length === 0) { alert('请先生成音频'); return }
+    setMerging(true)
+    try {
+      const segs = audioKeys.map(k => ({ audioBase64: audioCache[k].audioBase64, duration: audioCache[k].duration }))
+      const res = await fetch('/api/audiobook/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ segments: segs }),
+      })
+      const data = await res.json()
+      if (data.success && data.audio) {
+        const bin = atob(data.audio)
+        const bytes = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+        const blob = new Blob([bytes], { type: 'audio/wav' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url; a.download = '文本分析_合并音频.wav'; a.click()
+        URL.revokeObjectURL(url)
+      } else {
+        alert('合并失败：' + (data.error || '未知错误'))
+      }
+    } catch (err) {
+      alert('合并失败：' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setMerging(false)
+    }
   }
 
   /* ── 导出 ── */
@@ -298,6 +346,18 @@ export default function TextAnalyzerPage() {
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={selectAll} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 10, border: `1px solid ${C.line}`, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>☑ 全选</button>
                       <button onClick={clearSelection} style={{ padding: '3px 10px', borderRadius: 4, fontSize: 10, border: `1px solid ${C.line}`, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>取消</button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={handleGenerateAll} disabled={batchGenerating || segments.length === 0}
+                        style={{ padding: '3px 10px', borderRadius: 4, fontSize: 10, border: 'none', background: C.pri, color: '#fff', cursor: batchGenerating ? 'default' : 'pointer', fontFamily: 'inherit', opacity: batchGenerating || segments.length === 0 ? 0.6 : 1 }}>
+                        {batchGenerating ? `⏳ ${batchProgress.current}/${batchProgress.total}` : `🎵 生成全部 (${Object.keys(audioCache).length}/${segments.length})`}
+                      </button>
+                      {Object.keys(audioCache).length > 0 && (
+                        <button onClick={handleMergeExport} disabled={merging}
+                          style={{ padding: '3px 10px', borderRadius: 4, fontSize: 10, border: 'none', background: C.indigo, color: '#fff', cursor: merging ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                          {merging ? '⏳ 合并中...' : '🔗 合并下载'}
+                        </button>
+                      )}
                     </div>
                   </div>
 
