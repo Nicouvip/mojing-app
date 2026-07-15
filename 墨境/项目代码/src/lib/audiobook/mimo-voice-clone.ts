@@ -74,11 +74,12 @@ export class MiMoVoiceCloneEngine {
     // 带指数退避的重试逻辑（应对 429 频率限制）
     const maxRetries = 3
     let lastError: Error | null = null
+    let retryAfterSec = 0
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       if (attempt > 0) {
-        // 指数退避：1s → 2s → 4s
-        const waitMs = Math.min(1000 * Math.pow(2, attempt - 1), 4000)
+        // 指数退避：10s → 20s → 40s
+        const waitMs = (retryAfterSec > 0 ? retryAfterSec * 1000 : Math.min(10000 * Math.pow(2, attempt - 1), 40000))
         console.warn(`[VoiceClone] 429 rate limited, retry ${attempt}/${maxRetries} after ${waitMs}ms`)
         await new Promise(r => setTimeout(r, waitMs))
       }
@@ -115,9 +116,11 @@ export class MiMoVoiceCloneEngine {
           }
         }
 
-        // 429 频率限制 → 重试
+        // 429 频率限制 → 重试（优先读取 Retry-After 头）
         if (response.status === 429 && attempt < maxRetries) {
+          retryAfterSec = parseInt(response.headers.get('Retry-After') || '0', 10)
           const errorText = await response.text()
+          console.warn('[VoiceClone] 429 rate limited, retryAfter=' + retryAfterSec + 's')
           lastError = new Error(`MiMo VoiceClone error: ${response.status} - ${errorText}`)
           continue
         }
