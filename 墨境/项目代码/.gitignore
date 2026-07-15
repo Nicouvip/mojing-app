@@ -42,3 +42,7 @@ yarn-error.log*
 next-env.d.ts
 mcp/vision-server.py
 .mojing_ai_usage.json
+
+# test artifacts
+tts-webapp/
+dogfood-output/

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>墨境有声书工坊</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- ===== 顶部导航 ===== -->
+    <header class="topbar">
+      <div class="topbar-left" onclick="goHome()">
+        <span class="logo-icon">📖</span>
+        <h1>墨境有声书工坊</h1>
+      </div>
+      <div class="topbar-right" id="topbarRight" style="display:none;">
+        <span class="project-title" id="projectTitle"></span>
+        <button class="btn btn-ghost btn-sm" onclick="goHome()">← 返回</button>
+      </div>
+    </header>
+
+    <!-- ===== 主页：作品列表 ===== -->
+    <div id="viewHome" class="view">
+      <div class="home-header">
+        <h2>我的作品</h2>
+        <button class="btn btn-primary" onclick="showImportModal()">+ 新建作品</button>
+      </div>
+      <div class="project-grid" id="projectGrid">
+        <div class="empty-state">
+          <div class="empty-icon">📚</div>
+          <p>还没有作品，点击上方按钮导入小说开始创作</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 项目详情页 ===== -->
+    <div id="viewProject" class="view" style="display:none;">
+      <!-- Tab 栏 -->
+      <div class="tab-bar">
+        <button class="tab active" data-tab="chapters" onclick="switchProjectTab('chapters')">📑 章节管理</button>
+        <button class="tab" data-tab="dialogue" onclick="switchProjectTab('dialogue')">🎭 对话模式</button>
+        <button class="tab" data-tab="voices" onclick="switchProjectTab('voices')">🎙️ 音色管理</button>
+        <button class="tab" data-tab="settings" onclick="switchProjectTab('settings')">⚙️ 生成设置</button>
+      </div>
+
+      <!-- 章节管理 Tab -->
+      <div id="tabChapters" class="tab-content active">
+        <div class="chapters-toolbar">
+          <button class="btn btn-sm btn-secondary" onclick="selectAllChapters()">全选</button>
+          <button class="btn btn-sm btn-secondary" onclick="deselectAllChapters()">取消全选</button>
+          <button class="btn btn-sm btn-primary" onclick="generateSelectedChapters()">🚀 生成选中章节</button>
+          <button class="btn btn-sm btn-success" onclick="mergeGeneratedChapters()">📦 合并导出</button>
+        </div>
+        <div class="chapter-list" id="chapterList"></div>
+      </div>
+
+      <!-- 对话模式 Tab -->
+      <div id="tabDialogue" class="tab-content" style="display:none;">
+        <div class="dialogue-layout">
+          <!-- 左侧：角色面板 -->
+          <div class="dialogue-sidebar">
+            <div class="sidebar-header">
+              <h3>🎭 角色列表</h3>
+              <button class="btn btn-sm btn-primary" onclick="runAIAnalysis()">🤖 AI 分析</button>
+            </div>
+            <div class="character-list" id="characterList">
+              <div class="empty-hint">点击「AI 分析」自动识别角色</div>
+            </div>
+          </div>
+          <!-- 右侧：段落列表 -->
+          <div class="dialogue-main">
+            <div class="dialogue-toolbar">
+              <div class="filter-tabs" id="filterTabs">
+                <button class="filter-tab active" data-filter="all" onclick="filterSegments('all')">全部</button>
+              </div>
+              <div class="toolbar-right">
+                <button class="btn btn-sm btn-primary" onclick="batchGenerateSegments()">🚀 批量生成</button>
+                <button class="btn btn-sm btn-success" onclick="mergeSegmentAudios()">📦 合并导出</button>
+              </div>
+            </div>
+            <div class="segment-list" id="segmentList">
+              <div class="empty-hint">请先进行 AI 分析</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 音色管理 Tab -->
+      <div id="tabVoices" class="tab-content" style="display:none;">
+        <div class="voices-section">
+          <h3>预置音色</h3>
+          <div class="voice-grid" id="voiceGrid"></div>
+        </div>
+        <div class="voices-section">
+          <h3>自定义音色</h3>
+          <div class="custom-voice-actions">
+            <button class="btn btn-secondary" onclick="showDesignModal()">🎨 设计新音色</button>
+            <button class="btn btn-secondary" onclick="showCloneModal()">🧬 克隆声音</button>
+          </div>
+          <div class="custom-voice-list" id="customVoiceList">
+            <div class="empty-hint">还没有自定义音色</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 生成设置 Tab -->
+      <div id="tabSettings" class="tab-content" style="display:none;">
+        <div class="settings-grid">
+          <div class="setting-item">
+            <label>默认音色</label>
+            <select id="settingVoice" class="setting-select"></select>
+          </div>
+          <div class="setting-item">
+            <label>默认情绪</label>
+            <select id="settingEmotion" class="setting-select"></select>
+          </div>
+          <div class="setting-item">
+            <label>采样率</label>
+            <select id="settingSampleRate" class="setting-select">
+              <option value="24000" selected>24kHz</option>
+            </select>
+          </div>
+          <div class="setting-item">
+            <label>对话间隔（毫秒）</label>
+            <input type="number" id="settingPause" class="setting-input" value="500" min="0" max="3000" step="100">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 底部播放器 ===== -->
+    <div id="playerBar" class="player-bar" style="display:none;">
+      <div class="player-info">
+        <span class="player-title" id="playerTitle">未播放</span>
+        <span class="player-time" id="playerTime">00:00 / 00:00</span>
+      </div>
+      <div class="player-controls">
+        <button class="player-btn" onclick="playerPrev()">⏮</button>
+        <button class="player-btn player-play" id="playerPlayBtn" onclick="playerToggle()">▶</button>
+        <button class="player-btn" onclick="playerNext()">⏭</button>
+      </div>
+      <div class="player-progress-wrap" onclick="playerSeek(event)">
+        <div class="player-progress-track">
+          <div class="player-progress-fill" id="playerProgress"></div>
+        </div>
+      </div>
+      <div class="player-actions">
+        <a id="playerDownload" class="btn btn-sm btn-ghost" download>💾</a>
+      </div>
+    </div>
+
+    <!-- ===== 导入弹窗 ===== -->
+    <div class="modal-overlay" id="importModal" style="display:none;" onclick="closeModal(event, 'importModal')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>📚 新建作品</h3>
+          <button class="modal-close" onclick="hideModal('importModal')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>作品名称</label>
+            <input type="text" id="importTitle" class="form-input" placeholder="例如：我的小说有声书">
+          </div>
+          <div class="form-group">
+            <label>分章模式</label>
+            <div class="radio-group">
+              <label class="radio"><input type="radio" name="splitMode" value="smart" checked> 智能分章</label>
+              <label class="radio"><input type="radio" name="splitMode" value="paragraph"> 按段落</label>
+              <label class="radio"><input type="radio" name="splitMode" value="none"> 不分章</label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>小说文本 <span class="optional">(粘贴或上传)</span></label>
+            <textarea id="importText" class="form-textarea" rows="10" placeholder="在这里粘贴小说文本..."></textarea>
+            <label class="btn btn-sm btn-secondary upload-label" for="importFile">📂 上传 TXT 文件</label>
+            <input type="file" id="importFile" accept=".txt,.md" hidden onchange="handleImportFile(event)">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="hideModal('importModal')">取消</button>
+          <button class="btn btn-primary" onclick="submitImport()">创建作品</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 声音设计弹窗 ===== -->
+    <div class="modal-overlay" id="designModal" style="display:none;" onclick="closeModal(event, 'designModal')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>🎨 设计新音色</h3>
+          <button class="modal-close" onclick="hideModal('designModal')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>音色描述</label>
+            <textarea id="designDesc" class="form-textarea" rows="4" placeholder="例如：年轻女性，声音清亮，充满活力，适合旁白"></textarea>
+          </div>
+          <div class="form-group">
+            <label>预览文本</label>
+            <input type="text" id="designPreview" class="form-input" value="你好，这是音色预览。请听一下这个声音是否满意。">
+          </div>
+          <div id="designResult" style="display:none;">
+            <audio id="designPlayer" controls class="audio-player"></audio>
+            <button class="btn btn-sm btn-primary" onclick="saveDesignedVoice()" style="margin-top:8px;">✓ 保存音色</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="hideModal('designModal')">取消</button>
+          <button class="btn btn-primary" id="designBtn" onclick="designVoice()">生成预览</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 声音克隆弹窗 ===== -->
+    <div class="modal-overlay" id="cloneModal" style="display:none;" onclick="closeModal(event, 'cloneModal')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>🧬 克隆声音</h3>
+          <button class="modal-close" onclick="hideModal('cloneModal')">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- 录音/上传切换 -->
+          <div class="capture-tabs">
+            <button class="capture-tab active" data-capture="record" onclick="switchCapture('record')">🎙️ 在线录音</button>
+            <button class="capture-tab" data-capture="upload" onclick="switchCapture('upload')">📂 上传文件</button>
+          </div>
+
+          <!-- 在线录音 -->
+          <div id="recordMode">
+            <div class="read-text-box" id="readTextBox">
+              <p>窗外的阳光洒在书桌上，空气中弥漫着淡淡的咖啡香。远处传来几声鸟鸣，像是在诉说着这个春天的故事。我翻开那本旧相册，每一张照片都承载着一段温暖的回忆。</p>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="shuffleReadText()">🔄 换一段文本</button>
+            <div class="record-area">
+              <div class="record-timer" id="recordTimer">00:00</div>
+              <div class="record-progress"><div class="record-progress-bar" id="recordProgressBar"></div></div>
+              <div class="record-hint" id="recordHint">点击开始录制，建议朗读 10~60 秒</div>
+              <button class="btn-record" id="recordBtn" onclick="toggleRecord()">
+                <span class="record-icon" id="recordIcon">⏺</span>
+                <span id="recordBtnText">开始录音</span>
+              </button>
+            </div>
+            <div class="record-result" id="recordResult" style="display:none;">
+              <div class="record-result-header">
+                <span>✅ 录音完成</span>
+                <span class="record-result-duration" id="recordDuration"></span>
+              </div>
+              <audio id="recordPlayer" controls class="audio-player"></audio>
+              <div class="record-result-actions">
+                <button class="btn btn-sm btn-secondary" onclick="reRecord()">🔄 重录</button>
+                <button class="btn btn-sm btn-primary" onclick="useRecording()">✓ 使用</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 上传文件 -->
+          <div id="uploadMode" style="display:none;">
+            <div class="upload-zone" id="uploadZone">
+              <div class="upload-icon">🎤</div>
+              <div class="upload-text">点击或拖拽上传音频<br><span class="upload-hint">MP3/WAV/WebM，最大 10MB</span></div>
+              <input type="file" id="voiceSampleUpload" accept=".mp3,.wav,.webm" hidden>
+            </div>
+            <div class="upload-preview" id="uploadPreview" style="display:none;">
+              <audio id="previewPlayer" controls class="audio-player"></audio>
+              <button class="btn btn-sm btn-secondary" onclick="removeVoiceSample()">✕ 移除</button>
+            </div>
+          </div>
+
+          <div class="upload-tips">💡 录音建议：10~60 秒清晰的说话声，避免背景噪音</div>
+
+          <div id="cloneResult" style="display:none;margin-top:12px;">
+            <audio id="clonePlayer" controls class="audio-player"></audio>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="hideModal('cloneModal')">取消</button>
+          <button class="btn btn-primary" id="cloneBtn" onclick="cloneVoice()">生成克隆音频</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Toast ===== -->
+    <div id="toast" class="toast" style="display:none;"></div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
