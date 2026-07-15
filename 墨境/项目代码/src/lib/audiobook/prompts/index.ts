@@ -1,8 +1,6 @@
 /**
  * 有声书文本分析提示词系统
- * 
- * 基于专业有声书演播知识设计，用于驱动 DeepSeek 分析小说文本，
- * 自动识别角色、情绪、音色推荐等。
+ * 对话式 Prompt 设计：让 AI 用自己的理解能力分析，而非死记规则
  */
 
 /** MiMo 可用音色列表（供 AI 匹配） */
@@ -33,126 +31,58 @@ export const EMOTION_PRESETS = [
 /**
  * 构建文本分析提示词
  * 
- * 这是核心提示词，告诉 DeepSeek 如何像专业有声书导演一样分析文本。
+ * 对话式设计原则：
+ * - 用自然语言描述任务，不要列死规则
+ * - 给 AI 自主判断空间（音色选择、段落拆分）
+ * - 让 AI "用心理解"文本，而不是"严格遵循规则"
+ * - 只提供必要的参考信息（音色列表、情绪列表）
  */
 export function buildAnalysisPrompt(text: string): string {
-  return `你是一位资深的有声书演播导演，拥有20年有声书制作经验。你精通中文小说的叙事结构、角色塑造和情感表达。
+  return `你是一位专业的有声书演播导演。请仔细阅读以下小说文本，用你的专业判断来分析它。
 
-请分析以下小说文本，输出结构化的 JSON 分析结果。
+你需要理解这个文本的故事、角色、情感和氛围，然后做以下事情：
 
-## 分析要求
+1. **找出所有角色**——包括旁白这个"叙述者"。分析每个角色的性别、年龄段、性格特征
+2. **把文本拆成段落**——每个段落标记为"旁白叙述"还是"角色对话"
+3. **分析情感**——不只看表面文字，理解背后的情感。比如"她笑着流泪"不是简单的开心，是复杂的悲喜交织
+4. **推荐音色**——根据角色的性别、年龄、性格，从可用音色中选最合适的
+5. **给出演播建议**——情绪怎么读、语速快慢、要不要停顿、有没有特殊处理
 
-### 1. 角色识别与段落分类（核心要求）
-- 每个段落必须分类为："dialogue"（对话）或 "narration"（旁白/叙述）
-- 对话段落：包含「」""引号内容
-- 旁白/叙述段落：所有不含对话的描写、叙述、环境、心理活动等
-- ⚠️ 重要：小说中旁白/叙述段落通常占全文50%以上，不要遗漏！
+一些参考（但不要死记，用你的直觉判断）：
+- 对话通常在引号（「」""''）里
+- "XX说/道/问/喊："这类前缀属于旁白
+- 旁白连着时可以合并成大段
+- 不同角色说话切换时需要停顿
+- "哈哈""呜呜""唉"等语气词，标一下是什么声音
 
-### 2. 对话前缀旁白分离（极其重要）
-- "XXX说：""XXX道：""XXX问：""XXX喊："这类**对话前置引语属于旁白**，不要把它们归入对话
-- 例如："林默低声说：「你来了。」" — 应拆分为两段：
-  - 段1：type=narration, text="林默低声说：", characterName="旁白"
-  - 段2：type=dialogue, text="你来了。", characterName="林默"
-- 只拆分有明确引号（「」""''）的对话前缀，没有引号的保持原样
+**最重要的：用你的专业直觉去理解这个文本。每个文本都是独特的，用心感受它，不要机械套规则。**
 
-### 3. 连续同角色段落合并提示
-- 旁白连续出现时，尽量合并为一个大段（不要拆成太碎的小段）
-- 同一角色的连续对话合并为一个段落
-- 合并后每个旁白段落控制在100-300字以内，对话段落控制在200字以内
+## 参考信息
+可用音色：${AVAILABLE_VOICES.map(v => `- ${v.id}：${v.style}（${v.gender}/${v.age}）`).join('\n')}
+可用情绪：${EMOTION_PRESETS.map(e => `- ${e.id}：${e.description}`).join('\n')}
 
-### 4. 非语言声音识别
-- 对话中出现"哈哈""呵呵""呜呜""啊""嗯""唉""嘶""啧"等，标记为 dialogue
-- 标注 specialNote: "笑声"/"哭声"/"叹声"/"惊呼"等
-- emotion 相应调整为开心/悲伤/惊讶
-
-### 5. 情感分析（专业级）
-- 理解有声书演播中的复合情感：
-  - "压抑的愤怒"、"带着苦涩的微笑"、"强装镇定"、"久别重逢的激动"
-- 每段情感标注要具体到演播时的表达方式
-- emotionIntensity 范围 1-10，情感越强烈数值越大
-
-### 6. 音色推荐
-- 旁白统一推荐「冰糖」
-- 年轻女性角色推荐「茉莉」
-- 年轻男性角色推荐「苏打」
-- 中年男性角色推荐「白桦」
-- 中文无法匹配时用英文音色
-
-### 7. 演播指导
-- 语速建议（slow/normal/fast）
-- 情感强度（1-10）
-- 是否需要停顿（needsPause）
-- 特殊处理（气声、哽咽、低语等填入 specialNote）
-
-## 可用音色
-${AVAILABLE_VOICES.map(v => `- ${v.id}：${v.style}（${v.gender}/${v.age}）`).join('\n')}
-
-## 可用情绪
-${EMOTION_PRESETS.map(e => `- ${e.id}：${e.description}`).join('\n')}
-
-## 输出格式
-请严格按照以下 JSON 格式输出，不要添加任何其他文字：
-
-\`\`\`json
+## 输出 JSON
 {
-  "characters": [
-    {
-      "name": "角色名",
-      "gender": "male/female",
-      "age": "child/young/adult/elderly",
-      "personality": "性格特征简述",
-      "recommendedVoice": "推荐的音色ID",
-      "recommendedEmotion": "默认情绪标签"
-    }
-  ],
-  "segments": [
-    {
-      "index": 0,
-      "type": "narration/dialogue",
-      "text": "原文内容",
-      "characterName": "角色名（对话时）",
-      "emotion": "情绪标签",
-      "emotionIntensity": 7,
-      "recommendedVoice": "推荐音色ID",
-      "speed": "slow/normal/fast",
-      "needsPause": false,
-      "pauseAfter": "normal/long/short",
-      "specialNote": "特殊演播指导（如有）"
-    }
-  ],
-  "narrationStyle": {
-    "overallTone": "整体叙事风格（如：沉稳/轻松/紧张/抒情）",
-    "suggestedNarratorVoice": "旁白推荐音色",
-    "pacing": "整体节奏（slow/normal/fast）"
-  }
+  "characters": [{"name":"角色名","gender":"male/female","age":"child/young/adult/elderly","personality":"性格描述","recommendedVoice":"音色ID","recommendedEmotion":"情绪标签"}],
+  "segments": [{"index":0,"type":"narration/dialogue","text":"原文","characterName":"角色名","emotion":"情绪","emotionIntensity":5,"recommendedVoice":"音色ID","speed":"slow/normal/fast","needsPause":false,"specialNote":""}],
+  "narrationStyle":{"overallTone":"整体风格","suggestedNarratorVoice":"旁白音色","pacing":"slow/normal/fast"}
 }
-\`\`\`
 
-## 待分析文本
-
+## 文本
 ${text}`
 }
 
-/**
- * 构建音色重新匹配提示词（用于用户修改角色特征后重新推荐）
- */
+/** 构建音色重新匹配提示词（用于用户修改角色特征后重新推荐） */
 export function buildRematchPrompt(characterName: string, personality: string): string {
-  return `你是一位有声书音色顾问。请根据以下角色特征，从可用音色中推荐最匹配的3个音色。
+  return `请根据以下角色特征，从可用音色中推荐最匹配的3个音色。
 
 角色：${characterName}
 性格特征：${personality}
 
-可用音色：
-${AVAILABLE_VOICES.map(v => `- ${v.id}：${v.style}（${v.gender}/${v.age}）`).join('\n')}
+可用音色：${AVAILABLE_VOICES.map(v => `- ${v.id}：${v.style}（${v.gender}/${v.age}）`).join('\n')}
 
-请输出 JSON 格式：
-\`\`\`json
-{
-  "recommendations": [
-    { "voiceId": "音色ID", "reason": "推荐理由" }
-  ]
-}
-\`\`\``
+输出 JSON：
+{"recommendations": [{"voiceId":"音色ID","reason":"推荐理由"}]}`
 }
 
 /** 分析结果的类型定义 */
