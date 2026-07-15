@@ -67,7 +67,7 @@ export default function AudiobookProjectPage() {
   const [generating, setGenerating] = useState(false)
   /* ── 合并导出章节音频 ── */
   const [mergingChapters, setMergingChapters] = useState(false)
-  const [chapterExportFormat, setChapterExportFormat] = useState<'wav' | 'mp3'>('wav')
+  const [chapterExportFormat, setChapterExportFormat] = useState<'wav' | 'mp3' | 'm4b'>('wav')
   const [generateProgress, setGenerateProgress] = useState({ current: 0, total: 0, currentChapter: '' })
   const [generatedChapters, setGeneratedChapters] = useState<Map<string, { audioBase64: string; duration: number; subtitles: SubtitleLine[] }>>(new Map())
 
@@ -583,6 +583,7 @@ export default function AudiobookProjectPage() {
                           style={{ padding: '3px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
                           <option value="wav">WAV</option>
                           <option value="mp3">MP3</option>
+                          <option value="m4b">M4B</option>
                         </select>
                         <button onClick={handleMergeChapters} disabled={mergingChapters}
                           style={{ padding: '4px 12px', background: C.indigo, border: 'none', borderRadius: 4, fontSize: 10, fontWeight: 500, color: '#fff', cursor: mergingChapters ? 'default' : 'pointer', fontFamily: 'inherit', opacity: mergingChapters ? 0.6 : 1 }}>

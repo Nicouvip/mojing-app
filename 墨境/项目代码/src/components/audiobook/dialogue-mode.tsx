@@ -435,6 +435,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
               style={{ padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card, flex: 1 }}>
               <option value="wav">WAV 无损</option>
               <option value="mp3">MP3 压缩</option>
+              <option value="m4b">M4B 有声书</option>
             </select>
             <button onClick={handleMergeExport} disabled={merging || Object.keys(audioCache).length === 0}
               style={{ padding: '8px 12px', background: C.indigo, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 500, color: '#fff', cursor: merging || Object.keys(audioCache).length === 0 ? 'default' : 'pointer', fontFamily: 'inherit', opacity: merging || Object.keys(audioCache).length === 0 ? 0.6 : 1, flex: 2 }}>
