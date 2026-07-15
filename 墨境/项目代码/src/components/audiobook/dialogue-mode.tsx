@@ -214,6 +214,9 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 })
   /* ── 合并导出 ── */
   const [merging, setMerging] = useState(false)
+  const [generatingPersonas, setGeneratingPersonas] = useState(false)
+  const [personaProgress, setPersonaProgress] = useState({ current: 0, total: 0, currentName: '' })
+  const [designedVoices, setDesignedVoices] = useState<Array<{ id: string; name: string; voiceDesc: string; audioBase64: string }>>([])
   const [exportFormat, setExportFormat] = useState<'wav' | 'mp3'>('wav')
 
   const handleGenerateAll = async () => {
@@ -259,6 +262,48 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
       alert('合并失败：' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setMerging(false)
+    }
+  }
+
+  /* ── 人格自动生成音色 ── */
+  const handleGeneratePersonas = async () => {
+    const chars = characters.filter(c => c.name !== '旁白' && c.personality)
+    if (chars.length === 0) { alert('没有可生成的角色（需要角色有性格描述）'); return }
+    setGeneratingPersonas(true)
+    setPersonaProgress({ current: 0, total: chars.length, currentName: '' })
+    const newVoices: Array<{ id: string; name: string; voiceDesc: string; audioBase64: string }> = []
+
+    for (const ch of chars) {
+      setPersonaProgress({ current: newVoices.length, total: chars.length, currentName: ch.name })
+      const gender = ch.gender === 'male' ? '男性' : '女性'
+      const ageMap: Record<string, string> = { child: '少年', young: '青年', adult: '中年', elderly: '老年' }
+      const age = ageMap[ch.age] || '成年'
+      const desc = `${gender}，${age}，性格${ch.personality}。请生成一个与角色性格匹配的专属音色。`
+
+      try {
+        const res = await fetch('/api/audiobook/voices/design', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description: desc, text: `我是${ch.name}，这是我的声音。` }),
+        })
+        const data = await res.json()
+        if (data.success && data.audio) {
+          const id = `persona-${ch.name}-${Date.now()}`
+          newVoices.push({ id, name: ch.name, voiceDesc: desc.slice(0, 50), audioBase64: data.audio })
+          // 自动推荐给角色
+          updateCharacterVoice(ch.name, id)
+        }
+      } catch (err) {
+        console.error(`Persona generation failed for ${ch.name}:`, err)
+      }
+    }
+
+    setDesignedVoices(prev => [...prev, ...newVoices])
+    setGeneratingPersonas(false)
+    if (newVoices.length > 0) {
+      alert(`已为 ${newVoices.length} 个角色生成专属音色：${newVoices.map(v => v.name).join('、')}`)
+    } else {
+      alert('音色生成失败，请检查 API 连接后重试')
     }
   }
 
@@ -426,6 +471,10 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
 
         {/* 操作按钮 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+          <button onClick={handleGeneratePersonas} disabled={generatingPersonas || characters.length === 0}
+            style={{ padding: '8px 0', background: '#8e63ce', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: generatingPersonas || characters.length === 0 ? 'default' : 'pointer', fontFamily: 'inherit', opacity: generatingPersonas || characters.length === 0 ? 0.6 : 1 }}>
+            {generatingPersonas ? `🎭 ${personaProgress.current}/${personaProgress.total} ${personaProgress.currentName}` : '🎭 生成角色音色'}
+          </button>
           <button onClick={handleGenerateAll} disabled={batchGenerating || segments.length === 0} style={{ padding: '8px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: batchGenerating ? 'default' : 'pointer', fontFamily: 'inherit', opacity: batchGenerating || segments.length === 0 ? 0.6 : 1 }}>
             {batchGenerating ? `⏳ ${batchProgress.current}/${batchProgress.total}` : '🎵 一键生成全部'}
           </button>
