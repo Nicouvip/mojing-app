@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import type { Chapter } from '@/lib/db/types'
+import { processAnalysisResult } from '@/lib/audiobook/merge-segments'
 import {
   type CharacterAnalysis,
   type SegmentAnalysis,
@@ -144,9 +145,10 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
       })
       const data = await res.json()
       if (data.success) {
-        setAnalysisResult(data)
-        setEditedCharacters(data.characters || [])
-        setEditedSegments(data.segments || [])
+        const processed = processAnalysisResult(data.segments || [], data.characters || [])
+        setAnalysisResult({ ...data, segments: processed.segments, characters: processed.characters })
+        setEditedCharacters(processed.characters || [])
+        setEditedSegments(processed.segments || [])
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch { /* quota exceeded */ }
       } else {
         setAnalyzeError(data.error || '分析失败')
@@ -302,9 +304,10 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
       })
       const data = await res.json()
       if (data.success) {
-        setAnalysisResult(data)
-        setEditedCharacters(data.characters || [])
-        setEditedSegments(data.segments || [])
+        const processed = processAnalysisResult(data.segments || [], data.characters || [])
+        setAnalysisResult({ ...data, segments: processed.segments, characters: processed.characters })
+        setEditedCharacters(processed.characters || [])
+        setEditedSegments(processed.segments || [])
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
       } else {
         alert('导入画本失败：' + (data.error || '格式错误'))
