@@ -246,41 +246,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
   /* ── 分析状态 ── */
   if (!analysisResult) {
     return (
-      <div style={{ textAlign: 'center', padding: '60px 0' }
-
-  /* ── 导入画本 ── */
-  const importBookRef = useRef<HTMLInputElement>(null)
-  const [importBookLoading, setImportBookLoading] = useState(false)
-
-  const handleImportBook = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setImportBookLoading(true)
-    try {
-      const fileContent = await file.text()
-      const isJson = file.name.endsWith('.json')
-      const res = await fetch('/api/audiobook/import-book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ format: isJson ? 'json' : 'txt', content: fileContent }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setAnalysisResult(data)
-        setEditedCharacters(data.characters || [])
-        setEditedSegments(data.segments || [])
-        try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
-      } else {
-        alert('导入画本失败：' + (data.error || '格式错误'))
-      }
-    } catch (err) {
-      alert('导入失败：' + (err instanceof Error ? err.message : String(err)))
-    } finally {
-      setImportBookLoading(false)
-      if (importBookRef.current) importBookRef.current.value = ''
-    }
-  }
-}>
+      <div style={{ textAlign: 'center', padding: '60px 0' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: C.ink, margin: '0 0 8px' }}>AI 文本分析</h3>
         <p style={{ fontSize: 13, color: C.muted, margin: '0 0 4px' }}>
