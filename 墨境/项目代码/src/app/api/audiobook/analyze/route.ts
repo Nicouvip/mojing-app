@@ -43,7 +43,6 @@ async function callDeepSeek(prompt: string, retryHint?: string): Promise<string>
           { role: 'user', content: prompt },
         ],
         temperature: 0.3,
-        max_tokens: 8000,
       }),
       signal: controller.signal,
     })
