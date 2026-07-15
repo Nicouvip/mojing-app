@@ -594,9 +594,11 @@ export default function AudiobookProjectPage() {
                     return (
                       <div key={`${ch.id}-${idx}`} style={{
                         padding: '14px 16px', background: C.card,
-                        border: `1px solid ${isSelected ? C.pri : isPlayingThis ? C.pri : C.line}`,
+                        borderTop: `1px solid ${isSelected ? C.pri : isPlayingThis ? C.pri : C.line}`,
+                        borderRight: `1px solid ${isSelected ? C.pri : isPlayingThis ? C.pri : C.line}`,
+                        borderBottom: `1px solid ${isSelected ? C.pri : isPlayingThis ? C.pri : C.line}`,
+                        borderLeft: `${isPlayingThis ? 3 : 1}px solid ${isSelected ? C.pri : isPlayingThis ? C.pri : C.line}`,
                         borderRadius: C.radius, transition: 'all .12s',
-                        borderLeftWidth: isPlayingThis ? 3 : 1,
                       }}>
                         {/* 标题行 */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => toggleChapter(ch.id)}>
