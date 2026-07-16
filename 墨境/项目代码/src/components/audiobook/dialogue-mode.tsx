@@ -11,6 +11,7 @@ import {
   EMOTION_PRESETS,
 } from '@/lib/audiobook/prompts'
 
+/* ── 颜色系统 ── */
 const C = {
   pri: '#c4956a',
   ink: '#1a1814',
@@ -26,6 +27,12 @@ const C = {
 const SEGMENT_COLORS = {
   narration: '#999',
   dialogue: '#c4956a',
+}
+
+/* ── 段落快照类型（撤回/重做用） ── */
+type SegSnapshot = {
+  segments: SegmentAnalysis[]
+  characters: CharacterAnalysis[]
 }
 
 interface Props {
@@ -46,6 +53,10 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
   /* ── 筛选 + 多选 ── */
   const [filterTab, setFilterTab] = useState<string>('all')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+
+  /* ── 撤回/重做栈 ── */
+  const [undoStack, setUndoStack] = useState<SegSnapshot[]>([])
+  const [redoStack, setRedoStack] = useState<SegSnapshot[]>([])
 
   /* ── 分析结果缓存（localStorage） ── */
   const CACHE_KEY = `mojing_analysis_${chapter.id}`
@@ -98,6 +109,30 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
     }
     return tabs
   }, [segments])
+
+  /* ── 撤回/重做 ── */
+  const pushUndo = useCallback(() => {
+    setUndoStack(prev => [...prev.slice(-30), { segments: [...editedSegments], characters: [...editedCharacters] }])
+    setRedoStack([])
+  }, [editedSegments, editedCharacters])
+
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0) return
+    const last = undoStack[undoStack.length - 1]
+    setRedoStack(prev => [...prev, { segments: [...editedSegments], characters: [...editedCharacters] }])
+    setEditedSegments(last.segments)
+    setEditedCharacters(last.characters)
+    setUndoStack(prev => prev.slice(0, -1))
+  }, [undoStack, editedSegments, editedCharacters])
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0) return
+    const next = redoStack[redoStack.length - 1]
+    setUndoStack(prev => [...prev, { segments: [...editedSegments], characters: [...editedCharacters] }])
+    setEditedSegments(next.segments)
+    setEditedCharacters(next.characters)
+    setRedoStack(prev => prev.slice(0, -1))
+  }, [redoStack, editedSegments, editedCharacters])
 
   /* ── 多选操作 ── */
   const toggleSelect = (idx: number) => {
@@ -160,25 +195,73 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
     }
   }
 
+  /* ── 手动设置模式：按行拆段，默认旁白 ── */
+  const handleManualSetup = () => {
+    if (!chapter.content) { alert('该章节暂无内容'); return }
+    const lines = chapter.content.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+    const newSegments: SegmentAnalysis[] = lines.map((line, i) => ({
+      index: i,
+      type: 'narration' as const,
+      text: line,
+      emotion: defaultEmotion || '平静',
+      emotionIntensity: 5,
+      speed: 'normal' as const,
+      needsPause: false,
+      pauseAfter: 'short' as const,
+      specialNote: '',
+      recommendedVoice: defaultVoice,
+      recommendedEmotion: defaultEmotion || '平静',
+      characterName: undefined,
+    }))
+    const defaultChar: CharacterAnalysis = {
+      name: '旁白',
+      personality: '',
+      gender: 'female',
+      age: 'adult',
+      recommendedVoice: defaultVoice,
+      recommendedEmotion: defaultEmotion || '平静',
+    }
+    setAnalysisResult({ characters: [defaultChar], segments: newSegments, narrationStyle: { overallTone: '平静', suggestedNarratorVoice: defaultVoice, pacing: 'normal' } })
+    setEditedCharacters([defaultChar])
+    setEditedSegments(newSegments)
+    setUndoStack([])
+    setRedoStack([])
+  }
+
   /* ── Step 2: 用户微调角色音色 ── */
   const updateCharacterVoice = (name: string, voiceId: string) => {
+    pushUndo()
     setEditedCharacters(prev => prev.map(c => c.name === name ? { ...c, recommendedVoice: voiceId } : c))
     setEditedSegments(prev => prev.map(s => s.characterName === name ? { ...s, recommendedVoice: voiceId } : s))
   }
 
   const updateCharacterEmotion = (name: string, emotion: string) => {
+    pushUndo()
     setEditedCharacters(prev => prev.map(c => c.name === name ? { ...c, recommendedEmotion: emotion } : c))
   }
 
   /* ── Step 2b: 用户微调单段 ── */
   const updateSegmentEmotion = (index: number, emotion: string) => {
+    pushUndo()
     setEditedSegments(prev => prev.map((s, i) => i === index ? { ...s, emotion } : s))
   }
   const updateSegmentVoice = (index: number, voiceId: string) => {
+    pushUndo()
     setEditedSegments(prev => prev.map((s, i) => i === index ? { ...s, recommendedVoice: voiceId } : s))
   }
   const updateSegmentSpeed = (index: number, speed: 'slow' | 'normal' | 'fast') => {
+    pushUndo()
     setEditedSegments(prev => prev.map((s, i) => i === index ? { ...s, speed } : s))
+  }
+  const updateSegmentIntensity = (index: number, intensity: number) => {
+    setEditedSegments(prev => prev.map((s, i) => i === index ? { ...s, emotionIntensity: Math.max(1, Math.min(10, intensity)) } : s))
+  }
+  const updateSegmentText = (index: number, text: string) => {
+    setEditedSegments(prev => prev.map((s, i) => i === index ? { ...s, text } : s))
+  }
+  const updateSegmentType = (index: number, type: 'narration' | 'dialogue', characterName?: string) => {
+    pushUndo()
+    setEditedSegments(prev => prev.map((s, i) => i === index ? { ...s, type, characterName: type === 'narration' ? undefined : (characterName || s.characterName) } : s))
   }
 
   /* ── Step 3: 生成单段 ── */
@@ -196,6 +279,9 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
           text: seg.text,
           voice,
           emotion: emotion !== '平静' ? emotion : undefined,
+          emotionIntensity: seg.emotionIntensity,
+          speed: seg.speed,
+          specialNote: seg.specialNote,
         }),
       })
       const data = await res.json()
@@ -237,11 +323,11 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
     if (audioKeys.length === 0) { alert('请先生成音频'); return }
     setMerging(true)
     try {
-      const segments = audioKeys.map(k => ({ audioBase64: audioCache[k].audioBase64, duration: audioCache[k].duration }))
+      const segs = audioKeys.map(k => ({ audioBase64: audioCache[k].audioBase64, duration: audioCache[k].duration }))
       const res = await fetch('/api/audiobook/merge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ segments, format: exportFormat }),
+        body: JSON.stringify({ segments: segs, format: exportFormat }),
       })
       const data = await res.json()
       if (data.success && data.audio) {
@@ -328,7 +414,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
   }
 
 
-  /* ── 导入画本 ── */
+  /* ── 导入画本（TXT/JSON/DOCX） ── */
   const importBookRef = useRef<HTMLInputElement>(null)
   const [importBookLoading, setImportBookLoading] = useState(false)
 
@@ -337,25 +423,45 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
     if (!file) return
     setImportBookLoading(true)
     try {
-      const arrayBuf = await file.arrayBuffer()
-      let fileContent = new TextDecoder('utf-8').decode(arrayBuf)
-      const ffdCount = (fileContent.match(/\uFFFD/g) || []).length
-      if (ffdCount > 10) fileContent = new TextDecoder('gbk').decode(arrayBuf)
-      const isJson = file.name.endsWith('.json')
-      const res = await fetch('/api/audiobook/import-book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ format: isJson ? 'json' : 'txt', content: fileContent }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        const processed = processAnalysisResult(data.segments || [], data.characters || [])
-        setAnalysisResult({ ...data, segments: processed.segments, characters: processed.characters })
-        setEditedCharacters(processed.characters || [])
-        setEditedSegments(processed.segments || [])
-        try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
+      const isDocx = file.name.endsWith('.docx')
+
+      if (isDocx) {
+        /* ── DOCX：通过 FormData 上传二进制文件 ── */
+        const formData = new FormData()
+        formData.append('file', file)
+        const res = await fetch('/api/audiobook/import-docx', { method: 'POST', body: formData })
+        const data = await res.json()
+        if (data.success) {
+          const processed = processAnalysisResult(data.segments || [], data.characters || [])
+          setAnalysisResult({ ...data, segments: processed.segments, characters: processed.characters })
+          setEditedCharacters(processed.characters || [])
+          setEditedSegments(processed.segments || [])
+          try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
+        } else {
+          alert('导入画本失败：' + (data.error || '格式错误'))
+        }
       } else {
-        alert('导入画本失败：' + (data.error || '格式错误'))
+        /* ── TXT/JSON：原有逻辑 ── */
+        const arrayBuf = await file.arrayBuffer()
+        let fileContent = new TextDecoder('utf-8').decode(arrayBuf)
+        const ffdCount = (fileContent.match(/\uFFFD/g) || []).length
+        if (ffdCount > 10) fileContent = new TextDecoder('gbk').decode(arrayBuf)
+        const isJson = file.name.endsWith('.json')
+        const res = await fetch('/api/audiobook/import-book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ format: isJson ? 'json' : 'txt', content: fileContent }),
+        })
+        const data = await res.json()
+        if (data.success) {
+          const processed = processAnalysisResult(data.segments || [], data.characters || [])
+          setAnalysisResult({ ...data, segments: processed.segments, characters: processed.characters })
+          setEditedCharacters(processed.characters || [])
+          setEditedSegments(processed.segments || [])
+          try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
+        } else {
+          alert('导入画本失败：' + (data.error || '格式错误'))
+        }
       }
     } catch (err) {
       alert('导入失败：' + (err instanceof Error ? err.message : String(err)))
@@ -365,44 +471,79 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
     }
   }
 
-  /* ── 分析状态 ── */
+  /* ═══════════════════════════════════════════════════════════
+     UI：三选一入口（空状态）
+     ═══════════════════════════════════════════════════════════ */
   if (!analysisResult) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 0' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: C.ink, margin: '0 0 8px' }}>AI 文本分析</h3>
-        <p style={{ fontSize: 13, color: C.muted, margin: '0 0 4px' }}>
-          点击下方按钮，AI 将自动分析「{chapter.title}」的文本结构
+        <div style={{ fontSize: 48, marginBottom: 16 }}>📖</div>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: C.ink, margin: '0 0 8px' }}>选择配音方式</h3>
+        <p style={{ fontSize: 13, color: C.muted, margin: '0 0 32px' }}>
+          为「{chapter.title}」选择一种开始方式
         </p>
-        <p style={{ fontSize: 11, color: C.muted, margin: '0 0 24px' }}>
-          自动识别：角色 / 情绪 / 音色推荐 / 演播指导
-        </p>
-        <button
-          onClick={handleAnalyze}
-          disabled={analyzing}
-          style={{
-            padding: '12px 32px',
-            background: analyzing ? '#ccc' : C.pri,
-            border: 'none',
-            borderRadius: 8,
-            fontSize: 14,
-            fontWeight: 600,
-            color: '#fff',
-            cursor: analyzing ? 'default' : 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          {analyzing ? `⏳ AI 分析中… ${analyzingElapsed}s` : '🤖 开始 AI 分析'}
-        </button>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 10 }}>
-          <input ref={importBookRef} type="file" accept=".txt,.json" onChange={handleImportBook} style={{ display: 'none' }} />
-          <button onClick={() => importBookRef.current?.click()} disabled={importBookLoading || analyzing}
-            style={{ padding: '8px 20px', background: C.indigo, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: importBookLoading ? 'default' : 'pointer', fontFamily: 'inherit', opacity: importBookLoading ? 0.6 : 1 }}>
-            {importBookLoading ? '⏳ 导入中...' : '📄 导入画本（跳过AI）'}
+
+        {/* 三选一卡片 */}
+        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap', maxWidth: 700, margin: '0 auto' }}>
+          {/* AI 分析 */}
+          <button onClick={handleAnalyze} disabled={analyzing}
+            style={{
+              width: 200, padding: '32px 20px', background: C.card,
+              border: `1px solid ${C.line}`, borderRadius: 12,
+              cursor: analyzing ? 'default' : 'pointer', fontFamily: 'inherit', textAlign: 'center',
+              transition: 'all .15s', boxShadow: '0 2px 8px rgba(0,0,0,.04)',
+            }}
+          >
+            <div style={{ fontSize: 36, marginBottom: 12 }}>🤖</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 6 }}>
+              {analyzing ? `AI 分析中… ${analyzingElapsed}s` : 'AI 分析'}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
+              自动识别角色<br />推荐音色和情绪
+            </div>
+          </button>
+
+          {/* 手动设置 */}
+          <button onClick={handleManualSetup}
+            style={{
+              width: 200, padding: '32px 20px', background: C.card,
+              border: `1px solid ${C.line}`, borderRadius: 12,
+              cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
+              transition: 'all .15s', boxShadow: '0 2px 8px rgba(0,0,0,.04)',
+            }}
+          >
+            <div style={{ fontSize: 36, marginBottom: 12 }}>✏️</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 6 }}>手动设置</div>
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
+              按行拆段<br />默认全部旁白
+            </div>
+          </button>
+
+          {/* 导入画本 */}
+          <button onClick={() => importBookRef.current?.click()} disabled={importBookLoading}
+            style={{
+              width: 200, padding: '32px 20px', background: C.card,
+              border: `1px solid ${C.line}`, borderRadius: 12,
+              cursor: importBookLoading ? 'default' : 'pointer', fontFamily: 'inherit', textAlign: 'center',
+              transition: 'all .15s', boxShadow: '0 2px 8px rgba(0,0,0,.04)',
+              opacity: importBookLoading ? 0.6 : 1,
+            }}
+          >
+            <div style={{ fontSize: 36, marginBottom: 12 }}>📄</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 6 }}>
+              {importBookLoading ? '导入中...' : '导入画本'}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
+              TXT / JSON / DOCX<br />跳过 AI 分析
+            </div>
           </button>
         </div>
+
+        <input ref={importBookRef} type="file" accept=".txt,.json,.docx" onChange={handleImportBook} style={{ display: 'none' }} />
+
+        {/* 分析错误 */}
         {analyzing && (
-          <p style={{ fontSize: 11, color: C.muted, margin: '8px 0 0', textAlign: 'center' }}>
+          <p style={{ fontSize: 11, color: C.muted, margin: '16px 0 0', textAlign: 'center' }}>
             DeepSeek V4 Flash 正在分析章节文本，预计 30-60 秒，请耐心等待…
           </p>
         )}
@@ -411,29 +552,44 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
             ❌ {analyzeError}
           </div>
         )}
-        <div style={{ marginTop: 24, fontSize: 11, color: C.muted, maxWidth: 400, margin: '24px auto 0', lineHeight: 1.8 }}>
-          <p style={{ margin: '0 0 4px' }}>💡 AI 分析完成后，你可以：</p>
-          <p style={{ margin: 0 }}>• 修改每个角色的音色和情绪</p>
-          <p style={{ margin: 0 }}>• 调整单个段落的演播参数</p>
-          <p style={{ margin: 0 }}>• 确认后一键生成全部音频</p>
+
+        <div style={{ marginTop: 32, fontSize: 11, color: C.muted, maxWidth: 400, margin: '32px auto 0', lineHeight: 1.8 }}>
+          <p style={{ margin: '0 0 4px' }}>💡 完成后，你可以：</p>
+          <p style={{ margin: 0 }}>• 修改每个段落的文本、角色、情绪</p>
+          <p style={{ margin: 0 }}>• 调整情绪强度（1-10滑动条）</p>
+          <p style={{ margin: 0 }}>• 撤回/重做操作（Ctrl+Z / Ctrl+Y）</p>
+          <p style={{ margin: 0 }}>• 单段生成、试听、导出</p>
         </div>
       </div>
     )
   }
 
-  /* ── 分析完成后：左角色列表 + 右段落列表 ── */
+  /* ═══════════════════════════════════════════════════════════
+     UI：分析完成后 — 左角色列表 + 右段落列表
+     ═══════════════════════════════════════════════════════════ */
   return (
-    <div style={{ display: 'flex', gap: 20, minHeight: 500 }}>
+    <div style={{ display: 'flex', gap: 20, minHeight: 500 }} onKeyDown={e => {
+      if (e.ctrlKey && e.key === 'z') { e.preventDefault(); handleUndo() }
+      if (e.ctrlKey && e.key === 'y') { e.preventDefault(); handleRedo() }
+    }}>
       <audio ref={audioRef} onEnded={() => setPlayingId(null)} />
 
       {/* ═══ 左侧：角色列表 + 旁白 ═══ */}
       <div style={{ width: 260, flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: C.ink, margin: 0 }}>🎭 角色音色</h3>
-          <button onClick={() => { setAnalysisResult(null); setEditedCharacters([]); setEditedSegments([]); setAudioCache({}); try { localStorage.removeItem(CACHE_KEY) } catch {} }}
-            style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
-            重新分析
-          </button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button onClick={handleUndo} disabled={undoStack.length === 0}
+              style={{ padding: '4px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: undoStack.length > 0 ? C.ink : C.muted, cursor: undoStack.length > 0 ? 'pointer' : 'default', fontFamily: 'inherit' }}
+              title="撤回 (Ctrl+Z)">↩️</button>
+            <button onClick={handleRedo} disabled={redoStack.length === 0}
+              style={{ padding: '4px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: redoStack.length > 0 ? C.ink : C.muted, cursor: redoStack.length > 0 ? 'pointer' : 'default', fontFamily: 'inherit' }}
+              title="重做 (Ctrl+Y)">↪️</button>
+            <button onClick={() => { setAnalysisResult(null); setEditedCharacters([]); setEditedSegments([]); setAudioCache({}); setUndoStack([]); setRedoStack([]); try { localStorage.removeItem(CACHE_KEY) } catch {} }}
+              style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+              重新选择
+            </button>
+          </div>
         </div>
 
         {/* 旁白 */}
@@ -564,6 +720,13 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
                   <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(seg.index)}
                     style={{ accentColor: C.pri, width: 14, height: 14, cursor: 'pointer', flexShrink: 0 }} />
 
+                  {/* 类型切换 */}
+                  <select value={seg.type} onChange={e => updateSegmentType(globalIdx, e.target.value as 'narration' | 'dialogue')}
+                    style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
+                    <option value="narration">叙述</option>
+                    <option value="dialogue">对话</option>
+                  </select>
+
                   {isDialogue && seg.characterName ? (
                     <span style={{ fontSize: 10, padding: '1px 6px', background: `${color}18`, borderRadius: 8, color, fontWeight: 600 }}>{seg.characterName}</span>
                   ) : (
@@ -575,7 +738,13 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
                     {EMOTION_PRESETS.map(em => <option key={em.id} value={em.id}>{em.label}</option>)}
                   </select>
 
-                  <span style={{ fontSize: 10, color: C.muted }}>强度{seg.emotionIntensity}</span>
+                  {/* 情绪强度滑动条 */}
+                  <span style={{ fontSize: 10, color: C.muted, whiteSpace: 'nowrap' }}>强度</span>
+                  <input type="range" min={1} max={10} step={1} value={seg.emotionIntensity}
+                    onChange={e => updateSegmentIntensity(globalIdx, parseInt(e.target.value))}
+                    style={{ width: 60, accentColor: C.pri, cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: 10, color: C.ink, minWidth: 14, textAlign: 'center' }}>{seg.emotionIntensity}</span>
 
                   <select value={seg.speed} onChange={e => updateSegmentSpeed(globalIdx, e.target.value as 'slow' | 'normal' | 'fast')} style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
                     <option value="slow">慢速</option>
@@ -591,19 +760,58 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
                   {audio && <span style={{ fontSize: 10, color: C.green }}>✓ {Math.floor(audio.duration)}s</span>}
                 </div>
 
-                {/* 文本 */}
-                <div style={{ fontSize: 13, lineHeight: 1.7, color: C.ink }}>
-                  {isDialogue ? `「${seg.text}」` : seg.text}
-                </div>
+                {/* 文本（textarea 可编辑） */}
+                <textarea
+                  value={isDialogue ? `「${seg.text}」` : seg.text}
+                  onChange={e => {
+                    let val = e.target.value
+                    if (isDialogue) {
+                      // 保持「」包裹
+                      if (val.startsWith('「') && val.endsWith('」')) val = val.slice(1, -1)
+                    }
+                    updateSegmentText(globalIdx, val)
+                  }}
+                  rows={seg.text.length > 80 ? 3 : seg.text.length > 40 ? 2 : 1}
+                  style={{
+                    width: '100%', fontSize: 13, lineHeight: 1.7, color: C.ink,
+                    border: 'none', background: 'transparent', resize: 'vertical',
+                    fontFamily: 'inherit', padding: 0, outline: 'none',
+                  }}
+                />
 
-                {/* 操作行 */}
+                {/* 操作行：生成/重新生成 + 播放/暂停 + 导出 */}
                 <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
-                  <button onClick={() => generateOne(seg)} disabled={isGen || !!generatingId} style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: isGen ? C.pri : C.muted, cursor: isGen ? 'default' : 'pointer', fontFamily: 'inherit' }}>
-                    {isGen ? '⏳...' : '🎵 生成'}
-                  </button>
-                  {audio && (
-                    <button onClick={() => playBase64(audio.audioBase64, segKey)} style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${isPlaying ? C.pri : C.line}`, borderRadius: 4, background: isPlaying ? 'rgba(196,149,106,.12)' : C.card, color: isPlaying ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {isPlaying ? '⏸' : '▶'}
+                  {audio ? (
+                    /* 已生成 → 重新生成 + 播放 + 导出 */
+                    <>
+                      <button onClick={() => generateOne(seg)} disabled={isGen || !!generatingId}
+                        style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: isGen ? C.pri : C.muted, cursor: isGen ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                        {isGen ? '⏳...' : '🔄 重新生成'}
+                      </button>
+                      <button onClick={() => playBase64(audio.audioBase64, segKey)}
+                        style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${isPlaying ? C.pri : C.line}`, borderRadius: 4, background: isPlaying ? 'rgba(196,149,106,.12)' : C.card, color: isPlaying ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {isPlaying ? '⏸' : '▶ 播放'}
+                      </button>
+                      <button onClick={() => {
+                        // 单段导出
+                        const bin = atob(audio.audioBase64)
+                        const bytes = new Uint8Array(bin.length)
+                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+                        const blob = new Blob([bytes], { type: 'audio/wav' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url; a.download = `${chapter.title || '段落'}-${seg.index + 1}.wav`; a.click()
+                        URL.revokeObjectURL(url)
+                      }}
+                        style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        📥 导出
+                      </button>
+                    </>
+                  ) : (
+                    /* 未生成 → 生成按钮 */
+                    <button onClick={() => generateOne(seg)} disabled={isGen || !!generatingId}
+                      style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: isGen ? C.pri : C.muted, cursor: isGen ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                      {isGen ? '⏳...' : '🎵 生成'}
                     </button>
                   )}
                 </div>
