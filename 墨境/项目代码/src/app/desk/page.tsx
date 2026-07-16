@@ -23,7 +23,17 @@ const C = {
   crimson: '#b5454a',
   green: '#7a9e7a',
   radius: 8,
-} as const
+}
+
+// P2-1: Get current week's Monday as YYYY-MM-DD string
+function getWeekStart(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(now);
+  monday.setDate(diff);
+  return monday.toISOString().slice(0, 10);
+}
 
 const GENRES = ['都市', '玄幻', '悬疑', '科幻', '历史', '灵异', '言情', '竞技'] as const
 const AUDIENCES = ['男频', '全频', '女频'] as const
@@ -82,7 +92,29 @@ export default function DeskPage() {
   const [dlgPerspective, setDlgPerspective] = useState('第三人称')
   const [dlgLength, setDlgLength] = useState('长篇连载（>8万字）')
   const [dlgAudience, setDlgAudience] = useState('不限')
-  const [checkinDone, setCheckinDone] = useState(false)
+  // P2-1: checkin persistence via localStorage
+  const [checkinDone, setCheckinDone] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      const raw = localStorage.getItem('mojing_checkin')
+      if (raw) {
+        const saved = JSON.parse(raw)
+        if (saved.weekStart === getWeekStart()) return saved.days[3] === true
+      }
+    } catch {}
+    return false
+  })
+  const [checkinDays, setCheckinDays] = useState<boolean[]>(() => {
+    if (typeof window === 'undefined') return [false, false, false, false, false, false, false]
+    try {
+      const raw = localStorage.getItem('mojing_checkin')
+      if (raw) {
+        const saved = JSON.parse(raw)
+        if (saved.weekStart === getWeekStart()) return saved.days
+      }
+    } catch {}
+    return [false, false, false, false, false, false, false]
+  })
 
   useEffect(() => { setProjects(getProjects()) }, [])
 
@@ -106,6 +138,25 @@ export default function DeskPage() {
   }, [projects])
 
   const totalWords = useMemo(() => projects.reduce((s, p) => s + (p.totalWords || 0), 0), [projects])
+  
+  // P2-2: Real month-over-month word count
+  const monthWords = useMemo(() => {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime()
+    let thisMonth = 0, lastMonth = 0
+    for (const p of projects) {
+      const chs = getChapters(p.id)
+      for (const ch of chs) {
+        const ts = (ch as any).updatedAt || (ch as any).createdAt || 0
+        const wc = ch.wordCount || 0
+        if (ts >= monthStart) thisMonth += wc
+        else if (ts >= lastMonthStart && ts < monthStart) lastMonth += wc
+      }
+    }
+    return { thisMonth, lastMonth, delta: thisMonth - lastMonth }
+  }, [projects])
+
   const recentProjects = projects.filter(p => !p.deletedAt).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3)
 
   const handleQuickCreate = () => {
@@ -128,7 +179,7 @@ export default function DeskPage() {
 
   const progress = Math.min(100, Math.round((todayDone / todayTarget) * 100))
   const days = ['一', '二', '三', '四', '五', '六', '日']
-  const checkinDays = [true, true, true, false, false, false, false] // 本周 4/7
+  // checkinDays is now useState above (P2-1)
 
   return (
     <div style={{ minHeight: '100vh', background: C.paper }}>
@@ -298,10 +349,10 @@ export default function DeskPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {[
-                    { val: totalWords.toLocaleString(), label: `累计字数 · ${projects.length}部作品`, delta: '▲ 较上月 +12,430字', deltaColor: C.green },
-                    { val: `${streak} 天`, label: '连续写作', accent: true, delta: '▲ 距100天还差53天', deltaColor: C.green },
+                    { val: totalWords.toLocaleString(), label: `累计字数 · ${projects.length}部作品`, delta: (monthWords.delta >= 0 ? '▲' : '▼') + ' 较上月 ' + Math.abs(monthWords.delta).toLocaleString() + '字', deltaColor: C.green },
+                    { val: `${streak} 天`, label: '连续写作', accent: true, delta: (100 - streak > 0 ? '▲ 距100天还差' + (100 - streak) + '天' : '🎉 已达成100天目标！'), deltaColor: C.green },
                     { val: weekWords.toLocaleString(), label: '本周字数 · 日均 ' + Math.round(weekWords / 7).toLocaleString() },
-                    { val: `${progress}%`, label: '今日目标完成度', accent: true, delta: '▼ 低于昨日 88%', deltaColor: C.crimson },
+                    { val: `${progress}%`, label: '今日目标完成度', accent: true, delta: progress >= 100 ? '🎉 今日目标已达成！' : '还需写' + (todayTarget - todayDone).toLocaleString() + '字达标', deltaColor: C.crimson },
                   ].map((s, i) => (
                     <div key={i} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                       <span style={{ fontFamily: "'Noto Serif SC',Georgia,serif", fontSize: 22, fontWeight: 700, color: s.accent ? C.pri : C.ink }}>{s.val}</span>
@@ -328,7 +379,13 @@ export default function DeskPage() {
                       )
                     })}
                   </div>
-                  <button onClick={() => setCheckinDone(true)} disabled={checkinDone} style={{ fontSize: 12, padding: '8px 0', borderRadius: C.radius, textAlign: 'center', cursor: checkinDone ? 'default' : 'pointer', fontWeight: 600, fontFamily: 'inherit', border: `1px solid ${checkinDone ? C.line : C.pri}`, background: checkinDone ? C.line : C.pri, color: checkinDone ? C.muted : '#fff', minHeight: 36 }}>
+                  <button onClick={() => {
+                    setCheckinDone(true)
+                    const newDays = [...checkinDays]
+                    newDays[3] = true // Wednesday = index 3
+                    setCheckinDays(newDays)
+                    localStorage.setItem('mojing_checkin', JSON.stringify({ weekStart: getWeekStart(), days: newDays }))
+                  }} disabled={checkinDone} style={{ fontSize: 12, padding: '8px 0', borderRadius: C.radius, textAlign: 'center', cursor: checkinDone ? 'default' : 'pointer', fontWeight: 600, fontFamily: 'inherit', border: `1px solid ${checkinDone ? C.line : C.pri}`, background: checkinDone ? C.line : C.pri, color: checkinDone ? C.muted : '#fff', minHeight: 36 }}>
                     {checkinDone ? '✔ 已打卡！' : '✔ 今日打卡 · 得20墨点'}
                   </button>
                 </div>

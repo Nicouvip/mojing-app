@@ -54,7 +54,9 @@ function loadLocalUsers(): UserRecord[] {
 
 function saveLocalUsers(users: UserRecord[]) {
   // 写内存
-  for (const u of users) memUsers.set(u.email, u)
+  if (typeof window !== 'undefined') {
+    for (const u of users) memUsers.set(u.email, u)
+  }
   // 写 localStorage（仅客户端）
   try {
     if (typeof window !== 'undefined') {

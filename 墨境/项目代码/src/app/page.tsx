@@ -160,8 +160,8 @@ export default function HomePage() {
         <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3 max-w-[800px] mx-auto">
           {[
             { name: '初墨', amt: '免费', desc: '每天20次 AI 调用。够写完一章，跑一遍自检。', feats: ['完整合规引擎', '四阶段工作流', '最多3部作品', '基础角色管理', '章末自检报告'], popular: false },
-            { name: '入墨', amt: '¥29', sub: '/月', desc: '每天200次。日更两章也够用。', feats: ['完整合规引擎', '四阶段工作流', '无限作品', '冷却矩阵可视化', '角色@上下文注入', '优先级 AI 响应'], popular: true },
-            { name: '醉墨', amt: '¥79', sub: '/月', desc: '每天1000次。批量生成章节。', feats: ['完整合规引擎', '批量章节生成', '自定义规则集', 'API 接口访问', '优先技术支持', '导出 EPUB/PDF'], popular: false },
+            { name: '入墨', amt: '¥29', sub: '/月', coming: true, desc: '每天200次。日更两章也够用。', feats: ['完整合规引擎', '四阶段工作流', '无限作品', '冷却矩阵可视化', '角色@上下文注入', '优先级 AI 响应'], popular: true },
+            { name: '醉墨', amt: '¥79', sub: '/月', coming: true, desc: '每天1000次。批量生成章节。', feats: ['完整合规引擎', '批量章节生成', '自定义规则集', 'API 接口访问', '优先技术支持', '导出 EPUB/PDF'], popular: false },
           ].map((plan, i) => (
             <div key={i} className={`relative p-[26px_20px] border rounded-lg bg-card/40 text-left transition-all hover:border-primary/20 ${plan.popular ? 'border-primary border-2' : 'border-border'}`}>
               {plan.popular && <span className="absolute -top-[9px] left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">推荐</span>}
@@ -171,10 +171,16 @@ export default function HomePage() {
               <ul className="list-none text-xs leading-8 text-foreground mb-4">
                 {plan.feats.map((f, j) => <li key={j} className="before:content-['✓_'] before:text-primary before:font-bold">{f}</li>)}
               </ul>
-              <Link href={plan.popular ? '/desk' : '/desk'}
-                className={`inline-flex items-center justify-center w-full gap-2 px-6 py-3 rounded-lg text-sm font-semibold no-underline transition-all ${plan.popular ? 'bg-primary text-white shadow-[0_2px_10px_rgba(196,149,106,0.25)] hover:bg-primary-hover' : 'border border-primary/25 text-foreground hover:bg-primary/5 hover:border-primary'}`}>
-                {plan.popular ? '立即订阅' : plan.name === '初墨' ? '免费开始' : '升级醉墨'}
-              </Link>
+              {(plan as any).coming ? (
+                <span className="inline-flex items-center justify-center w-full px-6 py-3 rounded-lg text-sm font-semibold border border-dashed border-muted-foreground/30 text-muted-foreground/60 cursor-default">
+                  即将上线
+                </span>
+              ) : (
+                <Link href="/desk"
+                  className={`inline-flex items-center justify-center w-full gap-2 px-6 py-3 rounded-lg text-sm font-semibold no-underline transition-all ${(plan as any).popular ? 'bg-primary text-white shadow-[0_2px_10px_rgba(196,149,106,0.25)] hover:bg-primary-hover' : 'border border-primary/25 text-foreground hover:bg-primary/5 hover:border-primary'}`}>
+                  {plan.name === '初墨' ? '免费开始' : '立即使用'}
+                </Link>
+              )}
             </div>
           ))}
         </div>

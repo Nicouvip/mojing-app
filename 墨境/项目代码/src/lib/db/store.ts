@@ -58,6 +58,10 @@ export function getCurrentUserId(): string | undefined {
         currentUserId = parsed.user?.id
       }
     } catch {}
+    // P1-8: Guest ID 互通 - 未登录时使用 mojing_guest_id
+    if (!currentUserId && typeof window !== 'undefined') {
+      currentUserId = localStorage.getItem('mojing_guest_id') || undefined
+    }
   }
   return currentUserId
 }
@@ -332,7 +336,7 @@ export function createChapter(projectId: string, title: string, volumeId?: strin
   const targetVolumeId = volumeId || ensureDefaultVolume(projectId).id
   const ch: Chapter = {
     id: `ch-${Date.now()}-${Math.random().toString(36).slice(2,8)}`, projectId, title, content: '',
-    order: chapters.filter(c => c.projectId === projectId).length + 1,
+    order: chapters.filter(c => c.projectId === projectId).reduce((max, c) => Math.max(max, c.order), 0) + 1,
     wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft',
     volumeId: targetVolumeId,
   }
