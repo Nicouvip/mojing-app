@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "xfyun-tts": {
+      "command": "python",
+      "args": ["D:\\codexvip\\mcp-servers\\xfyun-tts\\server.py"],
+      "env": {},
+      "tier": "background"
+    }
+  }
+}
