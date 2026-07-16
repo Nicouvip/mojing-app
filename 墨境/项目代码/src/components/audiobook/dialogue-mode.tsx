@@ -637,6 +637,22 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           </div>
         ))}
 
+        {/* + 新增角色 */}
+        <button onClick={() => {
+          pushUndo()
+          const newName = `角色${characters.length}`
+          setEditedCharacters(prev => [...prev, {
+            name: newName,
+            personality: '',
+            gender: 'female' as const,
+            age: 'adult' as const,
+            recommendedVoice: defaultVoice,
+            recommendedEmotion: defaultEmotion || '平静',
+          }])
+        }} style={{ width: '100%', padding: '8px 0', fontSize: 12, border: `1px dashed ${C.line}`, borderRadius: C.radius, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+          + 新增角色
+        </button>
+
         {/* 操作按钮 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
           <button onClick={handleGeneratePersonas} disabled={generatingPersonas || characters.length === 0}
