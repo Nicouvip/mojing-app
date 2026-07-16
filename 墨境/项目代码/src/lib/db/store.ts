@@ -17,6 +17,12 @@ let memChapters: Chapter[] = []
 let loadedFromSupabase = false
 let loadedFromTurso = false
 
+// P0-5: Incremental sync - dirty flags + debounce
+let projectsDirty = false
+let chaptersDirty = false
+let flushTimer: ReturnType<typeof setTimeout> | null = null
+const FLUSH_DELAY_MS = 800
+
 /** 判断 Turso 是否可用 */
 function isTursoAvailable(): boolean {
   const url = process.env.TURSO_DATABASE_URL
@@ -29,7 +35,7 @@ let currentUserId: string | undefined
 function isClient(): boolean { return typeof window !== 'undefined' }
 
 /**
- * 设置当前用户 ID，供 syncToSupabase 做行级隔离
+ * 设置当前用户 ID，供 flushSync 做行级隔离
  * 由 AuthProvider 或客户端初始化时调用
  */
 export function setCurrentUserId(id: string | undefined) {
@@ -40,7 +46,7 @@ export function setCurrentUserId(id: string | undefined) {
 export function getCurrentUserId(): string | undefined {
   // 服务端尝试从 NextAuth session 获取
   if (!isClient()) {
-    // 服务端环境下跳过（syncToSupabase 主要在客户端触发）
+    // 服务端环境下跳过（flushSync 主要在客户端触发）
     return currentUserId
   }
   // 客户端从 localStorage 读取
@@ -137,69 +143,85 @@ async function loadFromSupabase() {
   }
 }
 
-async function syncToSupabase() {
+// P0-5: Debounced flush - batches rapid calls into one sync cycle
+function scheduleFlush() {
+  if (flushTimer !== null) clearTimeout(flushTimer)
+  flushTimer = setTimeout(() => { flushTimer = null; flushSync() }, FLUSH_DELAY_MS)
+}
+
+async function flushSync() {
+  const needProjects = projectsDirty
+  const needChapters = chaptersDirty
+  projectsDirty = false
+  chaptersDirty = false
+  if (!needProjects && !needChapters) return
+  await Promise.all([
+    needProjects ? syncProjectsToSupabase() : Promise.resolve(),
+    needChapters ? syncChaptersToSupabase() : Promise.resolve(),
+    needProjects || needChapters ? syncIncrementalToTurso(needProjects, needChapters) : Promise.resolve(),
+  ])
+}
+
+async function syncProjectsToSupabase() {
   if (!isSupabaseAvailable()) return
   try {
     const uid = getCurrentUserId()
-
-    // 按用户 ID 过滤后再同步，避免跨用户数据覆盖
     const userProjects = uid
       ? memProjects.filter(p => !p.userId || p.userId === uid)
       : memProjects
-    const userChapters = uid
-      ? memChapters.filter(c => !c.userId || c.userId === uid)
-      : memChapters
-
     if (userProjects.length > 0) {
       await supabase!.from('projects').upsert(
         uid ? userProjects.map(p => ({ ...p, userId: uid })) : userProjects
       )
     }
+  } catch (err) {
+    console.warn('[store] syncProjectsToSupabase 失败:', err)
+  }
+}
+
+async function syncChaptersToSupabase() {
+  if (!isSupabaseAvailable()) return
+  try {
+    const uid = getCurrentUserId()
+    const userChapters = uid
+      ? memChapters.filter(c => !c.userId || c.userId === uid)
+      : memChapters
     if (userChapters.length > 0) {
       await supabase!.from('chapters').upsert(
         uid ? userChapters.map(c => ({ ...c, userId: uid })) : userChapters
       )
     }
   } catch (err) {
-    console.warn('[store] syncToSupabase 失败：需要配置 SUPABASE 凭据', err)
+    console.warn('[store] syncChaptersToSupabase 失败:', err)
   }
 }
 
-/** 将内存数据增量同步到 Turso */
-async function syncToTurso() {
+// P0-5: Only sync changed entity types to Turso
+async function syncIncrementalToTurso(needProjects: boolean, needChapters: boolean) {
   if (!isTursoAvailable()) return
   try {
     const uid = getCurrentUserId()
-    const userProjects = uid
-      ? memProjects.filter(p => !p.userId || p.userId === uid)
-      : memProjects
-    const userChapters = uid
-      ? memChapters.filter(c => !c.userId || c.userId === uid)
-      : memChapters
+    const tasks: Promise<unknown>[] = []
 
-    // 同步核心实体
-    await Promise.all([
-      ...userProjects.map(p => tursoSaveProject(p).catch(() => {})),
-      ...userChapters.map(c => tursoSaveChapter(c).catch(() => {})),
-      ...memVolumes.map(v => tursoSaveVolume(v).catch(() => {})),
-    ])
-
-    // 同步 localStorage 实体
-    if (isClient()) {
-      const charProfiles = loadClient<CharacterProfile[]>('character_profiles', [])
-      const worldSettings = loadClient<WorldSetting[]>('world_settings', [])
-      const outlines = loadClient<Outline[]>('outlines', [])
-      const foreshadows = loadClient<Foreshadow[]>('foreshadows', [])
-
-      await Promise.all([
-        ...charProfiles.map(p => tursoSaveCharacterProfile(p).catch(() => {})),
-        ...worldSettings.map(ws => tursoSaveWorldSetting(ws).catch(() => {})),
-        ...outlines.map(o => tursoUpsertOutline(o).catch(() => {})),
-        ...foreshadows.map(f => tursoSaveForeshadow(f).catch(() => {})),
-      ])
+    if (needProjects) {
+      const userProjects = uid
+        ? memProjects.filter(p => !p.userId || p.userId === uid)
+        : memProjects
+      for (const p of userProjects) {
+        tasks.push(tursoSaveProject(p).catch(e => console.warn('[store] turso save project failed:', p.id, e)))
+      }
     }
+    if (needChapters) {
+      const userChapters = uid
+        ? memChapters.filter(c => !c.userId || c.userId === uid)
+        : memChapters
+      for (const c of userChapters) {
+        tasks.push(tursoSaveChapter(c).catch(e => console.warn('[store] turso save chapter failed:', c.id, e)))
+      }
+    }
+    await Promise.all(tasks)
   } catch (err) {
-    console.warn('[store] syncToTurso 失败：', err)
+    console.warn('[store] syncIncrementalToTurso 失败:', err)
   }
 }
 
@@ -213,8 +235,8 @@ function getProjectsAll(includeDeleted = false): Project[] {
 function setProjectsAll(p: Project[]) {
   memProjects = p
   if (isClient()) saveClient('projects', p)
-  syncToSupabase()
-  syncToTurso()
+  projectsDirty = true
+  scheduleFlush()
 }
 
 function getChaptersAll(includeDeleted = false): Chapter[] {
@@ -227,8 +249,8 @@ function getChaptersAll(includeDeleted = false): Chapter[] {
 function setChaptersAll(c: Chapter[]) {
   memChapters = c
   if (isClient()) saveClient('chapters', c)
-  syncToSupabase()
-  syncToTurso()
+  chaptersDirty = true
+  scheduleFlush()
 }
 
 export function getProjects(): Project[] {
@@ -397,8 +419,9 @@ function getVolumesAll(): Volume[] {
 function setVolumesAll(v: Volume[]) {
   memVolumes = v
   if (isClient()) saveClient('volumes', v)
-  syncToSupabase()
-  syncToTurso()
+  projectsDirty = true
+  chaptersDirty = true
+  scheduleFlush()
 }
 
 /** 按 order 排序返回项目的卷列表 */
