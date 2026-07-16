@@ -9,6 +9,7 @@ import { getProject, getChapters } from '@/lib/db/store'
 import type { Project, Chapter } from '@/lib/db/types'
 import { DialogueMode } from '@/components/audiobook/dialogue-mode'
 import { generateSRT } from '@/lib/audiobook/srt-generator'
+import { loadGeneratedChapters, saveGeneratedChapter, clearGeneratedChapters } from '@/lib/audiobook/audio-persistence'
 
 /* ── 设计令牌 ── */
 const C = {
@@ -182,6 +183,10 @@ export default function AudiobookProjectPage() {
       setProject(p)
       setChapters(getChapters(projectId))
     }
+    // P0-1: Load persisted audio from IndexedDB
+    loadGeneratedChapters(projectId).then(map => {
+      if (map.size > 0) setGeneratedChapters(map)
+    })
   }, [projectId])
 
   /* ── 音频时间更新 ── */
@@ -433,6 +438,20 @@ export default function AudiobookProjectPage() {
     ...designedVoices.map(v => ({ id: v.id, name: v.name, desc: v.desc, source: 'designed' })),
     ...clonedVoices.map(v => ({ id: v.id, name: v.name, desc: `克隆自 ${v.sampleName}`, source: 'cloned' })),
   ]
+
+  /* P0-1: Persist generated chapters to IndexedDB */
+  const persistAndSetChapters = useCallback((updater: (prev: Map<string, { audioBase64: string; duration: number; subtitles: Array<{ text: string; startSec: number; endSec: number }> }>) => Map<string, { audioBase64: string; duration: number; subtitles: Array<{ text: string; startSec: number; endSec: number }> }>) => {
+    setGeneratedChapters(prev => {
+      const next = updater(prev)
+      // Persist each new/updated entry to IndexedDB
+      next.forEach((data, chId) => {
+        if (!prev.has(chId)) {
+          saveGeneratedChapter(projectId, chId, data)
+        }
+      })
+      return next
+    })
+  }, [projectId])
 
   if (!project) {
     return (
