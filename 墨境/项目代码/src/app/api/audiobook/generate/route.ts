@@ -10,7 +10,7 @@ import { MiMoTTSEngine } from '@/lib/audiobook/mimo-tts'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { text, voice, emotion, style, format } = body
+    const { text, voice, emotion, style, format, emotionIntensity, speed, specialNote } = body
 
     if (!text) {
       return NextResponse.json({ error: 'text is required' }, { status: 400 })
@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
       emotion,
       style,
       format: format || 'wav',
+      emotionIntensity,
+      speed,
+      specialNote,
     })
 
     const base64Audio = result.audioBuffer.toString('base64')

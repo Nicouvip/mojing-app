@@ -48,6 +48,9 @@ export interface MiMoTTSParams {
   style?: string
   format?: 'wav' | 'pcm16'
   stream?: boolean
+  emotionIntensity?: number  // 情绪强度 1-10
+  speed?: 'slow' | 'normal' | 'fast'  // 语速
+  specialNote?: string  // 特殊演播指导（低语、气声等）
 }
 
 export interface MiMoTTSResponse {
@@ -106,9 +109,17 @@ export class MiMoTTSEngine {
   async generate(params: MiMoTTSParams): Promise<MiMoTTSResponse> {
     const messages: Array<{ role: string; content: string }> = []
 
-    if (params.emotion || params.style) {
-      const styleText = [params.emotion, params.style].filter(Boolean).join('，')
-      messages.push({ role: 'user', content: styleText })
+    // 构建风格指导文本：情绪 + 情绪强度 + 语速 + 特殊演播指导
+    const styleParts: string[] = []
+    if (params.emotion) styleParts.push(params.emotion)
+    if (params.emotionIntensity && params.emotionIntensity > 5) styleParts.push(`情感强度${params.emotionIntensity}/10`)
+    if (params.speed === 'slow') styleParts.push('语速缓慢')
+    if (params.speed === 'fast') styleParts.push('语速加快')
+    if (params.specialNote) styleParts.push(params.specialNote)
+    if (params.style) styleParts.push(params.style)
+
+    if (styleParts.length > 0) {
+      messages.push({ role: 'user', content: styleParts.join('，') })
     }
 
     messages.push({ role: 'assistant', content: params.text })
