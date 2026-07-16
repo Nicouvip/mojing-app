@@ -369,9 +369,6 @@ export function getTrash(): Chapter[] {
   if (typeof window === 'undefined') return []
   return getChaptersAll(true).filter(c => c.deletedAt)
 }
-function saveTrash(t: Chapter[]) {
-  // 不再使用独立 trash 存储，deletedAt 已内联到 chapters
-}
 
 export function restoreChapter(id: string): void {
   const chapters = getChaptersAll(true)
