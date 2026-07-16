@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
 
 /**
  * POST /api/audiobook/voices/polish
@@ -8,6 +9,10 @@ import { NextRequest, NextResponse } from 'next/server'
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: '请先登录' }, { status: 401 })
+    }
     const { description } = await request.json()
     if (!description || typeof description !== 'string') {
       return NextResponse.json({ error: '请输入音色描述' }, { status: 400 })

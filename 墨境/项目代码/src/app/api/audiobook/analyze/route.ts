@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
 import { buildAnalysisPrompt, type AnalysisResult } from '@/lib/audiobook/prompts'
 import { DEEPSEEK_API_URL } from '@/lib/ai/constants'
 
@@ -148,6 +149,10 @@ const MAX_RETRIES = 2
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: '请先登录' }, { status: 401 })
+    }
     const body = await request.json()
     const { text } = body
 

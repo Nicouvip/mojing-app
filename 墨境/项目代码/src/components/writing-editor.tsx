@@ -12,6 +12,16 @@ import { useDebouncedCallback } from 'use-debounce'
 import { cn } from '@/lib/utils/utils'
 import { Bold, Italic, UnderlineIcon, Heading1, Heading2, Heading3, Quote, List, ListOrdered, Highlighter, AlignLeft, AlignCenter, AlignRight, Minus, Undo, Redo } from 'lucide-react'
 import { recordWords } from '@/lib/ai/goals-store'
+import DOMPurify from 'dompurify'
+
+/** 客户端安全过滤 HTML（移除 script/事件处理器等 XSS 向量） */
+function sanitizeHtml(dirty: string): string {
+  if (typeof window === 'undefined') return dirty
+  return DOMPurify.sanitize(dirty, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'span', 'div', 'mark', 'hr'],
+    ALLOWED_ATTR: ['style', 'class', 'data-placeholder'],
+  })
+}
 
 interface Heading {
   level: number; text: string; pos: number
@@ -42,7 +52,7 @@ export const WritingEditor = forwardRef<EditorHandle, Props>(function WritingEdi
 
   // onChange 节流 300ms（避免每次按键都触发 bodyDensity 计算）
   const debouncedOnChange = useDebouncedCallback((html: string) => {
-    onChange(html)
+    onChange(sanitizeHtml(html))
   }, 300)
 
   const editor = useEditor({
@@ -78,13 +88,16 @@ export const WritingEditor = forwardRef<EditorHandle, Props>(function WritingEdi
   const prevContent = useRef(content)
   const [inputGoal, setInputGoal] = useState(String(wordGoal))
 
-  // Auto-format plain text to HTML paragraphs for TipTap
+  // Auto-format plain text to HTML paragraphs for TipTap + XSS sanitize
   const prepareContent = (raw: string) => {
-    if (!raw || raw.indexOf('<') !== -1) return raw
-    const paragraphs = raw.split(String.fromCharCode(10, 10)).filter(Boolean)
-    return paragraphs.map(function(p) {
-      return '<p>' + p.split(String.fromCharCode(10)).join('<br/>') + '</p>'
-    }).join('')
+    if (!raw) return ''
+    if (raw.indexOf('<') === -1) {
+      const paragraphs = raw.split(String.fromCharCode(10, 10)).filter(Boolean)
+      return paragraphs.map(function(p) {
+        return '<p>' + p.split(String.fromCharCode(10)).join('<br/>') + '</p>'
+      }).join('')
+    }
+    return sanitizeHtml(raw)
   }
 
   // Sync external content  // Sync external content → editor only when genuinely changed from outside (not from onUpdate)

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
 
 /**
  * POST /api/audiobook/import
@@ -84,6 +85,10 @@ function splitByEmptyLine(text: string): Array<{ title: string; content: string 
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: '请先登录' }, { status: 401 })
+    }
     const body = await request.json()
     const { projectId, text, title, splitMode = 'auto' } = body
 

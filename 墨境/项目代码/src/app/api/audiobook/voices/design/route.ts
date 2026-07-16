@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
 import { MiMoVoiceDesignEngine } from '@/lib/audiobook/mimo-voice-design'
 
 /**
@@ -9,6 +10,10 @@ import { MiMoVoiceDesignEngine } from '@/lib/audiobook/mimo-voice-design'
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: '请先登录' }, { status: 401 })
+    }
     const body = await request.json()
     const { description, text, optimizeText } = body
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
 import { type CharacterAnalysis, type SegmentAnalysis } from '@/lib/audiobook/prompts'
 
 /**
@@ -351,6 +352,10 @@ function writeBookToChapter(
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: '请先登录' }, { status: 401 })
+    }
     const body = await request.json()
     const { format, content, chapterId } = body
 
