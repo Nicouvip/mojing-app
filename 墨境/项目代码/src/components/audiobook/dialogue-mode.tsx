@@ -910,14 +910,16 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                         {isPlaying ? '⏸' : '▶ 播放'}
                       </button>
                       <button onClick={() => {
-                        // 单段导出
+                        // P1-3: 单段导出 - 使用共享exportFormat
                         const bin = atob(audio.audioBase64)
                         const bytes = new Uint8Array(bin.length)
                         for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-                        const blob = new Blob([bytes], { type: 'audio/wav' })
+                        const mime = exportFormat === 'mp3' ? 'audio/mpeg' : 'audio/wav'
+                        const ext = exportFormat === 'mp3' ? 'mp3' : 'wav'
+                        const blob = new Blob([bytes], { type: mime })
                         const url = URL.createObjectURL(blob)
                         const a = document.createElement('a')
-                        a.href = url; a.download = `${chapter.title || '段落'}-${seg.index + 1}.wav`; a.click()
+                        a.href = url; a.download = `${chapter.title || '段落'}-${seg.index + 1}.${ext}`; a.click()
                         URL.revokeObjectURL(url)
                       }}
                         style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
