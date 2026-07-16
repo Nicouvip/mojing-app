@@ -78,3 +78,8 @@ args    = ["D:\\codexvip\\mcp-servers\\mimo-voiceclone\\server.py"]
 name    = "xfyun-voiceclone"
 command = "python"
 args    = ["D:\\codexvip\\mcp-servers\\xfyun-voiceclone\\server.py"]
+
+[[plugins]]
+name    = "paddleocr-vl"
+command = "python"
+args    = ["D:\\codexvip\\mcp-servers\\paddleocr-vl\\server.py"]
