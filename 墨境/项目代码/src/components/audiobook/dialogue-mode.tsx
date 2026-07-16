@@ -769,6 +769,33 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           <div>叙述：{segments.filter(s => s.type === 'narration').length}</div>
           <div>已生成：{Object.keys(audioCache).length}/{segments.length}</div>
         </div>
+
+        {/* P1-5: 工具栏占位按钮 */}
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 10, color: C.muted, marginBottom: 4, fontWeight: 500 }}>高级工具</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {[
+              { icon: '🎵', label: '音效' },
+              { icon: '🌍', label: '多语种' },
+              { icon: '📈', label: '变调' },
+              { icon: '🔊', label: '音量' },
+              { icon: '🔤', label: '多音字' },
+              { icon: '🔢', label: '数字' },
+              { icon: '✅', label: '纠错' },
+              { icon: '✏️', label: '改写' },
+              { icon: '🌐', label: '翻译' },
+              { icon: '📋', label: '文案提取' },
+              { icon: '🎶', label: '背景音乐' },
+              { icon: '🫧', label: '换气' },
+              { icon: '⏸️', label: '停顿' },
+            ].map(t => (
+              <button key={t.label} disabled title="即将上线"
+                style={{ padding: '3px 8px', fontSize: 10, border: `1px dashed ${C.line}`, borderRadius: 4, background: 'transparent', color: C.muted, cursor: 'default', fontFamily: 'inherit', opacity: 0.5 }}>
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* ═══ 右侧：筛选Tab + 导出 + 段落列表 ═══ */}
