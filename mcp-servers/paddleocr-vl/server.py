@@ -10,7 +10,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -38,6 +38,9 @@ AVAILABLE_CHAT_MODELS = {
     "qwen-2b": MODEL_ID_CHAT,
     "hunyuan-mt-7b": MODEL_ID_CHAT_HYMT,
 }
+
+MODEL_ID_RERANK = os.environ.get("RERANK_MODEL_ID", "xop3qwen8breranker")
+RERANK_API = f"{API_BASE.replace('/v2', '/v2/rerank')}"
 
 # ─── 工具函数 ────────────────────────────────────────────────────────
 
@@ -396,6 +399,119 @@ async def paddleocr_vl_chat(params: ChatInput) -> str:
             temperature=params.temperature or 0.7,
         )
 
+    except Exception as e:
+        return json.dumps({
+            "success": False,
+            "error": f"未知错误: {type(e).__name__}: {str(e)}",
+        }, ensure_ascii=False)
+
+
+class RerankInput(BaseModel):
+    """Qwen3-Reranker-8B 重排序输入参数"""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    query: str = Field(
+        ...,
+        description="查询文本/问题",
+        min_length=1,
+        max_length=2000,
+    )
+    documents: List[str] = Field(
+        ...,
+        description="待排序的候选文档列表（至少1个，最多32个）",
+        min_length=1,
+        max_length=32,
+    )
+
+
+@mcp.tool(
+    name="paddleocr_vl_rerank",
+    annotations={
+        "title": "Qwen3-Reranker-8B 相关性重排序",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def paddleocr_vl_rerank(params: RerankInput) -> str:
+    """
+    使用 Qwen3-Reranker-8B 对候选文档进行相关性重排序。
+
+    适用于 RAG 场景：给定一个查询和多个候选文档，按相关性从高到低排序。
+    返回每个文档的相关性评分（0-1），分数越高越相关。
+
+    Args:
+        params (RerankInput): 输入参数包含:
+            - query (str): 查询文本/问题
+            - documents (List[str]): 待排序的候选文档列表
+
+    Returns:
+        str: JSON 格式的排序结果，按相关性从高到低排列:
+        {
+            "success": bool,
+            "results": [
+                {
+                    "index": int,           # 原始文档索引
+                    "text": str,            # 文档内容
+                    "relevance_score": float  # 相关性评分 0-1
+                }
+            ],
+            "usage": {...}
+        }
+    """
+    try:
+        payload = {
+            "model": MODEL_ID_RERANK,
+            "query": params.query,
+            "documents": params.documents,
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {API_KEY}",
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                RERANK_API,
+                json=payload,
+                headers=headers,
+            )
+
+            if response.status_code == 401:
+                return json.dumps({"success": False, "error": "API 认证失败"}, ensure_ascii=False)
+
+            response.raise_for_status()
+            result = response.json()
+
+            results_raw = result.get("results", [])
+            results = [
+                {
+                    "index": r["index"],
+                    "text": r["document"]["text"],
+                    "relevance_score": r["relevance_score"],
+                }
+                for r in sorted(results_raw, key=lambda x: x["relevance_score"], reverse=True)
+            ]
+
+            usage = result.get("usage", {})
+
+            return json.dumps({
+                "success": True,
+                "results": results,
+                "usage": {
+                    "prompt_tokens": usage.get("prompt_tokens", 0),
+                    "total_tokens": usage.get("total_tokens", 0),
+                },
+                "model": MODEL_ID_RERANK,
+            }, ensure_ascii=False, indent=2)
+
+    except httpx.HTTPStatusError as e:
+        return json.dumps({
+            "success": False,
+            "error": f"API 请求失败 (HTTP {e.response.status_code})",
+        }, ensure_ascii=False)
     except Exception as e:
         return json.dumps({
             "success": False,
