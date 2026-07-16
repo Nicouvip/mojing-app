@@ -555,11 +555,14 @@ async def analyze_text(
     text: str = Form(...),
 ):
     """调用 DeepSeek 分析小说文本。"""
+    import sys
+    print(f"[ANALYZE] Received text length: {len(text)}", file=sys.stderr)
     if not text.strip():
         return JSONResponse(status_code=400, content={"error": "文本不能为空"})
 
     try:
         result = call_deepseek(text)
+        print(f"[ANALYZE] DeepSeek returned {len(result.get('segments',[]))} segments", file=sys.stderr)
         # 文本校正：确保AI不改原文（学SonicVale Precise Fill）
         result = _correct_texts(text, result)
         # 修复音色ID：将AI返回的描述映射为系统音色ID

@@ -17,7 +17,7 @@ def _call(prompt: str, cfg: MimoMatcherConfig, tokens: int = 100) -> str:
         r = requests.post(f"{cfg.base_url}/chat/completions", headers=headers, data=json.dumps(payload), timeout=60)
         r.raise_for_status()
         m = r.json()["choices"][0]["message"]
-        return m.get("reasoning_content", "") or m.get("content", "")
+        return m.get("content", "") or m.get("reasoning_content", "")
     except: return ""
 
 

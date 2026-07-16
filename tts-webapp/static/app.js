@@ -390,10 +390,22 @@ async function runAIAnalysis() {
     toast("请先导入小说文本");
     return;
   }
-  // 分析全部章节文本
-  const fullText = currentProject.chapters.map(c => c.content).join("\n\n");
+  // 使用当前选中的章节文本（如果选了单章就只分析那一章）
+  const chapterSelect = document.getElementById("chapterSelect");
+  const selectedChapter = chapterSelect ? chapterSelect.value : "all";
+  let fullText = "";
+  if (selectedChapter === "all") {
+    fullText = currentProject.chapters.map(c => c.content).join("\n\n");
+  } else {
+    const ch = currentProject.chapters[parseInt(selectedChapter)];
+    fullText = ch ? ch.content : "";
+  }
+  if (!fullText) {
+    toast("没有可分析的文本");
+    return;
+  }
   if (fullText.length > 30000) {
-    toast("文本过长，建议分章节分析");
+    toast("文本过长（" + fullText.length + "字），请选择单个章节");
     return;
   }
 
