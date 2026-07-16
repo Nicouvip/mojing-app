@@ -246,6 +246,11 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
     setEditedCharacters(prev => prev.map(c => c.name === name ? { ...c, recommendedEmotion: emotion } : c))
   }
 
+  const updateCharacterField = (name: string, field: string, value: string) => {
+    pushUndo()
+    setEditedCharacters(prev => prev.map(c => c.name === name ? { ...c, [field]: value } : c))
+  }
+
   /* ── Step 2b: 用户微调单段 ── */
   const updateSegmentEmotion = (index: number, emotion: string) => {
     pushUndo()
@@ -625,16 +630,48 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               <span style={{ fontWeight: 400, color: C.muted }}>({ch.gender === 'male' ? '男' : '女'}·{ch.age === 'young' ? '青年' : ch.age === 'adult' ? '中年' : ch.age === 'child' ? '少年' : '老年'})</span>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: getCharColor(ch.name), flexShrink: 0 }} />
             </div>
-            <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{ch.personality}</div>
+            <textarea
+              value={ch.personality}
+              onChange={e => updateCharacterField(ch.name, 'personality', e.target.value)}
+              placeholder="性格描述..."
+              rows={2}
+              style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit', resize: 'vertical', marginBottom: 4, color: C.ink, background: C.card, boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+              <select value={ch.gender} onChange={e => updateCharacterField(ch.name, 'gender', e.target.value)}
+                style={{ flex: 1, padding: '3px 4px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit' }}>
+                <option value="male">男</option>
+                <option value="female">女</option>
+              </select>
+              <select value={ch.age} onChange={e => updateCharacterField(ch.name, 'age', e.target.value)}
+                style={{ flex: 1, padding: '3px 4px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit' }}>
+                <option value="child">少年</option>
+                <option value="young">青年</option>
+                <option value="adult">中年</option>
+                <option value="elderly">老年</option>
+              </select>
+            </div>
             <select value={ch.recommendedVoice} onChange={e => updateCharacterVoice(ch.name, e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', marginBottom: 4 }}>
               {AVAILABLE_VOICES.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
               {extraVoices.length > 0 && <optgroup label="🎨 自定义音色">
                 {extraVoices.map(v => <option key={v.id} value={v.id}>{v.name} ({v.type === 'clone' ? '克隆' : '设计'})</option>)}
               </optgroup>}
             </select>
-            <select value={ch.recommendedEmotion} onChange={e => updateCharacterEmotion(ch.name, e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit' }}>
-              {EMOTION_PRESETS.map(em => <option key={em.id} value={em.id}>{em.label}</option>)}
-            </select>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <select value={EMOTION_PRESETS.some(em => em.id === ch.recommendedEmotion) ? ch.recommendedEmotion : '__custom__'} onChange={e => { if (e.target.value !== '__custom__') updateCharacterEmotion(ch.name, e.target.value) }}
+                style={{ flex: 1, padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit' }}>
+                {EMOTION_PRESETS.map(em => <option key={em.id} value={em.id}>{em.label}</option>)}
+                <option value="__custom__">自定义...</option>
+              </select>
+              {!EMOTION_PRESETS.some(em => em.id === ch.recommendedEmotion) && (
+                <input
+                  value={ch.recommendedEmotion}
+                  onChange={e => updateCharacterEmotion(ch.name, e.target.value)}
+                  placeholder="自定义情绪"
+                  style={{ flex: 1, padding: '4px 6px', border: `1px solid ${C.pri}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', color: C.pri, background: C.card }}
+                />
+              )}
+            </div>
           </div>
         ))}
 
