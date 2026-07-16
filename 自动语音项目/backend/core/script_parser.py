@@ -54,30 +54,52 @@ class Script:
             l.index = i
 
 
-# 匹配 [角色]: 台词  或 角色：台词 或 角色:台词
+# 严格匹配 [角色]: 台词
 _LINE_PATTERN = re.compile(
-    r'^\[?(?P<role>[^\]]+?)\]?\s*[：:]\s*(?P<text>.+)'
+    r'^\[(?P<role>[^\]]+?)\]\s*[：:]\s*(?P<text>.+)'
+)
+
+# 宽松匹配：角色：台词（角色部分最多6个字，避免误匹配小说对话）
+_LOOSE_PATTERN = re.compile(
+    r'^(?P<role>[^\]:]{1,6}?)\s*[：:]\s*(?P<text>.+)'
 )
 
 
 def parse_script(raw_text: str) -> Script:
     """
     解析剧本文本，返回 Script 对象
+
+    自动检测格式：
+    - 含有 [角色]: 标记 → 按角色分行
+    - 纯文本（无标记）→ 整体作为旁白
     """
     script = Script(raw_text=raw_text)
     roles_seen: set[str] = set()
 
-    for line_text in raw_text.strip().split("\n"):
+    lines = raw_text.strip().split("\n")
+    non_empty = [ln.strip() for ln in lines if ln.strip()]
+
+    # 检测格式：必须至少有一条严格匹配 [角色]: 才走角色解析
+    strict_matches = sum(1 for ln in non_empty if _LINE_PATTERN.match(ln))
+
+    if strict_matches == 0:
+        # 没有 [角色]: 标记 → 纯文本模式（适合小说）
+        script.lines.append(Line(role="旁白", text=raw_text.strip(), index=0))
+        script.roles = ["旁白"]
+        return script
+
+    for line_text in lines:
         line_text = line_text.strip()
         if not line_text:
             continue
 
         m = _LINE_PATTERN.match(line_text)
+        if not m:
+            m = _LOOSE_PATTERN.match(line_text)
         if m:
             role = m.group("role").strip()
             text = m.group("text").strip()
         else:
-            # 无角色标记，视为旁白
             role = "旁白"
             text = line_text
 

@@ -50,6 +50,16 @@ PRESET_VOICES = [
     {"id": "茉莉", "name": "茉莉", "lang": "zh", "gender": "female", "desc": "温柔女声，适合对话"},
     {"id": "苏打", "name": "苏打", "lang": "zh", "gender": "male", "desc": "阳光男声，适合青年"},
     {"id": "白桦", "name": "白桦", "lang": "zh", "gender": "male", "desc": "沉稳男声，适合中年"},
+    {"id": "青柠", "name": "青柠", "lang": "zh", "gender": "female", "desc": "活泼少女"},
+    {"id": "墨竹", "name": "墨竹", "lang": "zh", "gender": "male", "desc": "磁性低音"},
+    {"id": "晚星", "name": "晚星", "lang": "zh", "gender": "female", "desc": "知性优雅"},
+    {"id": "远山", "name": "远山", "lang": "zh", "gender": "male", "desc": "浑厚旁白"},
+    {"id": "小鹿", "name": "小鹿", "lang": "zh", "gender": "female", "desc": "童声可爱"},
+    {"id": "大叔", "name": "大叔", "lang": "zh", "gender": "male", "desc": "沧桑大叔"},
+    {"id": "川妹子", "name": "川妹子", "lang": "zh", "gender": "female", "desc": "四川方言"},
+    {"id": "东北哥", "name": "东北哥", "lang": "zh", "gender": "male", "desc": "东北方言"},
+    {"id": "粤语妹", "name": "粤语妹", "lang": "zh", "gender": "female", "desc": "粤语女声"},
+    {"id": "播客男", "name": "播客男", "lang": "zh", "gender": "male", "desc": "播客主播"},
     {"id": "Mia", "name": "Mia", "lang": "en", "gender": "female", "desc": "English Female"},
     {"id": "Chloe", "name": "Chloe", "lang": "en", "gender": "female", "desc": "English Gentle"},
     {"id": "Milo", "name": "Milo", "lang": "en", "gender": "male", "desc": "English Male"},
@@ -57,6 +67,41 @@ PRESET_VOICES = [
 ]
 
 EMOTIONS = ["平静", "开心", "悲伤", "愤怒", "温柔", "严肃", "恐惧", "惊讶", "冷漠"]
+
+# AI可能返回的音色描述 → 我们系统音色ID的映射
+VOICE_MAP = {
+    # 中文女性
+    "甜美女声": "冰糖", "甜美": "冰糖", "清亮女声": "冰糖",
+    "温柔女声": "茉莉", "温柔": "茉莉", "柔和女声": "茉莉", "清冷女声": "茉莉",
+    "活泼少女": "青柠", "活泼": "青柠", "可爱女声": "青柠",
+    "知性女声": "晚星", "优雅女声": "晚星", "知性优雅": "晚星",
+    "童声": "小鹿", "童声女声": "小鹿",
+    # 中文男性
+    "阳光男声": "苏打", "青年男声": "苏打", "年轻男声": "苏打", "清朗男声": "苏打",
+    "沉稳男声": "白桦", "中年男声": "白桦", "深沉男声": "白桦", "磁性男声": "白桦",
+    "磁性低音": "墨竹", "低沉男声": "墨竹",
+    "浑厚男声": "远山", "旁白男声": "远山",
+    "沧桑男声": "大叔", "大叔声": "大叔",
+    "播客男声": "播客男",
+    # 方言
+    "四川话": "川妹子", "东北话": "东北哥", "粤语": "粤语妹",
+    # 英文
+    "English Female": "Mia", "English Gentle": "Chloe",
+    "English Male": "Milo", "English Deep": "Dean",
+}
+
+def fix_voice_id(voice_id: str, gender: str = "") -> str:
+    """将AI返回的音色描述映射为系统音色ID。"""
+    if voice_id in VOICE_MAP:
+        return VOICE_MAP[voice_id]
+    # 检查是否已经是有效的音色ID
+    valid_ids = [v["id"] for v in PRESET_VOICES]
+    if voice_id in valid_ids:
+        return voice_id
+    # 根据性别默认分配
+    if gender == "female":
+        return "冰糖"
+    return "苏打"
 
 # ─── 朗读文本库 ──────────────────────────────────────────────────────
 READ_TEXTS = [
@@ -182,52 +227,24 @@ def smart_split_chapters(text: str) -> list[dict]:
 
 
 # ─── DeepSeek AI 分析 ────────────────────────────────────────────────
-ANALYSIS_PROMPT = """你是一位资深的有声书演播导演。请分析以下小说文本，识别角色、对话、旁白和情绪。
+ANALYSIS_PROMPT = """分析小说文本，输出JSON格式的角色、段落、情绪数据。严格按以下格式输出，不要添加其他文字。
 
-请严格按照以下JSON格式输出，不要添加任何其他文字：
+JSON格式：
+```json
+{"meta":{"title":"标题","genre":"题材","overallMood":"氛围"},"characters":[{"name":"角色名","gender":"male/female","age":"child/young/adult/elderly","personality":"性格","speakingStyle":"说话风格","recommendedVoice":"音色ID","recommendedEmotion":"默认情绪"}],"segments":[{"index":0,"text":"合并后文本","type":"narration/dialogue","characterName":"角色名","emotion":"情绪","emotionIntensity":5,"emotionDetail":"情绪细节","speed":"slow/normal/fast","needsPause":false,"pauseDuration":0,"nonLanguageSound":"","specialNote":"演播指导","contextNote":"上下文"}],"sceneBreakdown":[{"sceneIndex":0,"location":"地点","mood":"氛围","segmentRange":[0,2]}]}
+```
 
-{
-  "characters": [
-    {
-      "name": "旁白",
-      "gender": "female",
-      "age": "adult",
-      "personality": "沉稳叙述",
-      "recommendedVoice": "冰糖",
-      "recommendedEmotion": "平静"
-    }
-  ],
-  "segments": [
-    {
-      "index": 0,
-      "text": "段落文本",
-      "type": "narration",
-      "characterName": "旁白",
-      "emotion": "平静",
-      "emotionIntensity": 5,
-      "speed": "normal",
-      "recommendedVoice": "冰糖",
-      "needsPause": false,
-      "specialNote": ""
-    }
-  ],
-  "narrationStyle": {
-    "overallTone": "整体语气",
-    "pace": "语速建议",
-    "emphasis": "重点",
-    "notes": "备注"
-  }
-}
-
-分析规则：
-1. 每个自然段或每句对话为一个segment
-2. type只能是"narration"或"dialogue"
-3. emotionIntensity范围1-10
-4. speed只能是"slow"/"normal"/"fast"
-5. 旁白角色名固定为"旁白"
-6. 根据角色性别年龄推荐合适音色
-7. 标记需要停顿的地方(needsPause=true)
-8. 保持segment的index全局唯一且连续
+核心规则：
+1. 同一角色连续说话必须合并为一个segment，只有角色切换时才拆分
+2. emotionIntensity: 1-10（1平静 5中等 10极端）
+3. speed: slow(沉思/悲伤) normal(日常) fast(激动/紧急)
+4. 每个角色用不同音色：旁白→远山 男主→墨竹 女主→茉莉 配角从未用过的选
+5. 可用音色ID：冰糖(甜美女) 茉莉(温柔女) 青柠(活泼女) 晚星(知性女) 苏打(阳光男) 白桦(沉稳男) 墨竹(磁性男) 远山(浑厚男)
+6. 情绪转变明显时才拆分segment
+7. emotionDetail写情绪层次，如"压抑的愤怒""带着哽咽的笑"
+8. 标点影响情绪：!提升强度 ...降低速度 ?判断疑惑
+9. nonLanguageSound标记：[笑声][叹气][咳嗽]等
+10. contextNote标注：角色首次出场/情绪转折/高潮段落
 
 要分析的文本：
 """
@@ -292,6 +309,35 @@ def _extract_json(text: str) -> Optional[dict]:
     return None
 
 
+def _correct_texts(original_text: str, result: dict) -> dict:
+    """学 SonicVale 的 Precise Fill：用原文校正AI分析结果中的文本，防止LLM改字。"""
+    import difflib
+    # 将原文按句子拆分
+    orig_sentences = re.split(r'(?<=[。！？.!?])\s*', original_text.strip())
+    orig_sentences = [s.strip() for s in orig_sentences if s.strip()]
+    if not orig_sentences:
+        return result
+
+    # 为每个segment找到最匹配的原文句子
+    for seg in result.get("segments", []):
+        ai_text = seg.get("text", "")
+        if not ai_text:
+            continue
+        # 用 SequenceMatcher 找最佳匹配
+        best_match = ai_text
+        best_ratio = 0
+        for orig in orig_sentences:
+            ratio = difflib.SequenceMatcher(None, ai_text, orig).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_match = orig
+        # 如果匹配度 > 0.6，用原文替换
+        if best_ratio > 0.6:
+            seg["text"] = best_match
+
+    return result
+
+
 # ─── TTS API 调用 ────────────────────────────────────────────────────
 def call_tts_api(
     text: str,
@@ -317,12 +363,22 @@ def call_tts_api(
         messages.append({"role": "user", "content": user_content})
     messages.append({"role": "assistant", "content": text})
 
+    # TTS音色映射：我们的自定义音色 → MiMo真实音色ID
+    TTS_VOICE_MAP = {
+        "墨竹": "苏打", "青柠": "冰糖", "晚星": "茉莉", "远山": "白桦",
+        "小鹿": "冰糖", "大叔": "白桦", "川妹子": "冰糖", "东北哥": "苏打",
+        "粤语妹": "茉莉", "播客男": "苏打",
+    }
+    mapped_voice = TTS_VOICE_MAP.get(voice_id, voice_id)
+
     # 构建 audio 参数
     audio_param = {"format": "wav"}
     if voice_audio_base64 and voice_mime:
+        # 音色复刻模式
         audio_param["voice"] = f"data:{voice_mime};base64,{voice_audio_base64}"
-    else:
-        audio_param["voice"] = voice_id
+    elif model != MIMO_MODEL_DESIGN and mapped_voice:
+        # 预置音色模式（voice design模型不支持voice参数）
+        audio_param["voice"] = mapped_voice
 
     payload = {
         "model": model,
@@ -504,6 +560,19 @@ async def analyze_text(
 
     try:
         result = call_deepseek(text)
+        # 文本校正：确保AI不改原文（学SonicVale Precise Fill）
+        result = _correct_texts(text, result)
+        # 修复音色ID：将AI返回的描述映射为系统音色ID
+        for ch in result.get("characters", []):
+            ch["recommendedVoice"] = fix_voice_id(ch.get("recommendedVoice", ""), ch.get("gender", ""))
+        for seg in result.get("segments", []):
+            # 找到对应角色的音色
+            char_name = seg.get("characterName", "旁白")
+            char_info = next((c for c in result.get("characters", []) if c["name"] == char_name), None)
+            if char_info:
+                seg["recommendedVoice"] = char_info["recommendedVoice"]
+            else:
+                seg["recommendedVoice"] = fix_voice_id(seg.get("recommendedVoice", ""), "")
         return JSONResponse(content={"success": True, **result})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -701,6 +770,93 @@ async def download_audio(filename: str):
     if not file_path.exists():
         return JSONResponse(status_code=404, content={"error": "文件不存在"})
     return FileResponse(path=str(file_path), media_type="audio/wav", filename=filename)
+
+
+# ─── MP3 导出 ──────────────────────────────────────────────────────
+@app.get("/api/export/mp3/{filename}")
+async def export_mp3(filename: str):
+    """将 WAV 文件转换为 MP3 格式下载。"""
+    wav_path = OUTPUT_DIR / filename
+    if not wav_path.exists():
+        return JSONResponse(status_code=404, content={"error": "文件不存在"})
+
+    mp3_name = filename.replace(".wav", ".mp3")
+    mp3_path = OUTPUT_DIR / mp3_name
+
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(wav_path), "-codec:a", "libmp3lame", "-b:a", "192k", str(mp3_path)],
+            capture_output=True, check=True, timeout=120,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        return JSONResponse(status_code=500, content={"error": f"MP3 转换失败: {e}"})
+
+    return FileResponse(
+        path=str(mp3_path),
+        media_type="audio/mpeg",
+        filename=mp3_name,
+    )
+
+
+# ─── SRT 字幕生成 ──────────────────────────────────────────────────
+def _estimate_srt(segments: list[dict], audio_durations: list[float]) -> str:
+    """根据段落文本和音频时长生成 SRT 字幕。"""
+    srt_lines = []
+    current_time = 0.0
+
+    for i, (seg, dur) in enumerate(zip(segments, audio_durations)):
+        text = seg.get("text", "")
+        # 按句号/问号/感叹号分句，每句一行字幕
+        sentences = re.split(r'(?<=[。！？.!?])\s*', text)
+        sentences = [s.strip() for s in sentences if s.strip()]
+        if not sentences:
+            sentences = [text]
+
+        time_per_sentence = dur / len(sentences)
+
+        for j, sentence in enumerate(sentences):
+            start = current_time + j * time_per_sentence
+            end = start + time_per_sentence
+            srt_lines.append(f"{len(srt_lines) + 1}")
+            srt_lines.append(f"{_format_srt_time(start)} --> {_format_srt_time(end)}")
+            srt_lines.append(sentence)
+            srt_lines.append("")
+
+        current_time += dur
+
+    return "\n".join(srt_lines)
+
+
+def _format_srt_time(seconds: float) -> str:
+    """将秒数转换为 SRT 时间格式 HH:MM:SS,mmm"""
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    ms = int((seconds % 1) * 1000)
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
+@app.post("/api/export/srt")
+async def export_srt(
+    segments: str = Form(...),  # JSON array of {text, duration}
+    output_name: str = Form("subtitles"),
+):
+    """根据段落文本和时长生成 SRT 字幕文件。"""
+    seg_list = json.loads(segments)
+    srt_content = _estimate_srt(
+        [s for s in seg_list],
+        [s.get("duration", 3.0) for s in seg_list],
+    )
+
+    srt_fn = f"{output_name}_{uuid.uuid4().hex[:8]}.srt"
+    srt_path = OUTPUT_DIR / srt_fn
+    srt_path.write_text(srt_content, encoding="utf-8")
+
+    return JSONResponse(content={
+        "success": True,
+        "filename": srt_fn,
+        "downloadUrl": f"/api/download/{srt_fn}",
+    })
 
 
 # ─── 启动 ────────────────────────────────────────────────────────────

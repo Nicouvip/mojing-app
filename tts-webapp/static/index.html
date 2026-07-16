@@ -57,15 +57,36 @@
 
       <!-- 对话模式 Tab -->
       <div id="tabDialogue" class="tab-content" style="display:none;">
+        <!-- 作品+章节选择器 -->
+        <div class="source-box" style="margin-bottom:12px;">
+          <div class="source-top">
+            <select id="projectSelect" class="select-sm" onchange="onProjectChange()" style="min-width:140px;">
+              <option value="">选择作品...</option>
+            </select>
+            <select id="chapterSelect" class="select-sm" onchange="onChapterChange()">
+              <option value="all">全部章节</option>
+            </select>
+            <span class="source-info" id="sourceInfo"></span>
+          </div>
+          <textarea id="sourceText" class="source-textarea" rows="4" placeholder="选择章节后文本自动填入，或直接粘贴文本..."></textarea>
+          <div class="source-actions">
+            <button class="btn btn-primary" onclick="runAIAnalysis()">🤖 AI 智能分析</button>
+            <span class="text-muted text-xs">自动识别角色和情绪</span>
+          </div>
+        </div>
         <div class="dialogue-layout">
           <!-- 左侧：角色面板 -->
           <div class="dialogue-sidebar">
             <div class="sidebar-header">
               <h3>🎭 角色列表</h3>
-              <button class="btn btn-sm btn-primary" onclick="runAIAnalysis()">🤖 AI 分析</button>
+              <div style="display:flex;gap:4px;">
+                <button class="btn btn-sm btn-primary" onclick="runAIAnalysis()">🤖 AI 分析</button>
+                <button class="btn btn-sm btn-secondary" onclick="addNarrator()">+旁白</button>
+                <button class="btn btn-sm btn-secondary" onclick="addCharacter()">+角色</button>
+              </div>
             </div>
             <div class="character-list" id="characterList">
-              <div class="empty-hint">点击「AI 分析」自动识别角色</div>
+              <div class="empty-hint">点击「+旁白」或「+角色」手动添加，或用「AI 分析」自动识别</div>
             </div>
           </div>
           <!-- 右侧：段落列表 -->
@@ -293,6 +314,7 @@
     <div id="toast" class="toast" style="display:none;"></div>
   </div>
 
-  <script src="/static/app.js?v=3"></script>
+  <script>window.__errs=[];window.onerror=function(m,s,l,c,e){window.__errs.push(m+' @'+s.split('/').pop()+':'+c);};</script>
+  <script src="/static/app.js?v=5"></script>
 </body>
 </html>

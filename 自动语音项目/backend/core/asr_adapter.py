@@ -165,9 +165,9 @@ class MimoASRAdapter(ASRAdapter):
         解析 OpenAI Chat Completions 格式响应
 
         MiMo ASR 不返回词级时间戳，
-        使用 VAD + DTW 强制对齐获得真实时间戳。
+        使用 MiMo + Whisper 混合对齐获得真实时间戳。
         """
-        from .forced_align import forced_align
+        from .hybrid_align import hybrid_align
 
         full_text = ""
         try:
@@ -175,8 +175,8 @@ class MimoASRAdapter(ASRAdapter):
         except (KeyError, IndexError):
             full_text = ""
 
-        # 使用 VAD + 文本分配做真实对齐（取代字符比例估算）
-        aligned_segments = forced_align(full_text, audio_data, sr)
+        # MiMo 认字 + Whisper 算时间戳（混合对齐）
+        aligned_segments = hybrid_align(full_text, audio_data, sr)
         segments = [
             ASRSegment(text=s["text"], start=s["start"],
                        end=s["end"], confidence=s.get("confidence", 0.0))

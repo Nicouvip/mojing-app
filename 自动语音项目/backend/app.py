@@ -113,16 +113,22 @@ def upload_audio():
     if file.filename == "":
         return jsonify({"error": "空文件名"}), 400
 
-    # 保存上传文件
-    file_id = str(uuid.uuid4())[:8]
-    ext = Path(file.filename).suffix or ".wav"
-    save_name = f"{file_id}_{file.filename}"
+    # 保存上传文件（保持原名）
+    save_name = file.filename
     save_path = UPLOAD_DIR / save_name
+    counter = 1
+    while save_path.exists():
+        stem = Path(save_name).stem
+        ext = Path(save_name).suffix
+        save_name = f"{stem}_{counter}{ext}"
+        save_path = UPLOAD_DIR / save_name
+        counter += 1
     file.save(str(save_path))
 
     # 获取音频信息
     info = get_audio_info(save_path)
 
+    proj = get_project()
     clip = AudioClip(
         file_path=str(save_path),
         label=file.filename,
@@ -130,13 +136,46 @@ def upload_audio():
         sample_rate=info["sample_rate"],
     )
 
-    proj = get_project()
+    # 从文件名自动识别角色
+    role = _detect_role_from_filename(file.filename, proj)
+    if role:
+        clip.role = role
+
     proj.clips.append(clip)
 
     return jsonify({
         "clip": clip.to_dict(),
         "audio_info": info,
     })
+
+
+def _detect_role_from_filename(filename: str, proj: Project) -> str:
+    """从文件名中提取角色名"""
+    # 去掉扩展名
+    name = Path(filename).stem
+    # 用 - 分割
+    parts = name.split("-")
+    
+    # 检查是否有已知角色词
+    known_roles = ["旁白", "CV", "cv"]
+    for role in known_roles:
+        if role in parts:
+            return role
+    
+    # 如果工程已有剧本，检查剧本中的角色
+    if proj.script:
+        for role in proj.script.roles:
+            if role in parts:
+                return role
+    
+    # 尝试提取 CV 名（最后一段）
+    for part in reversed(parts):
+        # 跳过纯数字和篇章节标记
+        if not any(c.isdigit() for c in part) and len(part) > 1:
+            # 这可能是一个角色或CV名
+            pass
+    
+    return ""
 
 
 @app.route("/api/audio/list", methods=["GET"])
@@ -277,6 +316,27 @@ def run_alignment():
     from core.text_matcher import align_script_clips
     timeline = align_script_clips(proj.script, all_matches)
 
+    # 小说模式：AI 匹配
+    is_novel = len(proj.script.lines) == 1 and proj.script.lines[0].role == "旁白"
+    if is_novel and proj.asr_api_key:
+        try:
+            from core.ai_matcher import MimoMatcherConfig, ai_match_clips
+            clip_data = [
+                {"label": c.label, "asr_text": c.asr_text, "role": c.role}
+                for c in proj.clips if c.asr_text
+            ]
+            full_text = proj.script.lines[0].text if len(proj.script.lines) == 1 else ""
+            if full_text:
+                config = MimoMatcherConfig(
+                    api_key=proj.asr_api_key,
+                    base_url=proj.asr_api_url or "https://token-plan-cn.xiaomimimo.com/v1",
+                )
+                ai_timeline = ai_match_clips(clip_data, full_text, config)
+                if ai_timeline:
+                    timeline = ai_timeline
+        except Exception:
+            pass
+
     # 应用手动微调
     for entry in timeline:
         key = f"{entry['line_index']}_{entry['source_clip']}"
@@ -390,8 +450,18 @@ def export_audio():
     # 从时间线构建 segments
     segments = []
     for entry in timeline:
+        clip_label = entry.get("source_clip", "")
+        clip_path = clip_label
+        for clip in reversed(proj.clips):
+            if clip.label == clip_label:
+                clip_path = clip.file_path
+                break
+        if not Path(clip_path).exists():
+            print(f"EXPORT ERROR: clip_label={clip_label!r} clip_path={clip_path!r}")
+            print(f"EXPORT ERROR: current clips: {[(c.label, c.file_path) for c in proj.clips]}")
+            return jsonify({"error": f"音频文件不存在: {clip_label}"}), 404
         seg = SegmentConfig(
-            file_path=entry.get("source_clip", ""),
+            file_path=clip_path,
             offset=entry.get("audio_offset", 0),
             duration=entry.get("audio_end", 0) - entry.get("audio_offset", 0),
         )
@@ -551,4 +621,4 @@ if __name__ == "__main__":
     print(f"  工作目录: {WORK_DIR}")
     print(f"  前端地址: http://127.0.0.1:5000")
     print("=" * 50)
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)

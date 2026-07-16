@@ -126,12 +126,151 @@ async function loadProjects() {
       </div>
     </div>
   `).join("");
+  // 自动打开第一个项目
+  if (projects.length > 0 && !currentProject) {
+    openProject(projects[0].id);
+  }
 }
 
 async function openProject(pid) {
   const p = await api(`/api/projects/${pid}`);
   if (p.error) { toast(p.error); return; }
   showProject(p);
+  // 填充选择器
+  setTimeout(() => {
+    populateProjectSelect();
+    populateChapterSelect();
+    const sel = document.getElementById("projectSelect");
+    if (sel) sel.value = pid;
+    onChapterChange();
+  }, 200);
+}
+
+// ─── 项目/章节选择器 ──────────────────────────────────────────
+function populateProjectSelect() {
+  const sel = document.getElementById("projectSelect");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">选择作品...</option>' +
+    projects.map(p => `<option value="${p.id}">${esc(p.title || '未命名')} (${p.chapterCount}章)</option>`).join('');
+  if (currentProject) sel.value = currentProject.id;
+}
+
+function onProjectChange() {
+  const pid = document.getElementById("projectSelect").value;
+  if (pid) openProject(pid);
+}
+
+function onChapterChange() {
+  if (!currentProject) return;
+  const v = document.getElementById("chapterSelect").value;
+  const ta = document.getElementById("sourceText");
+  const info = document.getElementById("sourceInfo");
+  const chapters = currentProject.chapters || [];
+  if (v === "all") {
+    ta.value = chapters.map(c => c.content).join("\n\n");
+    info.textContent = chapters.length + "章, " + ta.value.length + "字";
+  } else {
+    const ch = chapters[parseInt(v)];
+    if (ch) { ta.value = ch.content; info.textContent = ch.title + ", " + ch.content.length + "字"; }
+  }
+}
+
+function populateChapterSelect() {
+  const sel = document.getElementById("chapterSelect");
+  if (!sel || !currentProject) return;
+  const chapters = currentProject.chapters || [];
+  sel.innerHTML = '<option value="all">全部章节</option>' +
+    chapters.map((c,i) => `<option value="${i}">${esc(c.title || '第'+(i+1)+'章')} (${c.content.length}字)</option>`).join('');
+}
+
+// ─── 手动创建角色 ──────────────────────────────────────────────
+let charIdCounter = 0;
+let manualCharacters = [];
+
+function addNarrator() {
+  charIdCounter++;
+  manualCharacters.push({ id: charIdCounter, name: "旁白", type: "narration", voice: "远山", text: "", audioBase64: null, filename: null, duration: null });
+  renderManualCharacters();
+  toast("📖 已添加旁白");
+}
+
+function addCharacter() {
+  const name = prompt("角色名称：", `角色${manualCharacters.length + 1}`);
+  if (!name) return;
+  charIdCounter++;
+  manualCharacters.push({ id: charIdCounter, name: name, type: "dialogue", voice: "冰糖", text: "", audioBase64: null, filename: null, duration: null });
+  renderManualCharacters();
+  toast(`👤 已添加角色「${name}」`);
+}
+
+function removeManualChar(id) {
+  manualCharacters = manualCharacters.filter(c => c.id !== id);
+  renderManualCharacters();
+}
+
+function renderManualCharacters() {
+  const el = document.getElementById("characterList");
+  if (!el) return;
+  if (!manualCharacters.length) {
+    el.innerHTML = '<div class="empty-hint">点击「+旁白」或「+角色」添加，或用「AI 分析」自动识别</div>';
+    return;
+  }
+  el.innerHTML = manualCharacters.map(c => {
+    const cached = segmentAudioCache[c.id];
+    return `
+    <div class="char-item" data-id="${c.id}">
+      <div class="char-item-header">
+        <span class="char-item-type ${c.type}">${c.type === "narration" ? "📖" : "💬"} ${esc(c.name)}</span>
+        <select class="select-sm" onchange="updateManualCharVoice(${c.id}, this.value)">
+          ${VOICES.map(v => '<option value="' + v.id + '" ' + (v.id === c.voice ? 'selected' : '') + '>' + v.name + '</option>').join('')}
+        </select>
+        <button class="btn btn-sm btn-ghost" onclick="removeManualChar(${c.id})" style="color:var(--danger);">✕</button>
+      </div>
+      <textarea class="char-textarea" rows="2" placeholder="输入${esc(c.name)}的台词..." onchange="updateManualCharText(${c.id}, this.value)">${esc(c.text)}</textarea>
+      <div class="char-item-actions">
+        <button class="btn btn-sm btn-primary" onclick="generateManualChar(${c.id})">▶ 生成</button>
+        ${cached ? `<button class="btn btn-sm" onclick="playManualCharAudio(${c.id})">🔊 播放</button>` : ""}
+        ${cached ? `<a class="btn btn-sm" href="/api/download/${cached.filename}" download>💾 下载</a>` : ""}
+        ${cached ? `<span style="font-size:11px;color:var(--text-secondary);">${cached.duration}s</span>` : ""}
+      </div>
+      ${cached ? `<div class="char-audio"><audio controls src="data:audio/wav;base64,${cached.audioBase64}" style="width:100%;height:32px;"></audio></div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function updateManualCharVoice(id, voice) { const c = manualCharacters.find(x=>x.id===id); if (c) c.voice = voice; }
+function updateManualCharText(id, text) { const c = manualCharacters.find(x=>x.id===id); if (c) c.text = text; }
+
+async function generateManualChar(id) {
+  const c = manualCharacters.find(x=>x.id===id);
+  if (!c || !c.text.trim()) { toast("请输入文本"); return; }
+  toast(`生成「${c.name}」...`);
+  const fd = new FormData();
+  fd.append("text", c.text);
+  fd.append("voice", c.voice);
+  fd.append("emotion", "");
+  try {
+    const r = await api("/api/generate", { method: "POST", body: fd });
+    if (r.success) {
+      segmentAudioCache[c.id] = { audioBase64: r.audioBase64, filename: r.filename, duration: r.duration };
+      c.audioBase64 = r.audioBase64;
+      c.filename = r.filename;
+      c.duration = r.duration;
+      renderManualCharacters();
+      toast(`✅ 「${c.name}」生成完成 (${r.duration}s)`);
+      playManualCharAudio(id);
+    } else toast("失败: " + r.error);
+  } catch(e) { toast("请求失败: " + e.message); }
+}
+
+function playManualCharAudio(id) {
+  const c = manualCharacters.find(x=>x.id===id);
+  if (!c || !c.audioBase64) return;
+  playerPlaylist = manualCharacters.filter(ch => ch.audioBase64).map(ch => ({
+    name: ch.name, audioBase64: ch.audioBase64, filename: ch.filename, duration: ch.duration
+  }));
+  playerIndex = playerPlaylist.findIndex(p => p.name === c.name);
+  startPlayer();
 }
 
 async function deleteProject(pid) {

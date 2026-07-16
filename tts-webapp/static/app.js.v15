@@ -1,0 +1,355 @@
+/**
+ * 墨境有声书工坊 — 前端主逻辑 v15
+ */
+
+const VOICES = [
+  { id: "冰糖", name: "冰糖", avatar: "/static/assets/avatars/冰糖.png", lang: "zh", gender: "female", desc: "甜美女声", tag: "super", hot: true },
+  { id: "茉莉", name: "茉莉", avatar: "/static/assets/avatars/茉莉.png", lang: "zh", gender: "female", desc: "温柔女声", tag: "emotion" },
+  { id: "苏打", name: "苏打", avatar: "/static/assets/avatars/苏打.png", lang: "zh", gender: "male", desc: "阳光男声", tag: "narrate", hot: true },
+  { id: "白桦", name: "白桦", avatar: "/static/assets/avatars/白桦.png", lang: "zh", gender: "male", desc: "沉稳男声", tag: "narrate" },
+  { id: "青柠", name: "青柠", avatar: "/static/assets/avatars/青柠.png", lang: "zh", gender: "female", desc: "活泼少女", tag: "emotion", hot: true },
+  { id: "墨竹", name: "墨竹", avatar: "/static/assets/avatars/墨竹.png", lang: "zh", gender: "male", desc: "磁性低音", tag: "super", hot: true },
+  { id: "晚星", name: "晚星", avatar: "/static/assets/avatars/晚星.png", lang: "zh", gender: "female", desc: "知性优雅", tag: "super" },
+  { id: "远山", name: "远山", avatar: "/static/assets/avatars/远山.png", lang: "zh", gender: "male", desc: "浑厚旁白", tag: "narrate", hot: true },
+  { id: "小鹿", name: "小鹿", avatar: "/static/assets/avatars/小鹿.png", lang: "zh", gender: "female", desc: "童声可爱", tag: "kid" },
+  { id: "大叔", name: "大叔", avatar: "/static/assets/avatars/大叔.png", lang: "zh", gender: "male", desc: "沧桑大叔", tag: "narrate" },
+  { id: "川妹子", name: "川妹子", avatar: "/static/assets/avatars/川妹子.png", lang: "zh", gender: "female", desc: "四川方言", tag: "dialect" },
+  { id: "东北哥", name: "东北哥", avatar: "/static/assets/avatars/东北哥.png", lang: "zh", gender: "male", desc: "东北方言", tag: "dialect" },
+  { id: "粤语妹", name: "粤语妹", avatar: "/static/assets/avatars/粤语妹.png", lang: "zh", gender: "female", desc: "粤语女声", tag: "dialect" },
+  { id: "播客男", name: "播客男", avatar: "/static/assets/avatars/播客男.png", lang: "zh", gender: "male", desc: "播客主播", tag: "narrate" },
+  { id: "Mia", name: "Mia", avatar: "/static/assets/avatars/Mia.png", lang: "en", gender: "female", desc: "English Female", tag: "super" },
+  { id: "Chloe", name: "Chloe", avatar: "/static/assets/avatars/Chloe.png", lang: "en", gender: "female", desc: "English Gentle", tag: "emotion" },
+  { id: "Milo", name: "Milo", avatar: "/static/assets/avatars/Milo.png", lang: "en", gender: "male", desc: "English Male", tag: "narrate" },
+  { id: "Dean", name: "Dean", avatar: "/static/assets/avatars/Dean.png", lang: "en", gender: "male", desc: "English Deep", tag: "super", hot: true },
+];
+const EMOTIONS = ["平静","开心","悲伤","愤怒","温柔","严肃","恐惧","惊讶","冷漠"];
+const READ_TEXTS = ["窗外的阳光洒在书桌上，空气中弥漫着淡淡的咖啡香。","清晨的街道还很安静，只有几辆早班公交车缓缓驶过。","夜深了，月光透过窗帘的缝隙洒进房间。","春天来了，公园里的樱花树开满了粉白色的花朵。"];
+
+// ─── 状态 ────────────────────────────────────────────────────────
+let projects = [];
+let currentProjectId = null;
+let characters = []; // [{id, name, type, voice, text, audioBase64, filename, duration}]
+let charIdCounter = 0;
+let voiceFilter = "all";
+let selectedVoiceId = "冰糖";
+let customVoices = JSON.parse(localStorage.getItem("mojing_custom_voices") || "[]");
+let playerAudio = null, playerPlaying = false, playerPlaylist = [], playerIndex = 0;
+let mediaRecorder = null, audioChunks = [], recordStream = null, recordTimer = null;
+let recordSeconds = 0, isRecording = false, recordedBlob = null, readTextIndex = 0;
+let voiceSampleFile = null;
+const MAX_RECORD_SECONDS = 60;
+
+// ─── 初始化 ──────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  loadProjects();
+  renderVoiceCards();
+  renderCustomVoices();
+  populateSettings();
+  setupUpload();
+});
+
+async function api(url, opts = {}) { return (await fetch(url, opts)).json(); }
+function toast(msg) { const el = document.getElementById("toast"); el.textContent = msg; el.style.display = "block"; clearTimeout(el._t); el._t = setTimeout(() => el.style.display = "none", 3000); }
+function esc(s) { if (!s) return ""; const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+function fmtTime(s) { return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(Math.floor(s%60)).padStart(2,"0")}`; }
+
+// ─── 作品管理 ────────────────────────────────────────────────────
+async function loadProjects() {
+  projects = await api("/api/projects");
+  const sel = document.getElementById("projectSelect");
+  sel.innerHTML = '<option value="">选择作品...</option>' + projects.map(p => `<option value="${p.id}">${esc(p.title)} (${p.chapterCount}章)</option>`).join("");
+  if (currentProjectId) sel.value = currentProjectId;
+}
+
+function onProjectChange() {
+  const pid = document.getElementById("projectSelect").value;
+  currentProjectId = pid || null;
+  characters = [];
+  renderCharList();
+  if (!pid) {
+    document.getElementById("chapterSelect").innerHTML = '<option value="all">全部章节</option>';
+    document.getElementById("sourceText").value = "";
+    document.getElementById("sourceInfo").textContent = "";
+    return;
+  }
+  // 加载项目详情
+  api(`/api/projects/${pid}`).then(p => {
+    if (p.error) return;
+    const chs = p.chapters || [];
+    const sel = document.getElementById("chapterSelect");
+    sel.innerHTML = '<option value="all">全部章节</option>' + chs.map((c,i) => `<option value="${i}">${esc(c.title)} (${c.content.length}字)</option>`).join("");
+    onChapterChange();
+  });
+}
+
+function onChapterChange() {
+  if (!currentProjectId) return;
+  api(`/api/projects/${currentProjectId}`).then(p => {
+    if (p.error) return;
+    const chs = p.chapters || [];
+    const v = document.getElementById("chapterSelect").value;
+    const ta = document.getElementById("sourceText");
+    const info = document.getElementById("sourceInfo");
+    if (v === "all") {
+      const t = chs.map(c => c.content).join("\n\n");
+      ta.value = t;
+      info.textContent = `${chs.length}章, ${t.length}字`;
+    } else {
+      const ch = chs[parseInt(v)];
+      if (ch) { ta.value = ch.content; info.textContent = `${ch.title}, ${ch.content.length}字`; }
+    }
+  });
+}
+
+// ─── 角色管理 ────────────────────────────────────────────────────
+function addNarrator() {
+  charIdCounter++;
+  characters.push({ id: charIdCounter, name: "旁白", type: "narration", voice: "远山", text: "", audioBase64: null, filename: null, duration: null });
+  renderCharList();
+  toast("📖 已添加旁白，输入文本后点生成");
+}
+
+function addCharacter() {
+  const name = prompt("角色名称：", `角色${characters.length}`);
+  if (!name) return;
+  charIdCounter++;
+  characters.push({ id: charIdCounter, name: name, type: "dialogue", voice: "冰糖", text: "", audioBase64: null, filename: null, duration: null });
+  renderCharList();
+  toast(`👤 已添加角色「${name}」`);
+}
+
+function removeChar(id) {
+  characters = characters.filter(c => c.id !== id);
+  renderCharList();
+}
+
+function renderCharList() {
+  const el = document.getElementById("charList");
+  document.getElementById("charCount").textContent = characters.length;
+  if (!characters.length) {
+    el.innerHTML = '<div class="empty-hint">点击上方「+旁白」或「+角色」添加，或使用「AI分析」自动识别</div>';
+    return;
+  }
+  el.innerHTML = characters.map((c, i) => `
+    <div class="char-item" data-id="${c.id}">
+      <div class="char-item-header">
+        <span class="char-item-type ${c.type}">${c.type === "narration" ? "📖" : "💬"} ${esc(c.name)}</span>
+        <select class="select-sm" onchange="updateCharVoice(${c.id}, this.value)">
+          ${VOICES.map(v => `<option value="${v.id}" ${v.id === c.voice ? "selected" : ""}>${v.name}</option>`).join("")}
+        </select>
+        <button class="btn btn-sm btn-ghost" onclick="removeChar(${c.id})">✕</button>
+      </div>
+      <textarea class="char-textarea" rows="2" placeholder="输入${esc(c.name)}的台词..." onchange="updateCharText(${c.id}, this.value)">${esc(c.text)}</textarea>
+      <div class="char-item-actions">
+        <button class="btn btn-sm btn-primary" onclick="generateChar(${c.id})">▶ 生成</button>
+        ${c.audioBase64 ? `<button class="btn btn-sm" onclick="playCharAudio(${c.id})">🔊 播放</button>` : ""}
+        ${c.filename ? `<a class="btn btn-sm" href="/api/download/${c.filename}" download>💾 下载</a>` : ""}
+        ${c.duration ? `<span class="text-muted text-xs">${c.duration}s</span>` : ""}
+      </div>
+      ${c.audioBase64 ? `<div class="char-audio"><audio controls src="data:audio/wav;base64,${c.audioBase64}"></audio></div>` : ""}
+    </div>
+  `).join("");
+}
+
+function updateCharVoice(id, voice) { const c = characters.find(x=>x.id===id); if (c) c.voice = voice; }
+function updateCharText(id, text) { const c = characters.find(x=>x.id===id); if (c) c.text = text; }
+
+async function generateChar(id) {
+  const c = characters.find(x=>x.id===id);
+  if (!c || !c.text.trim()) { toast("请输入文本"); return; }
+  toast(`生成「${c.name}」...`);
+  const fd = new FormData();
+  fd.append("text", c.text);
+  fd.append("voice", c.voice);
+  fd.append("emotion", "");
+  try {
+    const r = await api("/api/generate", { method: "POST", body: fd });
+    if (r.success) {
+      c.audioBase64 = r.audioBase64;
+      c.filename = r.filename;
+      c.duration = r.duration;
+      renderCharList();
+      toast(`✅ 「${c.name}」生成完成 (${r.duration}s)`);
+      playCharAudio(id);
+    } else toast("失败: " + r.error);
+  } catch(e) { toast("请求失败: " + e.message); }
+}
+
+function playCharAudio(id) {
+  const c = characters.find(x=>x.id===id);
+  if (!c || !c.audioBase64) return;
+  playerPlaylist = characters.filter(ch => ch.audioBase64).map(ch => ({
+    name: ch.name, audioBase64: ch.audioBase64, filename: ch.filename, duration: ch.duration
+  }));
+  playerIndex = playerPlaylist.findIndex(p => p.name === c.name);
+  startPlayer();
+}
+
+async function batchGenerateAll() {
+  const todo = characters.filter(c => c.text.trim() && !c.audioBase64);
+  if (!todo.length) { toast("没有需要生成的段落"); return; }
+  toast(`批量生成 ${todo.length} 段...`);
+  for (const c of todo) {
+    try {
+      const fd = new FormData();
+      fd.append("text", c.text);
+      fd.append("voice", c.voice);
+      fd.append("emotion", "");
+      const r = await api("/api/generate", { method: "POST", body: fd });
+      if (r.success) {
+        c.audioBase64 = r.audioBase64;
+        c.filename = r.filename;
+        c.duration = r.duration;
+      }
+    } catch(e) { console.error(e); }
+  }
+  renderCharList();
+  toast(`✅ 批量生成完成`);
+}
+
+function mergeAllAudios() {
+  const fns = characters.filter(c => c.filename).map(c => c.filename);
+  if (!fns.length) { toast("没有可合并的音频"); return; }
+  const fd = new FormData();
+  fd.append("filenames", JSON.stringify(fns));
+  fd.append("output_name", "merged");
+  api("/api/merge", { method: "POST", body: fd }).then(r => {
+    if (r.success) { window.open(`/api/download/${r.filename}`); toast(`✅ 合并完成 (${r.duration}s)`); }
+  });
+}
+
+function previewAll() {
+  const first = characters.find(c => c.audioBase64);
+  if (first) { playCharAudio(first.id); toast("🔊 试听中..."); }
+  else toast("请先生成至少一段音频");
+}
+
+// ─── AI 分析 ─────────────────────────────────────────────────────
+async function runAIAnalysis() {
+  const text = document.getElementById("sourceText").value.trim();
+  if (!text) { toast("请先选择章节或粘贴文本"); return; }
+  const btn = document.querySelector(".toolbar .tool-item[onclick*='runAIAnalysis']");
+  if (btn) { btn.style.opacity = "0.5"; }
+  toast("🤖 AI 分析中...");
+  const fd = new FormData(); fd.append("text", text);
+  try {
+    const r = await api("/api/analyze", { method: "POST", body: fd });
+    if (r.error) { toast("分析失败: " + r.error); return; }
+    // 将分析结果转为角色列表
+    characters = [];
+    charIdCounter = 0;
+    const chars = r.characters || [];
+    const segs = r.segments || [];
+    // 按角色分组段落
+    const charMap = {};
+    for (const ch of chars) {
+      charIdCounter++;
+      charMap[ch.name] = { id: charIdCounter, name: ch.name, type: ch.name === "旁白" ? "narration" : "dialogue", voice: ch.recommendedVoice || "冰糖", text: "", audioBase64: null, filename: null, duration: null };
+      characters.push(charMap[ch.name]);
+    }
+    // 合并同角色连续段落的文本
+    for (const seg of segs) {
+      const c = charMap[seg.characterName];
+      if (c) { c.text += (c.text ? " " : "") + seg.text; }
+    }
+    renderCharList();
+    toast(`✅ 分析完成：${chars.length}个角色`);
+  } catch(e) { toast("请求失败: " + e.message); }
+  if (btn) { btn.style.opacity = "1"; }
+}
+
+// ─── 音色面板 ────────────────────────────────────────────────────
+function renderVoiceCards() {
+  const el = document.getElementById("voiceCards"); if (!el) return;
+  let list = VOICES;
+  if (voiceFilter === "hot") list = list.filter(v => v.hot);
+  else if (voiceFilter !== "all" && voiceFilter !== "custom") list = list.filter(v => v.tag === voiceFilter);
+  else if (voiceFilter === "custom") list = [];
+  el.innerHTML = list.map(v => `
+    <div class="voice-card" onclick="selectVoice('${v.id}')">
+      <img class="voice-avatar" src="${v.avatar}" alt="${esc(v.name)}" onerror="this.style.background='linear-gradient(135deg,#e8f4ff,#d6e8ff)';this.alt='${esc(v.name)}'">
+      <div class="vc-info"><div class="vc-name">${esc(v.name)}</div><div class="vc-tag">${esc(v.desc)} · ${v.tag}</div></div>
+    </div>`).join("") + customVoices.map((v,i) => `
+    <div class="voice-card" onclick="selectVoice('custom_${i}')">
+      <div class="voice-avatar" style="background:linear-gradient(135deg,#e8f4ff,#d6e8ff);font-size:20px;display:flex;align-items:center;justify-content:center;">${v.type==="design"?"🎨":"🧬"}</div>
+      <div class="vc-info"><div class="vc-name">${esc(v.name)}</div><div class="vc-tag">${v.type==="design"?"设计":"克隆"} · 自定义</div></div>
+    </div>`).join("");
+}
+function filterVoices(f) { voiceFilter=f; document.querySelectorAll(".vfilter").forEach(b=>b.classList.toggle("active",b.dataset.filter===f)); renderVoiceCards(); }
+function searchVoices(q) { document.querySelectorAll("#voiceCards .voice-card").forEach(c=>{const n=c.querySelector(".voice-name")?.textContent||"";c.style.display=n.toLowerCase().includes(q.toLowerCase())?"flex":"none";}); }
+function switchVoiceTab(el,tab) { document.querySelectorAll(".voice-tab").forEach(t=>t.classList.remove("active")); el.classList.add("active"); filterVoices(tab==="custom"?"custom":"all"); }
+function selectVoice(id) { selectedVoiceId=id; document.querySelectorAll(".voice-card").forEach(c=>c.classList.remove("active")); const card=document.querySelector(`.voice-card[onclick*='${id}']`); if(card)card.classList.add("active"); toast(`已选择: ${id}`); }
+function renderCustomVoices() { const el=document.getElementById("customVoiceList"); if(!el)return; if(!customVoices.length){el.innerHTML='<div class="text-muted text-xs">暂无</div>';return;} el.innerHTML=customVoices.map((v,i)=>`<div class="voice-card"><div class="voice-avatar" style="background:#e8f4ff;font-size:18px;display:flex;align-items:center;justify-content:center;">${v.type==="design"?"🎨":"🧬"}</div><div class="vc-info"><div class="vc-name">${esc(v.name)}</div></div><button class="btn btn-sm" onclick="deleteCustomVoice(${i})">✕</button></div>`).join(""); }
+function saveCustomVoice(n,type,desc,ab,fn){customVoices.push({name:n,type,desc,audioBase64:ab,filename:fn});localStorage.setItem("mojing_custom_voices",JSON.stringify(customVoices));renderCustomVoices();renderVoiceCards();}
+function deleteCustomVoice(i){customVoices.splice(i,1);localStorage.setItem("mojing_custom_voices",JSON.stringify(customVoices));renderCustomVoices();renderVoiceCards();}
+
+// ─── 工具栏 ──────────────────────────────────────────────────────
+function insertPause() { toast("💡 在文本中用「......」表示停顿，或在角色输入框中添加"); }
+function insertSoundEffect() { toast("💡 可在文本中添加[笑声][叹气]等标记"); }
+function showSettingsModal() { document.getElementById("settingEmotion").innerHTML=EMOTIONS.map(e=>`<option value="${e}">${e}</option>`).join(""); document.getElementById("settingsModal").style.display="flex"; }
+function exportMP3() {
+  const fns = characters.filter(c=>c.filename).map(c=>c.filename);
+  if(!fns.length){toast("请先生成音频");return;}
+  toast("转换MP3...");
+  const fd=new FormData();fd.append("filenames",JSON.stringify(fns));fd.append("output_name","audiobook");
+  api("/api/merge",{method:"POST",body:fd}).then(r=>{if(r.success)window.open(`/api/export/mp3/${r.filename}`);});
+}
+function exportSRT() {
+  const segData=characters.filter(c=>c.audioBase64).map(c=>({text:c.text,duration:c.duration}));
+  if(!segData.length){toast("请先生成音频");return;}
+  const fd=new FormData();fd.append("segments",JSON.stringify(segData));fd.append("output_name","subtitles");
+  api("/api/export/srt",{method:"POST",body:fd}).then(r=>{if(r.success)window.open(`/api/download/${r.filename}`);});
+}
+
+// ─── 播放器 ──────────────────────────────────────────────────────
+function startPlayer() {
+  if (!playerPlaylist.length) return;
+  const item = playerPlaylist[playerIndex];
+  if (playerAudio) playerAudio.pause();
+  playerAudio = new Audio("data:audio/wav;base64,"+item.audioBase64);
+  document.getElementById("playerBar").style.display = "flex";
+  document.getElementById("playerTitle").textContent = item.name;
+  document.getElementById("playerDownload").href = `/api/download/${item.filename}`;
+  playerAudio.addEventListener("timeupdate", () => {
+    const c=playerAudio.currentTime, d=playerAudio.duration||0;
+    document.getElementById("playerTime").textContent=`${fmtTime(c)} / ${fmtTime(d)}`;
+    document.getElementById("playerProgress").style.width=`${d?c/d*100:0}%`;
+  });
+  playerAudio.addEventListener("ended", playerNext);
+  playerAudio.play(); playerPlaying=true; document.getElementById("playerPlayBtn").textContent="⏸";
+}
+function playerToggle(){if(!playerAudio)return;if(playerPlaying){playerAudio.pause();playerPlaying=false;document.getElementById("playerPlayBtn").textContent="▶";}else{playerAudio.play();playerPlaying=true;document.getElementById("playerPlayBtn").textContent="⏸";}}
+function playerPrev(){if(playerIndex>0){playerIndex--;startPlayer();}}
+function playerNext(){if(playerIndex<playerPlaylist.length-1){playerIndex++;startPlayer();}else{playerPlaying=false;document.getElementById("playerPlayBtn").textContent="▶";}}
+function playerSeek(e){if(!playerAudio)return;const r=e.currentTarget.getBoundingClientRect();playerAudio.currentTime=(e.clientX-r.left)/r.width*playerAudio.duration;}
+
+// ─── 录音 ────────────────────────────────────────────────────────
+async function toggleRecord(){if(isRecording)stopRecord();else await startRecord();}
+async function startRecord(){try{recordStream=await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){alert("无法访问麦克风: "+e.message);return;}audioChunks=[];recordSeconds=0;isRecording=true;recordedBlob=null;const mt=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?"audio/webm;codecs=opus":"audio/webm";mediaRecorder=new MediaRecorder(recordStream,{mimeType:mt});mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};mediaRecorder.onstop=()=>{recordedBlob=new Blob(audioChunks,{type:mt});onRecordComplete();};mediaRecorder.start(250);document.getElementById("recordBtn").classList.add("recording");document.getElementById("recordIcon").textContent="⏹";document.getElementById("recordBtnText").textContent="停止";document.getElementById("recordTimer").classList.add("recording");document.getElementById("recordResult").style.display="none";recordTimer=setInterval(()=>{recordSeconds++;document.getElementById("recordTimer").textContent=`${String(Math.floor(recordSeconds/60)).padStart(2,"0")}:${String(recordSeconds%60).padStart(2,"0")}`;document.getElementById("recordProgressBar").style.width=`${Math.min(recordSeconds/MAX_RECORD_SECONDS*100,100)}%`;if(recordSeconds>=MAX_RECORD_SECONDS)stopRecord();},1000);}
+function stopRecord(){if(!mediaRecorder||mediaRecorder.state==="inactive")return;isRecording=false;mediaRecorder.stop();recordStream.getTracks().forEach(t=>t.stop());recordStream=null;clearInterval(recordTimer);document.getElementById("recordBtn").classList.remove("recording");document.getElementById("recordIcon").textContent="⏺";document.getElementById("recordBtnText").textContent="开始录音";document.getElementById("recordTimer").classList.remove("recording");}
+function onRecordComplete(){if(recordSeconds<3){toast("录音太短");return;}document.getElementById("recordPlayer").src=URL.createObjectURL(recordedBlob);document.getElementById("recordDuration").textContent=`${String(Math.floor(recordSeconds/60)).padStart(2,"0")}:${String(recordSeconds%60).padStart(2,"0")}`;document.getElementById("recordResult").style.display="block";}
+function useRecording(){if(!recordedBlob)return;voiceSampleFile=new File([recordedBlob],"recording.webm",{type:recordedBlob.type});toast("✅ 录音已就绪");}
+function shuffleReadText(){readTextIndex=(readTextIndex+1)%READ_TEXTS.length;document.getElementById("readTextBox").innerHTML=`<p>${READ_TEXTS[readTextIndex]}</p>`;}
+
+// ─── 克隆/设计 ──────────────────────────────────────────────────
+function showCloneModal(){document.getElementById("cloneModal").style.display="flex";document.getElementById("cloneResult").style.display="none";voiceSampleFile=null;recordedBlob=null;}
+function switchCapture(m){document.querySelectorAll(".capture-tab").forEach(t=>t.classList.toggle("active",t.dataset.capture===m));document.getElementById("recordMode").style.display=m==="record"?"block":"none";document.getElementById("uploadMode").style.display=m==="upload"?"block":"none";}
+function setupUpload(){const z=document.getElementById("uploadZone"),i=document.getElementById("voiceSampleUpload");if(!z)return;z.onclick=()=>i.click();z.ondragover=e=>{e.preventDefault();z.style.borderColor="var(--primary)";};z.ondragleave=()=>z.style.borderColor="";z.ondrop=e=>{e.preventDefault();z.style.borderColor="";if(e.dataTransfer.files[0])handleUploadFile(e.dataTransfer.files[0]);};i.onchange=e=>{if(e.target.files[0])handleUploadFile(e.target.files[0]);i.value="";};}
+function handleUploadFile(f){const ext=f.name.split(".").pop().toLowerCase();if(!["mp3","wav","webm"].includes(ext)){toast("仅支持mp3/wav/webm");return;}voiceSampleFile=f;document.getElementById("uploadZone").style.display="none";document.getElementById("uploadPreview").style.display="flex";document.getElementById("previewPlayer").src=URL.createObjectURL(f);}
+function removeVoiceSample(){voiceSampleFile=null;document.getElementById("uploadZone").style.display="flex";document.getElementById("uploadPreview").style.display="none";}
+async function cloneVoice(){if(!voiceSampleFile){toast("请先录音或上传");return;}const b=document.getElementById("cloneBtn");b.disabled=true;b.textContent="生成中...";const fd=new FormData();fd.append("text",document.getElementById("cloneText").value.trim()||"你好");fd.append("style",document.getElementById("cloneStyle").value.trim());fd.append("voice_file",voiceSampleFile);try{const r=await api("/api/voices/clone",{method:"POST",body:fd});if(r.success){document.getElementById("clonePlayer").src="data:audio/wav;base64,"+r.audioBase64;document.getElementById("cloneResult").style.display="block";const n=prompt("克隆音色名称：","我的声音");if(n)saveCustomVoice(n,"clone","",r.audioBase64,r.filename);toast("✅ 克隆成功");}else toast("失败:"+r.error);}catch(e){toast("请求失败:"+e.message);}b.disabled=false;b.textContent="生成克隆";}
+function showDesignModal(){document.getElementById("designModal").style.display="flex";document.getElementById("designDesc").value="";document.getElementById("designResult").style.display="none";}
+async function designVoice(){const d=document.getElementById("designDesc").value.trim();if(!d){toast("请输入描述");return;}const b=document.getElementById("designBtn");b.disabled=true;b.textContent="生成中...";const fd=new FormData();fd.append("description",d);fd.append("preview_text",document.getElementById("designPreview").value);try{const r=await api("/api/voices/design",{method:"POST",body:fd});if(r.success){document.getElementById("designPlayer").src="data:audio/wav;base64,"+r.audioBase64;document.getElementById("designResult").style.display="block";toast("✅ 预览成功");}else toast("失败:"+r.error);}catch(e){toast("请求失败:"+e.message);}b.disabled=false;b.textContent="生成预览";}
+function saveDesignedVoice(){const n=prompt("音色名称：","自定义音色");if(!n)return;const p=document.getElementById("designPlayer");saveCustomVoice(n,"design","",p.src.split(",")[1]||"","");toast(`✅ 已保存「${n}」`);hideModal("designModal");}
+
+// ─── 导入 ────────────────────────────────────────────────────────
+function showImportModal(){document.getElementById("importModal").style.display="flex";document.getElementById("importTitle").value="";document.getElementById("importText").value="";}
+function handleImportFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{document.getElementById("importText").value=ev.target.result;};r.readAsText(f,"utf-8");e.target.value="";}
+async function submitImport(){const title=document.getElementById("importTitle").value.trim();const text=document.getElementById("importText").value.trim();const mode=document.querySelector('input[name="splitMode"]:checked').value;if(!title){toast("请输入作品名称");return;}const fd=new FormData();fd.append("title",title);fd.append("text",text);fd.append("mode",mode);const r=await api("/api/projects",{method:"POST",body:fd});toast(`已创建「${title}」`);hideModal("importModal");currentProjectId=r.id;await loadProjects();document.getElementById("projectSelect").value=r.id;onProjectChange();}
+
+// ─── 设置 ────────────────────────────────────────────────────────
+function populateSettings(){const es=document.getElementById("settingEmotion");if(es)es.innerHTML=EMOTIONS.map(e=>`<option value="${e}">${e}</option>`).join("");}
+
+// ─── 弹窗 ────────────────────────────────────────────────────────
+function hideModal(id){document.getElementById(id).style.display="none";}
+function closeModal(e,id){if(e.target===e.currentTarget)hideModal(id);}
