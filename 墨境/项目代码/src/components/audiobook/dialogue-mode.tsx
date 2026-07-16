@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import type { Chapter } from '@/lib/db/types'
 import { processAnalysisResult } from '@/lib/audiobook/merge-segments'
 import { saveDialogueAudioCache, loadDialogueAudioCache, clearDialogueAudioCache } from '@/lib/audiobook/audio-persistence'
+import { XFYUN_VOICES } from '@/lib/audiobook/xfyun-tts'
 import {
   type CharacterAnalysis,
   type SegmentAnalysis,
@@ -701,7 +702,21 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               </select>
             </div>
             <select value={ch.recommendedVoice} onChange={e => updateCharacterVoice(ch.name, e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', marginBottom: 4 }}>
-              {AVAILABLE_VOICES.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              {/* MiMo 音色 — 普通版可用，VIP版灰色不可点 */}
+              <optgroup label={ttsEngine === 'normal' ? '🎙️ 普通版音色' : '🎙️ 普通版 (不可用)'}>
+                {AVAILABLE_VOICES.map(v => {
+                  const disabled = ttsEngine === 'vip'
+                  return <option key={v.id} value={v.id} disabled={disabled} style={disabled ? { color: '#aaa' } : undefined}>{v.name}</option>
+                })}
+              </optgroup>
+              {/* 讯飞音色 — VIP版可用，普通版灰色不可点 */}
+              <optgroup label={ttsEngine === 'vip' ? '⚡ 高品质音色' : '⚡ 高品质 (不可用)'}>
+                {XFYUN_VOICES.map(v => {
+                  const disabled = ttsEngine === 'normal'
+                  return <option key={v.id} value={v.id} disabled={disabled} style={disabled ? { color: '#aaa' } : undefined}>{v.name}</option>
+                })}
+              </optgroup>
+              {/* 自定义音色 — 始终可用 */}
               {extraVoices.length > 0 && <optgroup label="🎨 自定义音色">
                 {extraVoices.map(v => <option key={v.id} value={v.id}>{v.name} ({v.type === 'clone' ? '克隆' : '设计'})</option>)}
               </optgroup>}
