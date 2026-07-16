@@ -25,12 +25,18 @@ API_KEY = os.environ.get(
 MODEL_ID_OCR = os.environ.get("PADDLEOCR_MODEL_ID", "xoppaddleocrv16")
 MODEL_ID_OCR_HUNYUAN = os.environ.get("HUNYUANOCR_MODEL_ID", "xophunyuanocr")
 MODEL_ID_CHAT = os.environ.get("QWEN_MODEL_ID", "xop35qwen2b")
+MODEL_ID_CHAT_HYMT = os.environ.get("HYMT_MODEL_ID", "xophunyuan7bmt")
 MAX_IMAGE_SIZE = 20 * 1024 * 1024  # 20MB
 
 # ─── 可用模型映射 ────────────────────────────────────────────────────
 AVAILABLE_OCR_MODELS = {
     "paddleocr-vl-1.6": MODEL_ID_OCR,
     "hunyuan-ocr": MODEL_ID_OCR_HUNYUAN,
+}
+
+AVAILABLE_CHAT_MODELS = {
+    "qwen-2b": MODEL_ID_CHAT,
+    "hunyuan-mt-7b": MODEL_ID_CHAT_HYMT,
 }
 
 # ─── 工具函数 ────────────────────────────────────────────────────────
@@ -74,7 +80,7 @@ class PaddleOCRInput(BaseModel):
 
 
 class ChatInput(BaseModel):
-    """Qwen3.5-2B 文本对话输入参数"""
+    """文本对话输入参数（支持 Qwen3.5-2B 和 Hy-MT2-7B）"""
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     prompt: str = Field(
@@ -82,6 +88,10 @@ class ChatInput(BaseModel):
         description="给模型的提示词或问题",
         min_length=1,
         max_length=8000,
+    )
+    model: Optional[str] = Field(
+        default="qwen-2b",
+        description="选择对话模型: 'qwen-2b'（Qwen3.5-2B，默认）或 'hunyuan-mt-7b'（Hy-MT2-7B 翻译模型）",
     )
     system_prompt: Optional[str] = Field(
         default=None,
