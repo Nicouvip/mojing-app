@@ -34,8 +34,16 @@ export interface DayRecord {
   words: number
 }
 
+// ── 时区修正 ──
+// new Date().toISOString() 返回 UTC 时间，中国用户(UTC+8)在0:00-8:00之间
+// 会导致日期错位（例如本地7月17日写的东西被记为7月16日）
+function localDateISO(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function getTodayWords(): number {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateISO()
   try {
     const raw = localStorage.getItem(HISTORY_KEY)
     if (!raw) return 0
@@ -45,7 +53,7 @@ export function getTodayWords(): number {
 }
 
 export function recordWords(totalWords: number) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateISO()
   try {
     const raw = localStorage.getItem(HISTORY_KEY)
     const history: DayRecord[] = raw ? JSON.parse(raw) : []
@@ -68,7 +76,7 @@ export function getStreak(): number {
     if (!raw) return 0
     const history: DayRecord[] = (JSON.parse(raw) as DayRecord[]).sort((a, b) => b.date.localeCompare(a.date))
     const today = new Date()
-    const todayStr = today.toISOString().slice(0, 10)
+    const todayStr = localDateISO()
 
     // 确定从 history 数组的哪个索引开始、对应哪天
     // 情况1: 今天有记录且写了字 → historyIdx=0, dayOffset=0
