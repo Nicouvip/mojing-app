@@ -4,50 +4,51 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/db/auth-context'
 import { getProjects } from '@/lib/db/store'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { Project } from '@/lib/db/types'
+import { Home, BookOpen, PenTool, Headphones, FlaskConical, Clapperboard, PlayCircle, Pen, Star, Wrench, Sun, BookMarked, FolderOpen, GraduationCap, ClipboardList, Lightbulb, Bot, Sparkles, Mail } from 'lucide-react'
 
 interface NavItem {
   href: string
   label: string
-  icon: string
+  icon: ReactNode
   showBadge?: boolean
   disabled?: boolean
 }
 
 /* ── 侧边栏链接定义 ── */
 const MAIN_NAV: NavItem[] = [
-  { href: '/desk', label: '首页', icon: '🏠' },
-  { href: '/works', label: '我的作品', icon: '📚', showBadge: true },
+  { href: '/desk', label: '首页', icon: <Home size={16} /> },
+  { href: '/works', label: '我的作品', icon: <BookOpen size={16} />, showBadge: true },
 ]
 
 const WRITE_NAV: NavItem[] = [
-  { href: '/editor/demo-1', label: '小说写作', icon: '✍️' },
-  { href: '/audiobook', label: '有声书', icon: '🎧' },
-  { href: '/tools/text-analyzer', label: '文本分析', icon: '🔬' },
-  { href: '#', label: '剧本写作', icon: '🎭', disabled: true },
-  { href: '#', label: '漫剧视频', icon: '▶️', disabled: true },
-  { href: '#', label: '通用写作', icon: '🖊️', disabled: true },
+  { href: '/editor/demo-1', label: '小说写作', icon: <PenTool size={16} /> },
+  { href: '/audiobook', label: '有声书', icon: <Headphones size={16} /> },
+  { href: '/tools/text-analyzer', label: '文本分析', icon: <FlaskConical size={16} /> },
+  { href: '#', label: '剧本写作', icon: <Clapperboard size={16} />, disabled: true },
+  { href: '#', label: '漫剧视频', icon: <PlayCircle size={16} />, disabled: true },
+  { href: '#', label: '通用写作', icon: <Pen size={16} />, disabled: true },
 ]
 
 const PRODUCT_NAV: NavItem[] = [
-  { href: '/features', label: '产品功能', icon: '⭐' },
-  { href: '/templates', label: '模板中心', icon: '⚒️' },
-  { href: '/tools', label: '工具广场', icon: '☀️' },
-  { href: '/cases', label: '写作案例', icon: '📖' },
-  { href: '/library', label: '素材库', icon: '🗂️' },
+  { href: '/features', label: '产品功能', icon: <Star size={16} /> },
+  { href: '/templates', label: '模板中心', icon: <Wrench size={16} /> },
+  { href: '/tools', label: '工具广场', icon: <Sun size={16} /> },
+  { href: '/cases', label: '写作案例', icon: <BookMarked size={16} /> },
+  { href: '/library', label: '素材库', icon: <FolderOpen size={16} /> },
 ]
 
 const LEARN_NAV: NavItem[] = [
-  { href: '#', label: '墨境课堂', icon: '🎓', disabled: true },
-  { href: '#', label: '使用教程', icon: '📋', disabled: true },
-  { href: '#', label: '创作心得', icon: '📝', disabled: true },
+  { href: '#', label: '墨境课堂', icon: <GraduationCap size={16} />, disabled: true },
+  { href: '#', label: '使用教程', icon: <ClipboardList size={16} />, disabled: true },
+  { href: '#', label: '创作心得', icon: <Lightbulb size={16} />, disabled: true },
 ]
 
 const TOOL_NAV: NavItem[] = [
-  { href: '#', label: 'AI工具', icon: '🤖', disabled: true },
-  { href: '#', label: '技能库', icon: '🌟', disabled: true },
-  { href: '#', label: '投稿中心', icon: '✉️', disabled: true },
+  { href: '#', label: 'AI工具', icon: <Bot size={16} />, disabled: true },
+  { href: '#', label: '技能库', icon: <Sparkles size={16} />, disabled: true },
+  { href: '#', label: '投稿中心', icon: <Mail size={16} />, disabled: true },
 ]
 
 /* ── 设计令牌（来自 v13.html）── */
@@ -239,7 +240,7 @@ function Divider() {
 
 interface NavItemProps {
   href?: string
-  icon: string
+  icon: React.ReactNode
   label: string
   active?: boolean
   badge?: number
