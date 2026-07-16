@@ -41,9 +41,10 @@ interface Props {
   defaultVoice: string
   defaultEmotion: string
   extraVoices?: Array<{ id: string; name: string; type?: string }>
+  ttsEngine?: 'normal' | 'vip'
 }
 
-export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoices = [] }: Props) {
+export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoices = [], ttsEngine = 'normal' }: Props) {
   /* ── 状态 ── */
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
@@ -336,6 +337,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           emotionIntensity: seg.emotionIntensity,
           speed: seg.speed,
           specialNote: seg.specialNote,
+          engine: ttsEngine,
         }),
       })
       const data = await res.json()

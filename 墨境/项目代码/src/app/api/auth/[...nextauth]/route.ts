@@ -17,17 +17,22 @@ function syncUsersToDisk() {
 
 // 包装 NextAuth handlers：请求前加载、POST 后同步
 const origPOST = handlers.POST
-handlers.POST = async (request: Request) => {
-  ensureUsersLoaded()
-  const response = await origPOST(request)
-  syncUsersToDisk()
-  return response
+const origGET = handlers.GET
+
+if (origPOST) {
+  handlers.POST = async (request: any) => {
+    ensureUsersLoaded()
+    const response = await origPOST(request)
+    syncUsersToDisk()
+    return response
+  }
 }
 
-const origGET = handlers.GET
-handlers.GET = async (request: Request) => {
-  ensureUsersLoaded()
-  return origGET(request)
+if (origGET) {
+  handlers.GET = async (request: any) => {
+    ensureUsersLoaded()
+    return origGET(request)
+  }
 }
 
 export const { GET, POST } = handlers

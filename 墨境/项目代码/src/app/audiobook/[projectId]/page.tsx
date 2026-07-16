@@ -92,6 +92,9 @@ export default function AudiobookProjectPage() {
   const [cloneLoading, setCloneLoading] = useState(false)
   const [clonedVoices, setClonedVoices] = useState<Array<{ id: string; name: string; sampleName: string; audioBase64: string }>>([])
 
+  /* ── TTS 引擎选择 ── */
+  const [ttsEngine, setTtsEngine] = useState<'normal' | 'vip'>('normal')
+
   /* ── WAV 编码器 ── */
   function encodeWAV(audioBuf: AudioBuffer): Blob {
     const numCh = audioBuf.numberOfChannels
@@ -530,8 +533,32 @@ export default function AudiobookProjectPage() {
             {/* ═══ 对话模式 ═══ */}
             {activeTab === 'dialogue' && (
               <div>
+                {/* ═══ 引擎切换 + 章节选择 ═══ */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                  {/* 普通版/VIP版 切换 */}
+                  <div style={{ display: 'flex', border: `1px solid ${C.line}`, borderRadius: 6, overflow: 'hidden' }}>
+                    <button
+                      onClick={() => setTtsEngine('normal')}
+                      style={{
+                        padding: '6px 14px', fontSize: 12, fontWeight: ttsEngine === 'normal' ? 600 : 400,
+                        background: ttsEngine === 'normal' ? '#c4956a' : C.card,
+                        color: ttsEngine === 'normal' ? '#fff' : C.muted,
+                        border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
+                      }}
+                    >普通版</button>
+                    <button
+                      onClick={() => setTtsEngine('vip')}
+                      style={{
+                        padding: '6px 14px', fontSize: 12, fontWeight: ttsEngine === 'vip' ? 600 : 400,
+                        background: ttsEngine === 'vip' ? '#c4956a' : C.card,
+                        color: ttsEngine === 'vip' ? '#fff' : C.muted,
+                        border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
+                      }}
+                    >VIP版</button>
+                  </div>
+
                   <p style={{ fontSize: 12, color: C.muted, margin: 0, flex: 1 }}>选择章节 → 自动识别对话/叙述 → 为角色分配音色 → 逐句生成</p>
+
                   <select value={dialogueChapterId} onChange={e => setDialogueChapterId(e.target.value)} style={{ padding: '6px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
                     <option value="">选择章节...</option>
                     {chapters.filter(c => !c.deletedAt).map((ch, ci) => <option key={`${ch.id}-${ci}`} value={ch.id}>{ch.title}</option>)}
@@ -542,6 +569,7 @@ export default function AudiobookProjectPage() {
                     chapter={chapters.find(c => c.id === dialogueChapterId)!}
                     defaultVoice={defaultVoice}
                     defaultEmotion={defaultEmotion}
+                    ttsEngine={ttsEngine}
                     extraVoices={[
                       ...designedVoices.map(v => ({ id: v.id, name: `🎨 ${v.name}`, type: 'design' as const })),
                       ...clonedVoices.map(v => ({ id: v.id, name: `🔴 ${v.name}`, type: 'clone' as const })),

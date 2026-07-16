@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { MiMoTTSEngine } from '@/lib/audiobook/mimo-tts'
+import { XfyunTTSEngine } from '@/lib/audiobook/xfyun-tts'
 
 /**
  * POST /api/audiobook/generate
- * 生成有声书音频（SSE 流式）
+ * 生成有声书音频
  * 
- * Body: { text: string, voice: string, emotion?: string, style?: string }
+ * Body: { text, voice, emotion?, style?, format?, engine?: 'normal' | 'vip' }
+ * engine: normal=MiMo(默认), vip=讯飞大模型语音合成
  */
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '请先登录' }, { status: 401 })
     }
     const body = await request.json()
-    const { text, voice, emotion, style, format, emotionIntensity, speed, specialNote } = body
+    const { text, voice, emotion, style, format, emotionIntensity, speed, specialNote, engine } = body
 
     if (!text) {
       return NextResponse.json({ error: 'text is required' }, { status: 400 })
@@ -24,25 +26,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'voice is required' }, { status: 400 })
     }
 
-    const engine = new MiMoTTSEngine()
-    const result = await engine.generate({
-      text,
-      voice,
-      emotion,
-      style,
-      format: format || 'wav',
-      emotionIntensity,
-      speed,
-      specialNote,
-    })
+    let audioBuffer: Buffer
+    let duration: number
+    let resultFormat: string
 
-    const base64Audio = result.audioBuffer.toString('base64')
+    if (engine === 'vip') {
+      // 讯飞大模型语音合成
+      const xfEngine = new XfyunTTSEngine()
+      const result = await xfEngine.generate({
+        text,
+        voice: voice as any,
+      })
+      audioBuffer = result.audioBuffer
+      duration = result.duration
+      resultFormat = result.format
+    } else {
+      // MiMo（默认普通版）
+      const mimoEngine = new MiMoTTSEngine()
+      const result = await mimoEngine.generate({
+        text, voice, emotion, style,
+        format: format || 'wav',
+        emotionIntensity, speed, specialNote,
+      })
+      audioBuffer = result.audioBuffer
+      duration = result.duration
+      resultFormat = result.format
+    }
+
+    const base64Audio = audioBuffer.toString('base64')
 
     return NextResponse.json({
       success: true,
       audio: base64Audio,
-      duration: result.duration,
-      format: result.format,
+      duration,
+      format: resultFormat,
     })
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error)
