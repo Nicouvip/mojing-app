@@ -129,6 +129,13 @@
       <div id="tabSettings" class="tab-content" style="display:none;">
         <div class="settings-grid">
           <div class="setting-item">
+            <label>TTS 服务商</label>
+            <select id="settingProvider" class="setting-select" onchange="onProviderChange()">
+              <option value="mimo">MiMo（小米）</option>
+              <option value="xfyun">讯飞</option>
+            </select>
+          </div>
+          <div class="setting-item">
             <label>默认音色</label>
             <select id="settingVoice" class="setting-select"></select>
           </div>

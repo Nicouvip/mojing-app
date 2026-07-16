@@ -12,6 +12,7 @@ import re
 import subprocess
 import tempfile
 import uuid
+import websockets
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -28,12 +29,17 @@ from pydantic import BaseModel
 MIMO_API_BASE = "https://token-plan-cn.xiaomimimo.com/v1"
 MIMO_API_KEY = "tp-c233nqeu5oovmyuhzdml2bsfs2vjwuey53g74trfpf4ov5m7"
 DEEPSEEK_API_BASE = "https://api.deepseek.com"
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") or "sk-e53df7e8dc4b4e89a99ab13ec356d66c"
 
 MIMO_MODEL_TTS = "mimo-v2.5-tts"
 MIMO_MODEL_CLONE = "mimo-v2.5-tts-voiceclone"
 MIMO_MODEL_DESIGN = "mimo-v2.5-tts-voicedesign"
 DEEPSEEK_MODEL = "deepseek-chat"
+
+# ─── 讯飞配置 ────────────────────────────────────────────────────────
+XF_APPID = "cb18693d"
+XF_APIKEY = "39eaa494bbdd468489c3eb3b53ae8933"
+XF_APISECRET = "NWY5MWJhZmI0OTNmNDY2NjMzYjhlMTk3"
 
 SAMPLE_RATE = 24000
 MAX_CHUNK_CHARS = 2000
@@ -409,6 +415,66 @@ def call_tts_api(
     return base64.b64decode(audio_data)
 
 
+# ─── 讯飞 TTS API 调用 ───────────────────────────────────────────────
+async def call_xfyun_tts_api(
+    text: str,
+    vcn: str = "x4_xiaoyan",
+    speed: int = 50,
+    pitch: int = 50,
+    volume: int = 50,
+    aue: str = "lame",
+) -> bytes:
+    """调用讯飞 TTS WebSocket API（async）。"""
+    import json
+    import hmac
+    import hashlib
+    import base64 as b64
+    from datetime import datetime
+    from urllib.parse import urlencode
+
+    host = "tts-api.xfyun.cn"
+    path = "/v2/tts"
+    date = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
+    sign_lines = ["host: " + host, "date: " + date, "GET " + path + " HTTP/1.1"]
+    sign_str = "host: " + host + chr(10) + "date: " + date + chr(10) + "GET " + path + " HTTP/1.1"
+    signature = b64.b64encode(
+        hmac.new(XF_APISECRET.encode(), sign_str.encode(), hashlib.sha256).digest()
+    ).decode()
+    auth_origin = f'api_key="{XF_APIKEY}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature}"'
+    authorization = b64.b64encode(auth_origin.encode()).decode()
+    params = {"host": host, "date": date, "authorization": authorization}
+    ws_url = f"wss://{host}{path}?{urlencode(params)}"
+
+    async with websockets.connect(ws_url) as ws:
+        business = {
+            "common": {"app_id": XF_APPID},
+            "business": {
+                "aue": aue, "auf": "audio/L16;rate=16000",
+                "vcn": vcn, "speed": speed, "pitch": pitch, "volume": volume,
+                "tte": "UTF8",
+            },
+            "data": {
+                "status": 2,
+                "text": b64.b64encode(text.encode()).decode(),
+            },
+        }
+        await ws.send(json.dumps(business))
+        chunks = []
+        while True:
+            resp = json.loads(await ws.recv())
+            data = resp.get("data", {})
+            status = data.get("status", 0)
+            audio_data = data.get("audio", "")
+            if audio_data:
+                chunks.append(b64.b64decode(audio_data))
+            code = resp.get("code", 0)
+            if code != 0:
+                raise RuntimeError(f"讯飞TTS错误: code={code}, {resp.get('message','')}")
+            if status == 2:
+                break
+        return b"".join(chunks)
+
+
 def wav_bytes_to_pcm(wav_bytes: bytes) -> np.ndarray:
     data, _ = sf.read(io.BytesIO(wav_bytes), dtype="float32")
     return data
@@ -449,6 +515,29 @@ async def index():
 @app.get("/api/voices")
 async def get_voices():
     return JSONResponse(content=PRESET_VOICES)
+
+
+@app.get("/api/xfyun-voices")
+async def get_xfyun_voices():
+    """返回讯飞发音人列表"""
+    voices = [
+        {"id": "x4_xiaoyan", "name": "小燕", "desc": "甜美女声"},
+        {"id": "x4_xiaofeng", "name": "小锋", "desc": "阳光男声"},
+        {"id": "x4_xiaoyu", "name": "小雨", "desc": "可爱女声"},
+        {"id": "x4_xiaoqi", "name": "小琪", "desc": "温柔女声"},
+        {"id": "x4_xiaolin", "name": "小林", "desc": "沉稳男声"},
+        {"id": "x4_xiaomei", "name": "小美", "desc": "甜美女声"},
+        {"id": "x4_xiaogang", "name": "小刚", "desc": "浑厚男声"},
+        {"id": "x4_xiaorong", "name": "小蓉", "desc": "知性女声"},
+        {"id": "x4_xiaoqian", "name": "小茜", "desc": "纯净女声"},
+        {"id": "ais_bigang", "name": "毕刚", "desc": "沉稳男声"},
+        {"id": "ais_xuanxuan", "name": "萱萱", "desc": "可爱女声"},
+        {"id": "ais_bingbing", "name": "冰冰", "desc": "甜美女声"},
+        {"id": "ais_jingjing", "name": "静静", "desc": "温柔女声"},
+        {"id": "ais_yezi", "name": "叶子", "desc": "年轻女声"},
+        {"id": "ais_nana", "name": "娜娜", "desc": "亲切女声"},
+    ]
+    return JSONResponse(content=voices)
 
 
 @app.get("/api/emotions")
@@ -588,8 +677,9 @@ async def generate_tts(
     voice: str = Form("冰糖"),
     emotion: str = Form(""),
     style: str = Form(""),
+    provider: str = Form("mimo"),
 ):
-    """单段 TTS 生成。"""
+    """单段 TTS 生成。provider: mimo / xfyun"""
     if not text.strip():
         return JSONResponse(status_code=400, content={"error": "文本不能为空"})
 
@@ -600,9 +690,14 @@ async def generate_tts(
     all_pcm = []
     for chunk in chunks:
         try:
-            wav_bytes = call_tts_api(
-                text=chunk, voice_id=voice, emotion=emotion or None, style=style or None,
-            )
+            if provider == "xfyun":
+                vcn_map = {"冰糖":"x4_xiaoyan","茉莉":"x4_xiaoqi","苏打":"x4_xiaofeng","白桦":"x4_xiaogang","青柠":"x4_xiaoyu","晚星":"x4_xiaorong","小鹿":"x4_xiaoyu","大叔":"x4_xiaogang","播客男":"x4_xiaolin"}
+                vcn = vcn_map.get(voice, "x4_xiaoyan")
+                wav_bytes = await call_xfyun_tts_api(text=chunk, vcn=vcn)
+            else:
+                wav_bytes = call_tts_api(
+                    text=chunk, voice_id=voice, emotion=emotion or None, style=style or None,
+                )
             pcm = wav_bytes_to_pcm(wav_bytes)
             all_pcm.append(pcm)
         except Exception as e:
@@ -624,6 +719,7 @@ async def generate_tts(
 @app.post("/api/generate/batch")
 async def generate_batch(
     segments: str = Form(...),  # JSON array of {text, voice, emotion}
+    provider: str = Form("mimo"),
 ):
     """批量生成多段音频。"""
     seg_list = json.loads(segments)
@@ -639,7 +735,12 @@ async def generate_batch(
             continue
 
         try:
-            wav_bytes = call_tts_api(text=text, voice_id=voice, emotion=emotion or None)
+            if provider == "xfyun":
+                vcn_map = {"冰糖":"x4_xiaoyan","茉莉":"x4_xiaoqi","苏打":"x4_xiaofeng","白桦":"x4_xiaogang","青柠":"x4_xiaoyu","晚星":"x4_xiaorong","小鹿":"x4_xiaoyu","大叔":"x4_xiaogang","播客男":"x4_xiaolin"}
+                vcn = vcn_map.get(voice, "x4_xiaoyan")
+                wav_bytes = await call_xfyun_tts_api(text=text, vcn=vcn)
+            else:
+                wav_bytes = call_tts_api(text=text, voice_id=voice, emotion=emotion or None)
             audio_b64 = base64.b64encode(wav_bytes).decode()
             filename = f"batch_{uuid.uuid4().hex[:8]}.wav"
             sf.write(str(OUTPUT_DIR / filename), wav_bytes_to_pcm(wav_bytes),

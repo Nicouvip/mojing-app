@@ -13,6 +13,33 @@ const VOICES = [
   { id: "Dean", name: "Dean", icon: "🎹", lang: "en", gender: "male", desc: "English Deep" },
 ];
 
+const XFYUN_VOICES = [
+  { id: "x4_xiaoyan", name: "小燕", icon: "🎤", desc: "甜美女声" },
+  { id: "x4_xiaofeng", name: "小锋", icon: "🎤", desc: "阳光男声" },
+  { id: "x4_xiaoyu", name: "小雨", icon: "🎤", desc: "可爱女声" },
+  { id: "x4_xiaoqi", name: "小琪", icon: "🎤", desc: "温柔女声" },
+  { id: "x4_xiaolin", name: "小林", icon: "🎤", desc: "沉稳男声" },
+  { id: "x4_xiaomei", name: "小美", icon: "🎤", desc: "甜美" },
+  { id: "x4_xiaogang", name: "小刚", icon: "🎤", desc: "浑厚男声" },
+  { id: "x4_xiaorong", name: "小蓉", icon: "🎤", desc: "知性女声" },
+  { id: "ais_bigang", name: "毕刚", icon: "🎤", desc: "沉稳男声" },
+  { id: "ais_xuanxuan", name: "萱萱", icon: "🎤", desc: "可爱女声" },
+  { id: "ais_bingbing", name: "冰冰", icon: "🎤", desc: "甜美女声" },
+  { id: "ais_jingjing", name: "静静", icon: "🎤", desc: "温柔女声" },
+  { id: "ais_yezi", name: "叶子", icon: "🎤", desc: "年轻女声" },
+  { id: "ais_nana", name: "娜娜", icon: "🎤", desc: "亲切女声" },
+];
+
+function getCurrentVoices() {
+  const sel = document.getElementById('settingProvider');
+  return (sel && sel.value === 'xfyun') ? XFYUN_VOICES : VOICES;
+}
+
+function getCurrentProvider() {
+  const sel = document.getElementById('settingProvider');
+  return (sel && sel.value) || 'mimo';
+}
+
 const EMOTIONS = ["平静", "开心", "悲伤", "愤怒", "温柔", "严肃", "恐惧", "惊讶", "冷漠"];
 
 const READ_TEXTS = [
@@ -55,6 +82,15 @@ let voiceSampleFile = null;
 const MAX_RECORD_SECONDS = 60;
 
 // ─── 初始化 ──────────────────────────────────────────────────────
+function onProviderChange() {
+  renderVoiceGrid();
+  const sel = document.getElementById("settingVoice");
+  if (sel) {
+    const voices = getCurrentVoices();
+    sel.innerHTML = voices.map(v => `<option value="${v.id}">${v.name}</option>`).join("");
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   loadProjects();
   renderVoiceGrid();
@@ -573,6 +609,7 @@ async function batchGenerateSegments() {
 
   const fd = new FormData();
   fd.append("segments", JSON.stringify(segData));
+    fd.append("provider", getCurrentProvider());
 
   try {
     const result = await api("/api/generate/batch", { method: "POST", body: fd });
@@ -618,7 +655,7 @@ async function mergeSegmentAudios() {
 // ─── 音色管理 ────────────────────────────────────────────────────
 function renderVoiceGrid() {
   const grid = document.getElementById("voiceGrid");
-  grid.innerHTML = VOICES.map(v => `
+  grid.innerHTML = getCurrentVoices().map(v => `
     <div class="voice-card">
       <span class="icon">${v.icon}</span>
       <div class="info">
@@ -632,7 +669,7 @@ function renderVoiceGrid() {
 function populateSettings() {
   const voiceSel = document.getElementById("settingVoice");
   const emotionSel = document.getElementById("settingEmotion");
-  voiceSel.innerHTML = VOICES.map(v => `<option value="${v.id}">${v.name}</option>`).join("");
+  voiceSel.innerHTML = getCurrentVoices().map(v => `<option value="${v.id}">${v.name}</option>`).join("");
   emotionSel.innerHTML = EMOTIONS.map(e => `<option value="${e}">${e}</option>`).join("");
 }
 
