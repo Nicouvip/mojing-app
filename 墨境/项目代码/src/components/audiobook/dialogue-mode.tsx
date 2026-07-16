@@ -39,9 +39,10 @@ interface Props {
   chapter: Chapter
   defaultVoice: string
   defaultEmotion: string
+  extraVoices?: Array<{ id: string; name: string; type?: string }>
 }
 
-export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
+export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoices = [] }: Props) {
   /* ── 状态 ── */
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
@@ -604,6 +605,9 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
             style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', marginBottom: 4 }}
           >
             {AVAILABLE_VOICES.map(v => <option key={v.id} value={v.id}>{v.name} — {v.style.split('，')[0]}</option>)}
+            {extraVoices.length > 0 && <optgroup label="🎨 自定义音色">
+              {extraVoices.map(v => <option key={v.id} value={v.id}>{v.name} ({v.type === 'clone' ? '克隆' : '设计'})</option>)}
+            </optgroup>}
           </select>
         </div>
 
@@ -618,6 +622,9 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion }: Props) {
             <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{ch.personality}</div>
             <select value={ch.recommendedVoice} onChange={e => updateCharacterVoice(ch.name, e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', marginBottom: 4 }}>
               {AVAILABLE_VOICES.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              {extraVoices.length > 0 && <optgroup label="🎨 自定义音色">
+                {extraVoices.map(v => <option key={v.id} value={v.id}>{v.name} ({v.type === 'clone' ? '克隆' : '设计'})</option>)}
+              </optgroup>}
             </select>
             <select value={ch.recommendedEmotion} onChange={e => updateCharacterEmotion(ch.name, e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit' }}>
               {EMOTION_PRESETS.map(em => <option key={em.id} value={em.id}>{em.label}</option>)}

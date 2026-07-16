@@ -689,7 +689,15 @@ export default function AudiobookProjectPage() {
                   </select>
                 </div>
                 {dialogueChapterId ? (
-                  <DialogueMode chapter={chapters.find(c => c.id === dialogueChapterId)!} defaultVoice={defaultVoice} defaultEmotion={defaultEmotion} />
+                  <DialogueMode
+                    chapter={chapters.find(c => c.id === dialogueChapterId)!}
+                    defaultVoice={defaultVoice}
+                    defaultEmotion={defaultEmotion}
+                    extraVoices={[
+                      ...designedVoices.map(v => ({ id: v.id, name: `🎨 ${v.name}`, type: 'design' as const })),
+                      ...clonedVoices.map(v => ({ id: v.id, name: `🔴 ${v.name}`, type: 'clone' as const })),
+                    ]}
+                  />
                 ) : (
                   <div style={{ textAlign: 'center', padding: 60, color: C.muted }}>
                     <div style={{ fontSize: 36, marginBottom: 12 }}>🎭</div>
