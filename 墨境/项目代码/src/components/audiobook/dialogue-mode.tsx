@@ -81,6 +81,11 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
   const audioRef = useRef<HTMLAudioElement>(null)
   const audioUrlRef = useRef<string | null>(null)
 
+  /* ── 底部参数面板 ── */
+  const [showParamPanel, setShowParamPanel] = useState(false)
+  const [paramSpeed, setParamSpeed] = useState<'slow' | 'normal' | 'fast'>('normal')
+  const [paramIntensity, setParamIntensity] = useState(5)
+
   const segments = editedSegments.length > 0 ? editedSegments : []
   const characters = editedCharacters.length > 0 ? editedCharacters : []
 
@@ -696,6 +701,10 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               📋 导出选中 ({selectedIds.size})
             </button>
           )}
+          <div style={{ flex: 1 }} />
+          <button onClick={() => setShowParamPanel(p => !p)} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${showParamPanel ? C.pri : C.line}`, borderRadius: 4, background: showParamPanel ? 'rgba(196,149,106,.12)' : C.card, color: showParamPanel ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ⚡ 调参
+          </button>
         </div>
 
         {/* 段落列表 */}
@@ -827,6 +836,77 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           })}
         </div>
       </div>
+
+      {/* ═══ 底部参数面板（参考讯飞局部变速） ═══ */}
+      {showParamPanel && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+          padding: '12px 24px',
+          background: '#fff',
+          borderTop: `1px solid ${C.line}`,
+          boxShadow: '0 -4px 16px rgba(0,0,0,.08)',
+        }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+            {/* 语速 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, color: C.muted }}>🏃 语速</span>
+              <select value={paramSpeed} onChange={e => setParamSpeed(e.target.value as 'slow' | 'normal' | 'fast')}
+                style={{ padding: '4px 8px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 12, fontFamily: 'inherit' }}>
+                <option value="slow">慢速</option>
+                <option value="normal">正常</option>
+                <option value="fast">快速</option>
+              </select>
+            </div>
+            {/* 情绪强度 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, color: C.muted }}>🔥 强度</span>
+              <input type="range" min={1} max={10} step={1} value={paramIntensity}
+                onChange={e => setParamIntensity(parseInt(e.target.value))}
+                style={{ width: 100, accentColor: C.pri, cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: 12, color: C.ink, minWidth: 20, textAlign: 'center' }}>{paramIntensity}</span>
+            </div>
+            {/* 停顿 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 12, color: C.muted }}>⏸ 停顿</span>
+              {[0.5, 1, 2].map(sec => (
+                <button key={sec} onClick={() => {
+                  pushUndo()
+                  const targets = selectedIds.size > 0 ? [...selectedIds] : []
+                  if (targets.length === 0) return
+                  setEditedSegments(prev => prev.map(s => {
+                    if (targets.includes(s.index)) {
+                      return { ...s, needsPause: true, pauseAfter: sec <= 0.5 ? 'short' as const : sec <= 1 ? 'normal' as const : 'long' as const }
+                    }
+                    return s
+                  }))
+                }} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {sec}s
+                </button>
+              ))}
+            </div>
+            <div style={{ flex: 1 }} />
+            <span style={{ fontSize: 11, color: C.muted }}>
+              {selectedIds.size > 0 ? `→ ${selectedIds.size} 个选中段落` : '请先勾选段落'}
+            </span>
+            <button onClick={() => { setParamSpeed('normal'); setParamIntensity(5) }}
+              style={{ padding: '6px 14px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+              默认
+            </button>
+            <button onClick={() => {
+              pushUndo()
+              const targets = selectedIds.size > 0 ? segments.filter(s => selectedIds.has(s.index)) : []
+              for (const s of targets) {
+                updateSegmentSpeed(s.index, paramSpeed)
+                updateSegmentIntensity(s.index, paramIntensity)
+              }
+              setShowParamPanel(false)
+            }} style={{ padding: '6px 18px', fontSize: 12, border: 'none', borderRadius: 4, background: C.pri, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
+              ✓ 应用
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
