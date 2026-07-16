@@ -735,6 +735,8 @@ async def generate_tts(
     bit_depth: int = Form(16),
     bitrate: str = Form("192k"),
     export_format: str = Form("wav"),
+    custom_voice_b64: str = Form(""),
+    custom_voice_mime: str = Form(""),
 ):
     """单段 TTS 生成。provider: mimo / xfyun"""
     if not text.strip():
@@ -751,6 +753,13 @@ async def generate_tts(
                 vcn_map = {"冰糖":"x4_xiaoyan","茉莉":"x4_xiaoqi","苏打":"x4_xiaofeng","白桦":"x4_xiaogang","青柠":"x4_xiaoyu","晚星":"x4_xiaorong","小鹿":"x4_xiaoyu","大叔":"x4_xiaogang","播客男":"x4_xiaolin"}
                 vcn = vcn_map.get(voice, "x4_xiaoyan")
                 wav_bytes = await call_xfyun_tts_api(text=chunk, vcn=vcn)
+            elif custom_voice_b64:
+                # 自定义/克隆音色
+                wav_bytes = call_tts_api(
+                    text=chunk, voice_id="", model=MIMO_MODEL_CLONE,
+                    voice_audio_base64=custom_voice_b64, voice_mime=custom_voice_mime,
+                    style=style or None,
+                )
             else:
                 wav_bytes = call_tts_api(
                     text=chunk, voice_id=voice, emotion=emotion or None, style=style or None,
@@ -804,6 +813,8 @@ async def generate_batch(
     bit_depth: int = Form(16),
     bitrate: str = Form("192k"),
     export_format: str = Form("wav"),
+    custom_voice_b64: str = Form(""),
+    custom_voice_mime: str = Form(""),
 ):
     """批量生成多段音频。"""
     seg_list = json.loads(segments)
@@ -823,6 +834,11 @@ async def generate_batch(
                 vcn_map = {"冰糖":"x4_xiaoyan","茉莉":"x4_xiaoqi","苏打":"x4_xiaofeng","白桦":"x4_xiaogang","青柠":"x4_xiaoyu","晚星":"x4_xiaorong","小鹿":"x4_xiaoyu","大叔":"x4_xiaogang","播客男":"x4_xiaolin"}
                 vcn = vcn_map.get(voice, "x4_xiaoyan")
                 raw_bytes = await call_xfyun_tts_api(text=text, vcn=vcn)
+            elif custom_voice_b64:
+                raw_bytes = call_tts_api(
+                    text=text, voice_id="", model=MIMO_MODEL_CLONE,
+                    voice_audio_base64=custom_voice_b64, voice_mime=custom_voice_mime,
+                )
             else:
                 raw_bytes = call_tts_api(text=text, voice_id=voice, emotion=emotion or None)
             
