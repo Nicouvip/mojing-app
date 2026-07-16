@@ -42,6 +42,11 @@ AVAILABLE_CHAT_MODELS = {
 MODEL_ID_RERANK = os.environ.get("RERANK_MODEL_ID", "xop3qwen8breranker")
 RERANK_API = f"{API_BASE.replace('/v2', '/v2/rerank')}"
 
+MODEL_ID_TTI = os.environ.get("TTI_MODEL_ID", "xopzimageturbo")
+TTI_API = "https://maas-api.cn-huabei-1.xf-yun.com/v2.1/tti"
+
+APPID = os.environ.get("XUNFEI_APPID", "cb18693d")
+
 # ─── 工具函数 ────────────────────────────────────────────────────────
 
 mcp = FastMCP("paddleocr_vl")
@@ -506,6 +511,139 @@ async def paddleocr_vl_rerank(params: RerankInput) -> str:
                 },
                 "model": MODEL_ID_RERANK,
             }, ensure_ascii=False, indent=2)
+
+    except httpx.HTTPStatusError as e:
+        return json.dumps({
+            "success": False,
+            "error": f"API 请求失败 (HTTP {e.response.status_code})",
+        }, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({
+            "success": False,
+            "error": f"未知错误: {type(e).__name__}: {str(e)}",
+        }, ensure_ascii=False)
+
+
+class TTIInput(BaseModel):
+    """文生图输入参数"""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    prompt: str = Field(
+        ...,
+        description="图片描述提示词（英文效果更佳，不超过1024字符）",
+        min_length=1,
+        max_length=1024,
+    )
+    negative_prompt: Optional[str] = Field(
+        default=None,
+        description="负面提示词，描述不希望出现的内容（可选）",
+        max_length=1024,
+    )
+    width: int = Field(
+        default=1024,
+        description="图片宽度，支持 512/576/768/1024",
+    )
+    height: int = Field(
+        default=1024,
+        description="图片高度，支持 512/576/768/1024",
+    )
+    steps: int = Field(
+        default=5,
+        description="推理步数 1-20（免费额度建议 ≤5），越高质量越好但耗时越长",
+        ge=1,
+        le=20,
+    )
+
+
+@mcp.tool(
+    name="paddleocr_vl_generate_image",
+    annotations={
+        "title": "Z-Image-Turbo 文生图",
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+)
+async def paddleocr_vl_generate_image(params: TTIInput) -> str:
+    """
+    使用 Z-Image-Turbo 模型根据文字描述生成图片。
+
+    支持多种风格：写实、水墨、动漫、油画等（通过 prompt 控制）。
+    生成结果以 base64 编码返回，建议 steps ≤ 5（免费额度限制）。
+
+    Args:
+        params (TTIInput): 输入参数包含:
+            - prompt (str): 图片描述提示词
+            - negative_prompt (Optional[str]): 负面提示词（可选）
+            - width (int): 图片宽度，默认 1024
+            - height (int): 图片高度，默认 1024
+            - steps (int): 推理步数，默认 5
+
+    Returns:
+        str: JSON 格式结果，包含 base64 图片数据
+    """
+    try:
+        payload = {
+            "header": {"app_id": APPID, "patch_id": ["0"]},
+            "parameter": {
+                "chat": {
+                    "domain": MODEL_ID_TTI,
+                    "width": params.width,
+                    "height": params.height,
+                    "seed": 42,
+                    "num_inference_steps": params.steps,
+                    "guidance_scale": 5.0,
+                    "scheduler": "DPM++ 2M Karras",
+                }
+            },
+            "payload": {
+                "message": {
+                    "text": [{"role": "user", "content": params.prompt}]
+                }
+            },
+        }
+
+        if params.negative_prompt:
+            payload["payload"]["negative_prompts"] = {"text": params.negative_prompt}
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {API_KEY}",
+        }
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.post(
+                TTI_API, json=payload, headers=headers
+            )
+            response.raise_for_status()
+            result = response.json()
+
+            code = result.get("header", {}).get("code", -1)
+            if code != 0:
+                return json.dumps({
+                    "success": False,
+                    "error": result.get("header", {}).get("message", f"错误码: {code}"),
+                }, ensure_ascii=False)
+
+            choices = result.get("payload", {}).get("choices", {})
+            texts = choices.get("text", [])
+            for t in texts:
+                content = t.get("content", "")
+                if content:
+                    return json.dumps({
+                        "success": True,
+                        "image_base64": content,
+                        "format": "png",
+                        "width": params.width,
+                        "height": params.height,
+                        "prompt": params.prompt,
+                    }, ensure_ascii=False)
+
+            return json.dumps({
+                "success": False,
+                "error": "未获取到生成的图片",
+            }, ensure_ascii=False)
 
     except httpx.HTTPStatusError as e:
         return json.dumps({
