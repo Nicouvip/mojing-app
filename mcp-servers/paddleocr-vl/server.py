@@ -23,8 +23,15 @@ API_KEY = os.environ.get(
     "39eaa494bbdd468489c3eb3b53ae8933:NWY5MWJhZmI0OTNmNDY2NjMzYjhlMTk3",
 )
 MODEL_ID_OCR = os.environ.get("PADDLEOCR_MODEL_ID", "xoppaddleocrv16")
+MODEL_ID_OCR_HUNYUAN = os.environ.get("HUNYUANOCR_MODEL_ID", "xophunyuanocr")
 MODEL_ID_CHAT = os.environ.get("QWEN_MODEL_ID", "xop35qwen2b")
 MAX_IMAGE_SIZE = 20 * 1024 * 1024  # 20MB
+
+# ─── 可用模型映射 ────────────────────────────────────────────────────
+AVAILABLE_OCR_MODELS = {
+    "paddleocr-vl-1.6": MODEL_ID_OCR,
+    "hunyuan-ocr": MODEL_ID_OCR_HUNYUAN,
+}
 
 # ─── 工具函数 ────────────────────────────────────────────────────────
 
@@ -32,13 +39,17 @@ mcp = FastMCP("paddleocr_vl")
 
 
 class PaddleOCRInput(BaseModel):
-    """PaddleOCR-VL-1.6 图片识别输入参数"""
+    """图片/文档识别输入参数（支持 PaddleOCR-VL-1.6 和 HunyuanOCR）"""
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
     image_path: str = Field(
         ...,
         description="图片文件的绝对路径（支持 jpg/png/jpeg/webp/tiff/bmp 等格式）",
         min_length=1,
+    )
+    model: Optional[str] = Field(
+        default="paddleocr-vl-1.6",
+        description="选择识别模型: 'paddleocr-vl-1.6'（PaddleOCR-VL，默认）或 'hunyuan-ocr'（腾讯混元OCR）",
     )
     prompt: Optional[str] = Field(
         default=None,
@@ -191,8 +202,16 @@ async def _call_paddleocr(
     prompt: Optional[str] = None,
     max_tokens: int = 4096,
     temperature: float = 0.3,
+    model_key: str = "paddleocr-vl-1.6",
 ) -> str:
-    """调用 PaddleOCR-VL-1.6 视觉识别"""
+    """调用 OCR 模型识别图片"""
+    model_id = AVAILABLE_OCR_MODELS.get(model_key)
+    if not model_id:
+        return json.dumps({
+            "success": False,
+            "error": f"不支持的模型: {model_key}，可选: {list(AVAILABLE_OCR_MODELS.keys())}",
+        }, ensure_ascii=False)
+
     text_prompt = prompt or "请详细识别并描述这张图片/文档中的全部文字内容，包括标题、段落、表格、公式等所有信息，使用 Markdown 格式输出。"
 
     messages = [
@@ -206,7 +225,7 @@ async def _call_paddleocr(
     ]
 
     return await _call_xunfei_maas(
-        model=MODEL_ID_OCR,
+        model=model_id,
         messages=messages,
         max_tokens=max_tokens,
         temperature=temperature,
@@ -225,14 +244,16 @@ async def _call_paddleocr(
 )
 async def paddleocr_vl_recognize(params: PaddleOCRInput) -> str:
     """
-    使用 PaddleOCR-VL-1.6 视觉语言模型识别图片/文档中的文字内容。
+    使用视觉语言模型识别图片/文档中的文字内容。
 
+    支持 PaddleOCR-VL-1.6（默认）和 HunyuanOCR（腾讯混元）两种模型。
     支持多种文档类型：印刷文档、手写文本、表格、公式、图表、印章、古籍等。
     图片支持本地文件路径，自动编码为 base64 后调用讯飞 MaaS API。
 
     Args:
         params (PaddleOCRInput): 输入参数包含:
             - image_path (str): 图片文件的绝对路径
+            - model (Optional[str]): 'paddleocr-vl-1.6'（默认）或 'hunyuan-ocr'
             - prompt (Optional[str]): 自定义识别提示词（可选）
             - max_tokens (Optional[int]): 最大生成 token 数，默认 4096
             - temperature (Optional[float]): 生成温度，默认 0.3
@@ -278,6 +299,7 @@ async def paddleocr_vl_recognize(params: PaddleOCRInput) -> str:
             prompt=params.prompt,
             max_tokens=params.max_tokens or 4096,
             temperature=params.temperature or 0.3,
+            model_key=params.model or "paddleocr-vl-1.6",
         )
 
         return result
