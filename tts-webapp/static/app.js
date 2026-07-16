@@ -35,6 +35,17 @@ function getCurrentVoices() {
   return (sel && sel.value === 'xfyun') ? XFYUN_VOICES : VOICES;
 }
 
+function getAudioFormData() {
+  const fd = new FormData();
+  fd.append("sample_rate", parseInt(document.getElementById("settingSampleRate").value));
+  fd.append("bit_depth", parseInt(document.getElementById("settingBitDepth").value));
+  fd.append("export_format", document.getElementById("settingExportFormat").value);
+  if (document.getElementById("settingExportFormat").value === "mp3") {
+    fd.append("bitrate", document.getElementById("settingBitrate").value);
+  }
+  return fd;
+}
+
 function getCurrentProvider() {
   const sel = document.getElementById('settingProvider');
   return (sel && sel.value) || 'mimo';
@@ -82,6 +93,11 @@ let voiceSampleFile = null;
 const MAX_RECORD_SECONDS = 60;
 
 // ─── 初始化 ──────────────────────────────────────────────────────
+function onExportFormatChange() {
+  const fmt = document.getElementById("settingExportFormat").value;
+  document.getElementById("bitrateSetting").style.display = fmt === "mp3" ? "block" : "none";
+}
+
 function onProviderChange() {
   renderVoiceGrid();
   const sel = document.getElementById("settingVoice");
@@ -610,6 +626,8 @@ async function batchGenerateSegments() {
   const fd = new FormData();
   fd.append("segments", JSON.stringify(segData));
     fd.append("provider", getCurrentProvider());
+    const audioFd = getAudioFormData();
+    for (const [k, v] of audioFd.entries()) fd.append(k, v);
 
   try {
     const result = await api("/api/generate/batch", { method: "POST", body: fd });

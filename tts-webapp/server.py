@@ -486,6 +486,59 @@ def pcm_to_wav_bytes(pcm_data: np.ndarray, sample_rate: int = SAMPLE_RATE) -> by
     return buf.getvalue()
 
 
+def convert_audio(
+    wav_bytes: bytes,
+    sample_rate: int = 44100,
+    bit_depth: int = 16,
+    bitrate: str = "192k",
+    export_format: str = "wav",
+) -> bytes:
+    """用 ffmpeg 转换音频格式（重采样、位深度、比特率、导出格式）。"""
+    import tempfile, subprocess, uuid as uid_mod
+
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+        f.write(wav_bytes)
+        in_path = f.name
+
+    ext = export_format if export_format != "wav" else "wav"
+    out_dir = os.path.dirname(in_path)
+    out_path = os.path.join(out_dir, f"conv_{uid_mod.uuid4().hex[:8]}.{ext}")
+
+    try:
+        cmd = ["ffmpeg", "-y", "-i", in_path]
+
+        # 采样率转换
+        if sample_rate != 24000:
+            cmd.extend(["-ar", str(sample_rate)])
+
+        if export_format == "wav":
+            # WAV: 设置位深度
+            depth_map = {16: "pcm_s16le", 24: "pcm_s24le", 32: "pcm_s32le"}
+            codec = depth_map.get(bit_depth, "pcm_s16le")
+            cmd.extend(["-acodec", codec, "-ac", "1", str(out_path)])
+        elif export_format == "mp3":
+            cmd.extend(["-codec:a", "libmp3lame", "-b:a", bitrate, "-ac", "1", str(out_path)])
+        else:
+            # flac / ogg
+            cmd.extend(["-ac", "1", str(out_path)])
+
+        subprocess.run(cmd, capture_output=True, check=True, timeout=120)
+
+        with open(out_path, "rb") as f:
+            result = f.read()
+        return result
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"音频转换失败: {e.stderr.decode()[:200]}")
+    except FileNotFoundError:
+        raise RuntimeError("ffmpeg 未安装，请安装 ffmpeg")
+    finally:
+        for p in [in_path, out_path]:
+            try:
+                os.unlink(p)
+            except:
+                pass
+
+
 def _convert_webm_to_wav(webm_bytes: bytes) -> bytes:
     with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as f:
         f.write(webm_bytes)
@@ -678,6 +731,10 @@ async def generate_tts(
     emotion: str = Form(""),
     style: str = Form(""),
     provider: str = Form("mimo"),
+    sample_rate: int = Form(24000),
+    bit_depth: int = Form(16),
+    bitrate: str = Form("192k"),
+    export_format: str = Form("wav"),
 ):
     """单段 TTS 生成。provider: mimo / xfyun"""
     if not text.strip():
@@ -704,15 +761,38 @@ async def generate_tts(
             return JSONResponse(status_code=500, content={"error": str(e)})
 
     combined = np.concatenate(all_pcm)
-    filename = f"tts_{uuid.uuid4().hex[:8]}.wav"
-    sf.write(str(OUTPUT_DIR / filename), combined, samplerate=SAMPLE_RATE, subtype="PCM_16")
+    
+    # 生成 WAV（内部格式 24kHz 16bit）
+    ext = export_format if export_format != "wav" else "wav"
+    filename = f"tts_{uuid.uuid4().hex[:8]}.{ext}"
+    
+    if export_format == "wav" and sample_rate == SAMPLE_RATE and bit_depth == 16:
+        # 默认格式，直接保存
+        sf.write(str(OUTPUT_DIR / filename), combined, samplerate=SAMPLE_RATE, subtype="PCM_16")
+        with open(str(OUTPUT_DIR / filename), "rb") as f:
+            audio_bytes = f.read()
+    else:
+        # 先写临时 WAV，再用 ffmpeg 转换
+        tmp_wav = str(OUTPUT_DIR / f"tmp_{uuid.uuid4().hex[:8]}.wav")
+        sf.write(tmp_wav, combined, samplerate=SAMPLE_RATE, subtype="PCM_16")
+        with open(tmp_wav, "rb") as f:
+            wav_data = f.read()
+        os.unlink(tmp_wav)
+        audio_bytes = convert_audio(wav_data, sample_rate, bit_depth, bitrate, export_format)
+        with open(str(OUTPUT_DIR / filename), "wb") as f:
+            f.write(audio_bytes)
+
+    audio_b64 = base64.b64encode(audio_bytes).decode()
+    duration = round(len(combined) / SAMPLE_RATE, 2)
 
     return JSONResponse(content={
         "success": True,
         "filename": filename,
-        "audioBase64": base64.b64encode(pcm_to_wav_bytes(combined)).decode(),
-        "duration": round(len(combined) / SAMPLE_RATE, 2),
+        "audioBase64": audio_b64,
+        "duration": duration,
         "downloadUrl": f"/api/download/{filename}",
+        "format": export_format,
+        "sampleRate": sample_rate,
     })
 
 
@@ -720,6 +800,10 @@ async def generate_tts(
 async def generate_batch(
     segments: str = Form(...),  # JSON array of {text, voice, emotion}
     provider: str = Form("mimo"),
+    sample_rate: int = Form(24000),
+    bit_depth: int = Form(16),
+    bitrate: str = Form("192k"),
+    export_format: str = Form("wav"),
 ):
     """批量生成多段音频。"""
     seg_list = json.loads(segments)
@@ -738,19 +822,32 @@ async def generate_batch(
             if provider == "xfyun":
                 vcn_map = {"冰糖":"x4_xiaoyan","茉莉":"x4_xiaoqi","苏打":"x4_xiaofeng","白桦":"x4_xiaogang","青柠":"x4_xiaoyu","晚星":"x4_xiaorong","小鹿":"x4_xiaoyu","大叔":"x4_xiaogang","播客男":"x4_xiaolin"}
                 vcn = vcn_map.get(voice, "x4_xiaoyan")
-                wav_bytes = await call_xfyun_tts_api(text=text, vcn=vcn)
+                raw_bytes = await call_xfyun_tts_api(text=text, vcn=vcn)
             else:
-                wav_bytes = call_tts_api(text=text, voice_id=voice, emotion=emotion or None)
-            audio_b64 = base64.b64encode(wav_bytes).decode()
-            filename = f"batch_{uuid.uuid4().hex[:8]}.wav"
-            sf.write(str(OUTPUT_DIR / filename), wav_bytes_to_pcm(wav_bytes),
-                     samplerate=SAMPLE_RATE, subtype="PCM_16")
+                raw_bytes = call_tts_api(text=text, voice_id=voice, emotion=emotion or None)
+            
+            # Apply audio conversion
+            ext = export_format if export_format != "wav" else "wav"
+            filename = f"batch_{uuid.uuid4().hex[:8]}.{ext}"
+            
+            if export_format == "wav" and sample_rate == SAMPLE_RATE and bit_depth == 16:
+                sf.write(str(OUTPUT_DIR / filename), wav_bytes_to_pcm(raw_bytes),
+                         samplerate=SAMPLE_RATE, subtype="PCM_16")
+                with open(str(OUTPUT_DIR / filename), "rb") as f:
+                    audio_bytes = f.read()
+            else:
+                audio_bytes = convert_audio(raw_bytes, sample_rate, bit_depth, bitrate, export_format)
+                with open(str(OUTPUT_DIR / filename), "wb") as f:
+                    f.write(audio_bytes)
+            
+            audio_b64 = base64.b64encode(audio_bytes).decode()
             results.append({
                 "index": i,
                 "success": True,
                 "filename": filename,
                 "audioBase64": audio_b64,
-                "duration": round(len(wav_bytes_to_pcm(wav_bytes)) / SAMPLE_RATE, 2),
+                "duration": round(len(wav_bytes_to_pcm(raw_bytes)) / SAMPLE_RATE, 2),
+                "format": export_format,
             })
         except Exception as e:
             results.append({"index": i, "error": str(e)})
@@ -878,18 +975,18 @@ async def download_audio(filename: str):
 
 # ─── MP3 导出 ──────────────────────────────────────────────────────
 @app.get("/api/export/mp3/{filename}")
-async def export_mp3(filename: str):
-    """将 WAV 文件转换为 MP3 格式下载。"""
+async def export_mp3(filename: str, bitrate: str = "192k"):
+    """将 WAV 文件转换为 MP3 格式下载，支持比特率设置。"""
     wav_path = OUTPUT_DIR / filename
     if not wav_path.exists():
         return JSONResponse(status_code=404, content={"error": "文件不存在"})
 
-    mp3_name = filename.replace(".wav", ".mp3")
+    mp3_name = filename.replace(".wav", f"_{bitrate}.mp3")
     mp3_path = OUTPUT_DIR / mp3_name
 
     try:
         subprocess.run(
-            ["ffmpeg", "-y", "-i", str(wav_path), "-codec:a", "libmp3lame", "-b:a", "192k", str(mp3_path)],
+            ["ffmpeg", "-y", "-i", str(wav_path), "-codec:a", "libmp3lame", "-b:a", bitrate, str(mp3_path)],
             capture_output=True, check=True, timeout=120,
         )
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
