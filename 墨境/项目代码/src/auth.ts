@@ -33,14 +33,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: '/login',
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user
-      const isProtected = ['/dashboard', '/account', '/works', '/library'].some(
-        p => nextUrl.pathname.startsWith(p)
-      )
-      if (isProtected && !isLoggedIn) {
-        return Response.redirect(new URL('/login', nextUrl))
-      }
+    authorized({ auth }) {
+      // 路由保护由 middleware.ts 统一处理，此处只需确认 session 有效
       return true
     },
     session({ session, token }) {

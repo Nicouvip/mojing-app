@@ -29,7 +29,7 @@ export default function LoginPage() {
         setError(result.error === 'CredentialsSignin' ? '邮箱或密码错误' : result.error)
         return
       }
-      router.push('/dashboard')
+      router.push('/desk')
     } catch {
       setError('网络错误')
     } finally {

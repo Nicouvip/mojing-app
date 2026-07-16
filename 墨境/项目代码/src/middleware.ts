@@ -8,7 +8,7 @@ import { auth } from '@/auth'
  * 其他公开路由（/、/login、/register、/api/auth）不拦截
  */
 
-const PROTECTED_ROUTES = ['/desk', '/admin']
+const PROTECTED_ROUTES = ['/desk', '/admin', '/works', '/library']
 
 export default auth((req) => {
   const { pathname } = req.nextUrl
@@ -28,5 +28,5 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/desk/:path*', '/admin/:path*'],
+  matcher: ['/desk/:path*', '/admin/:path*', '/works/:path*', '/library/:path*'],
 }
