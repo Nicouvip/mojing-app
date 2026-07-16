@@ -85,6 +85,7 @@ export default function AudiobookProjectPage() {
   const [designText, setDesignText] = useState('你好，这是音色预览。')
   const [designLoading, setDesignLoading] = useState(false)
   const [designedVoices, setDesignedVoices] = useState<Array<{ id: string; name: string; desc: string; audioBase64: string }>>([])
+  const [polishDescLoading, setPolishDescLoading] = useState(false)
 
   /* ── VoiceClone 弹窗 ── */
   const [showClone, setShowClone] = useState(false)
@@ -408,6 +409,29 @@ export default function AudiobookProjectPage() {
     a.download = `${chapter?.title || chapterId}.lrc`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  /* ── 润色音色描述 ── */
+  const handlePolishDesc = async () => {
+    if (!designDesc.trim()) { alert('请先输入音色描述'); return }
+    setPolishDescLoading(true)
+    try {
+      const res = await fetch('/api/audiobook/voices/polish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: designDesc }),
+      })
+      const data = await res.json()
+      if (data.success && data.polished) {
+        setDesignDesc(data.polished)
+      } else {
+        alert('润色失败：' + (data.error || '未知错误'))
+      }
+    } catch (err) {
+      alert('润色失败：' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setPolishDescLoading(false)
+    }
   }
 
   /* ── VoiceDesign 生成 ── */
@@ -847,6 +871,9 @@ export default function AudiobookProjectPage() {
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>音色描述（1-4句）</label>
                 <textarea value={designDesc} onChange={e => setDesignDesc(e.target.value)} placeholder="例：年轻女性，声音清亮，充满活力，适合旁白" style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', minHeight: 80, resize: 'vertical', boxSizing: 'border-box' }} />
+                <button onClick={handlePolishDesc} disabled={polishDescLoading} style={{ marginTop: 6, padding: '6px 16px', background: '#8e63ce', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: polishDescLoading ? 'default' : 'pointer', fontFamily: 'inherit', opacity: polishDescLoading ? 0.6 : 1 }}>
+                  {polishDescLoading ? '⏳ 润色中...' : '✨ 润色描述'}
+                </button>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>预览文本</label>
