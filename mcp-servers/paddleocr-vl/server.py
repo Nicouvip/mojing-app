@@ -22,8 +22,11 @@ API_KEY = os.environ.get(
     "PADDLEOCR_API_KEY",
     "39eaa494bbdd468489c3eb3b53ae8933:NWY5MWJhZmI0OTNmNDY2NjMzYjhlMTk3",
 )
-MODEL_ID = os.environ.get("PADDLEOCR_MODEL_ID", "xoppaddleocrv16")
+MODEL_ID_OCR = os.environ.get("PADDLEOCR_MODEL_ID", "xoppaddleocrv16")
+MODEL_ID_CHAT = os.environ.get("QWEN_MODEL_ID", "xop35qwen2b")
 MAX_IMAGE_SIZE = 20 * 1024 * 1024  # 20MB
+
+# ─── 工具函数 ────────────────────────────────────────────────────────
 
 mcp = FastMCP("paddleocr_vl")
 
@@ -54,6 +57,35 @@ class PaddleOCRInput(BaseModel):
     temperature: Optional[float] = Field(
         default=0.3,
         description="生成温度 0-1，越低越确定，默认 0.3（文档识别建议低温度）",
+        ge=0.0,
+        le=1.0,
+    )
+
+
+class ChatInput(BaseModel):
+    """Qwen3.5-2B 文本对话输入参数"""
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    prompt: str = Field(
+        ...,
+        description="给模型的提示词或问题",
+        min_length=1,
+        max_length=8000,
+    )
+    system_prompt: Optional[str] = Field(
+        default=None,
+        description="系统角色设定，用于设定模型的行为和身份（可选）",
+        max_length=2000,
+    )
+    max_tokens: Optional[int] = Field(
+        default=2048,
+        description="最大生成 token 数，范围 1-8192，默认 2048",
+        ge=1,
+        le=8192,
+    )
+    temperature: Optional[float] = Field(
+        default=0.7,
+        description="生成温度 0-1，越高越有创意，默认 0.7",
         ge=0.0,
         le=1.0,
     )
@@ -91,26 +123,16 @@ def _encode_image(image_path: str) -> str:
     return f"data:{mime};base64,{b64}"
 
 
-async def _call_paddleocr(
-    image_b64: str,
-    prompt: Optional[str] = None,
+async def _call_xunfei_maas(
+    model: str,
+    messages: list,
     max_tokens: int = 4096,
-    temperature: float = 0.3,
+    temperature: float = 0.7,
 ) -> str:
-    """调用讯飞 MaaS PaddleOCR-VL-1.6 API"""
-    text_prompt = prompt or "请详细识别并描述这张图片/文档中的全部文字内容，包括标题、段落、表格、公式等所有信息，使用 Markdown 格式输出。"
-
+    """通用调用讯飞 MaaS API"""
     payload = {
-        "model": MODEL_ID,
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": text_prompt},
-                    {"type": "image_url", "image_url": {"url": image_b64}},
-                ],
-            }
-        ],
+        "model": model,
+        "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
         "stream": False,
@@ -160,8 +182,35 @@ async def _call_paddleocr(
             "success": True,
             "content": content,
             "usage": usage_info,
-            "model": MODEL_ID,
+            "model": model,
         }, ensure_ascii=False, indent=2)
+
+
+async def _call_paddleocr(
+    image_b64: str,
+    prompt: Optional[str] = None,
+    max_tokens: int = 4096,
+    temperature: float = 0.3,
+) -> str:
+    """调用 PaddleOCR-VL-1.6 视觉识别"""
+    text_prompt = prompt or "请详细识别并描述这张图片/文档中的全部文字内容，包括标题、段落、表格、公式等所有信息，使用 Markdown 格式输出。"
+
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": text_prompt},
+                {"type": "image_url", "image_url": {"url": image_b64}},
+            ],
+        }
+    ]
+
+    return await _call_xunfei_maas(
+        model=MODEL_ID_OCR,
+        messages=messages,
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
 
 
 @mcp.tool(
@@ -253,6 +302,68 @@ async def paddleocr_vl_recognize(params: PaddleOCRInput) -> str:
             "success": False,
             "error": "API 请求超时（120秒），图片可能过大或服务繁忙",
         }, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({
+            "success": False,
+            "error": f"未知错误: {type(e).__name__}: {str(e)}",
+        }, ensure_ascii=False)
+
+
+@mcp.tool(
+    name="paddleocr_vl_chat",
+    annotations={
+        "title": "Qwen3.5-2B 文本对话",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
+)
+async def paddleocr_vl_chat(params: ChatInput) -> str:
+    """
+    使用 Qwen3.5-2B（通义千问）进行文本对话/分析。
+
+    适用于文本润色、续写、分析、问答等纯文本任务。
+    不是视觉模型——不能看图片。
+
+    Args:
+        params (ChatInput): 输入参数包含:
+            - prompt (str): 给模型的提示词/问题
+            - system_prompt (Optional[str]): 系统角色设定（可选）
+            - max_tokens (Optional[int]): 最大生成 token 数，默认 2048
+            - temperature (Optional[float]): 生成温度，默认 0.7
+
+    Returns:
+        str: JSON 格式的对话结果，包含:
+        {
+            "success": bool,
+            "content": str,       # 模型回复
+            "usage": {...},       # Token 用量
+            "model": str          # 使用的模型 ID
+        }
+
+    Examples:
+        - 文本润色: params with prompt="请润色这段文字：..."
+        - 续写: params with prompt="请续写以下内容：..."
+        - 问答: params with prompt="解释一下什么是RAG"
+
+    Error Handling:
+        - API 认证失败 (401): 提示检查 API Key
+        - 频率限制 (429): 提示等待后重试
+    """
+    try:
+        messages = []
+        if params.system_prompt:
+            messages.append({"role": "system", "content": params.system_prompt})
+        messages.append({"role": "user", "content": params.prompt})
+
+        return await _call_xunfei_maas(
+            model=MODEL_ID_CHAT,
+            messages=messages,
+            max_tokens=params.max_tokens or 2048,
+            temperature=params.temperature or 0.7,
+        )
+
     except Exception as e:
         return json.dumps({
             "success": False,
