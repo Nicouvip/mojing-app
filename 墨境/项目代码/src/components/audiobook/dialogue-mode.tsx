@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import type { Chapter } from '@/lib/db/types'
 import { processAnalysisResult } from '@/lib/audiobook/merge-segments'
+import { saveDialogueAudioCache, loadDialogueAudioCache, clearDialogueAudioCache } from '@/lib/audiobook/audio-persistence'
 import {
   type CharacterAnalysis,
   type SegmentAnalysis,
@@ -58,6 +59,17 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
   /* ── 撤回/重做栈 ── */
   const [undoStack, setUndoStack] = useState<SegSnapshot[]>([])
   const [redoStack, setRedoStack] = useState<SegSnapshot[]>([])
+
+  // P0-1: 从 IndexedDB 恢复段落音频缓存
+  useEffect(() => {
+    if (chapter?.projectId && chapter?.id) {
+      loadDialogueAudioCache(chapter.projectId, chapter.id).then(cache => {
+        if (cache && Object.keys(cache).length > 0) {
+          setAudioCache(cache)
+        }
+      })
+    }
+  }, [chapter?.projectId, chapter?.id])
 
   /* ── 分析结果缓存（localStorage） ── */
   const CACHE_KEY = `mojing_analysis_${chapter.id}`
@@ -297,7 +309,11 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
       })
       const data = await res.json()
       if (data.success && data.audio) {
-        setAudioCache(prev => ({ ...prev, [segKey]: { audioBase64: data.audio, duration: data.duration } }))
+        setAudioCache(prev => {
+          const next = { ...prev, [segKey]: { audioBase64: data.audio, duration: data.duration } }
+          saveDialogueAudioCache(chapter.projectId, chapter.id, next)
+          return next
+        })
       }
     } catch (err) {
       console.error('Generate failed:', err)
@@ -596,7 +612,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
             <button onClick={handleRedo} disabled={redoStack.length === 0}
               style={{ padding: '4px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: redoStack.length > 0 ? C.ink : C.muted, cursor: redoStack.length > 0 ? 'pointer' : 'default', fontFamily: 'inherit' }}
               title="重做 (Ctrl+Y)">↪️</button>
-            <button onClick={() => { setAnalysisResult(null); setEditedCharacters([]); setEditedSegments([]); setAudioCache({}); setUndoStack([]); setRedoStack([]); try { localStorage.removeItem(CACHE_KEY) } catch {} }}
+            <button onClick={() => { setAnalysisResult(null); setEditedCharacters([]); setEditedSegments([]); setAudioCache({}); clearDialogueAudioCache(chapter.projectId, chapter.id); setUndoStack([]); setRedoStack([]); try { localStorage.removeItem(CACHE_KEY) } catch {} }}
               style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
               重新选择
             </button>

@@ -93,3 +93,66 @@ export async function clearGeneratedChapters(projectId: string): Promise<void> {
     db.close()
   } catch { /* 静默 */ }
 }
+
+/** 保存对话模式段落级音频缓存（P0-1: 刷新不丢失） */
+export async function saveDialogueAudioCache(
+  projectId: string,
+  chapterId: string,
+  cache: Record<string, { audioBase64: string; duration: number }>
+): Promise<void> {
+  try {
+    const db = await openDB()
+    const tx = db.transaction(STORE_NAME, 'readwrite')
+    tx.objectStore(STORE_NAME).put({
+      projectId,
+      chapterId: '__dialogue__' + chapterId,
+      audioBase64: JSON.stringify(cache),
+      duration: Object.values(cache).reduce((s, v) => s + v.duration, 0),
+      subtitles: [],
+      updatedAt: Date.now(),
+    })
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+    db.close()
+  } catch { /* 静默 */ }
+}
+
+/** 加载对话模式段落级音频缓存 */
+export async function loadDialogueAudioCache(
+  projectId: string,
+  chapterId: string
+): Promise<Record<string, { audioBase64: string; duration: number }> | null> {
+  try {
+    const db = await openDB()
+    const tx = db.transaction(STORE_NAME, 'readonly')
+    const result = await new Promise<AudioRecord | undefined>((resolve, reject) => {
+      const req = tx.objectStore(STORE_NAME).get([projectId, '__dialogue__' + chapterId])
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    })
+    db.close()
+    if (result && result.audioBase64) {
+      try { return JSON.parse(result.audioBase64) } catch { return null }
+    }
+  } catch { /* 静默 */ }
+  return null
+}
+
+/** 清除对话模式段落级音频缓存 */
+export async function clearDialogueAudioCache(
+  projectId: string,
+  chapterId: string
+): Promise<void> {
+  try {
+    const db = await openDB()
+    const tx = db.transaction(STORE_NAME, 'readwrite')
+    tx.objectStore(STORE_NAME).delete([projectId, '__dialogue__' + chapterId])
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+    db.close()
+  } catch { /* 静默 */ }
+}
