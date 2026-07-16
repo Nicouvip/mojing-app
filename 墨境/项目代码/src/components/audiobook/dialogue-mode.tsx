@@ -672,7 +672,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
         {characters.filter(c => c.name !== '旁白').map(ch => (
           <div key={ch.name} style={{ padding: 10, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius, marginBottom: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: getCharColor(ch.name), marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>{ch.gender === 'male' ? '👨' : ch.age === 'child' ? '👧' : ch.age === 'elderly' ? '🧓' : '👩'}</span>
+              <img src={`/avatars/${ch.gender === 'male' ? 'male' : 'female'}-${ch.age === 'young' ? 'young' : ch.age === 'elderly' ? 'elderly' : ch.age === 'child' ? 'child' : 'adult'}.svg`} alt="" style={{ width: 18, height: 18, borderRadius: '50%' }} />
               <span>{ch.name}</span>
               <span style={{ fontWeight: 400, color: C.muted }}>({ch.gender === 'male' ? '男' : '女'}·{ch.age === 'young' ? '青年' : ch.age === 'adult' ? '中年' : ch.age === 'child' ? '少年' : '老年'})</span>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: getCharColor(ch.name), flexShrink: 0 }} />

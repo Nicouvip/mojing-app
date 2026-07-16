@@ -44,20 +44,19 @@ export function getTodayWords(): number {
   } catch { return 0 }
 }
 
-export function recordWords(count: number) {
+export function recordWords(totalWords: number) {
   const today = new Date().toISOString().slice(0, 10)
   try {
     const raw = localStorage.getItem(HISTORY_KEY)
     const history: DayRecord[] = raw ? JSON.parse(raw) : []
     const idx = history.findIndex(d => d.date === today)
     if (idx >= 0) {
-      // 已有今日记录 → 更新字数
-      history[idx].words = count
-    } else if (count > 0) {
-      // 今日无记录且确实写了字 → 创建
-      history.push({ date: today, words: count })
+      // 已有今日记录 → 只更新字数（保留当天写入量，不覆盖为总字数）
+      // 用 max 保证只增不减（刷新重入时不会丢数据）
+      history[idx].words = Math.max(history[idx].words, totalWords)
+    } else if (totalWords > 0) {
+      history.push({ date: today, words: totalWords })
     }
-    // count=0 且无记录 → 不创建脏数据
     const trimmed = history.sort((a, b) => a.date.localeCompare(b.date)).slice(-30)
     localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed))
   } catch {}
