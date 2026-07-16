@@ -73,6 +73,33 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
 
   /* ── 分析结果缓存（localStorage） ── */
   const CACHE_KEY = `mojing_analysis_${chapter.id}`
+  const BINDINGS_KEY = `mojing_voice_bindings_${chapter?.projectId}`
+
+  // P1-2: Save voice bindings to localStorage
+  const saveVoiceBindings = (chars: { name: string; recommendedVoice?: string }[]) => {
+    try {
+      const bindings: Record<string, string> = {}
+      for (const c of chars) {
+        if (c.recommendedVoice) bindings[c.name] = c.recommendedVoice
+      }
+      localStorage.setItem(BINDINGS_KEY, JSON.stringify(bindings))
+    } catch {}
+  }
+
+  // P1-2: Load voice bindings from localStorage
+  const loadVoiceBindings = <T extends { name: string; recommendedVoice?: string }>(chars: T[]): T[] => {
+    try {
+      const raw = localStorage.getItem(BINDINGS_KEY)
+      if (!raw) return chars
+      const bindings: Record<string, string> = JSON.parse(raw)
+      return chars.map(c => {
+        if (!c.recommendedVoice && bindings[c.name]) {
+          return { ...c, recommendedVoice: bindings[c.name] }
+        }
+        return c
+      })
+    } catch { return chars }
+  }
 
   useEffect(() => {
     try {
@@ -80,7 +107,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
       if (cached) {
         const data = JSON.parse(cached)
         setAnalysisResult(data)
-        setEditedCharacters(data.characters || [])
+        setEditedCharacters(loadVoiceBindings(data.characters || []))
         setEditedSegments(data.segments || [])
       }
     } catch { /* ignore corrupted cache */ }
@@ -200,7 +227,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
       if (data.success) {
         const processed = processAnalysisResult(data.segments || [], data.characters || [])
         setAnalysisResult({ ...data, segments: processed.segments, characters: processed.characters })
-        setEditedCharacters(processed.characters || [])
+        setEditedCharacters(loadVoiceBindings(processed.characters || []))
         setEditedSegments(processed.segments || [])
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch { /* quota exceeded */ }
       } else {
@@ -240,7 +267,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
       recommendedEmotion: defaultEmotion || '平静',
     }
     setAnalysisResult({ characters: [defaultChar], segments: newSegments, narrationStyle: { overallTone: '平静', suggestedNarratorVoice: defaultVoice, pacing: 'normal' } })
-    setEditedCharacters([defaultChar])
+    setEditedCharacters(loadVoiceBindings([defaultChar]))
     setEditedSegments(newSegments)
     setUndoStack([])
     setRedoStack([])
@@ -249,7 +276,11 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
   /* ── Step 2: 用户微调角色音色 ── */
   const updateCharacterVoice = (name: string, voiceId: string) => {
     pushUndo()
-    setEditedCharacters(prev => prev.map(c => c.name === name ? { ...c, recommendedVoice: voiceId } : c))
+    setEditedCharacters(prev => {
+      const updated = prev.map(c => c.name === name ? { ...c, recommendedVoice: voiceId } : c)
+      saveVoiceBindings(updated)
+      return updated
+    })
     setEditedSegments(prev => prev.map(s => s.characterName === name ? { ...s, recommendedVoice: voiceId } : s))
   }
 
@@ -612,7 +643,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
             <button onClick={handleRedo} disabled={redoStack.length === 0}
               style={{ padding: '4px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: redoStack.length > 0 ? C.ink : C.muted, cursor: redoStack.length > 0 ? 'pointer' : 'default', fontFamily: 'inherit' }}
               title="重做 (Ctrl+Y)">↪️</button>
-            <button onClick={() => { setAnalysisResult(null); setEditedCharacters([]); setEditedSegments([]); setAudioCache({}); clearDialogueAudioCache(chapter.projectId, chapter.id); setUndoStack([]); setRedoStack([]); try { localStorage.removeItem(CACHE_KEY) } catch {} }}
+            <button onClick={() => { setAnalysisResult(null); setEditedCharacters([]); setEditedSegments([]); setAudioCache({}); clearDialogueAudioCache(chapter.projectId, chapter.id); setUndoStack([]); setRedoStack([]); try { localStorage.removeItem(CACHE_KEY); localStorage.removeItem(BINDINGS_KEY) } catch {} }}
               style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
               重新选择
             </button>
