@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "xfyun-voiceclone": {
+      "command": "python",
+      "args": ["D:\\codexvip\\mcp-servers\\xfyun-voiceclone\\server.py"],
+      "env": {},
+      "tier": "background"
+    }
+  }
+}

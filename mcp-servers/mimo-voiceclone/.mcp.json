@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mimo-voiceclone": {
+      "command": "python",
+      "args": ["D:\\codexvip\\mcp-servers\\mimo-voiceclone\\server.py"],
+      "env": {},
+      "tier": "background"
+    }
+  }
+}
