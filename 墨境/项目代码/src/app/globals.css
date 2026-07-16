@@ -113,8 +113,8 @@
   }
 }
 
-/* ===== 纸张纹理 ===== */
-body::before {
+/* ===== 纸张纹理（按需启用：给容器加 .paper-texture 类） ===== */
+.paper-texture::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -124,7 +124,7 @@ body::before {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
   background-size: 128px 128px;
 }
-.dark body::before {
+.dark .paper-texture::before {
   opacity: 0.12;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   background-size: 128px 128px;

@@ -51,16 +51,16 @@ const TOOL_NAV: NavItem[] = [
   { href: '#', label: '投稿中心', icon: <Mail size={16} />, disabled: true },
 ]
 
-/* ── 设计令牌（来自 v13.html）── */
+/* ── 设计令牌：使用 CSS 变量统一主题 ── */
 const C = {
-  pri: '#c4956a',
-  priDim: '#b08050',
-  ink: '#1a1814',
-  muted: 'rgba(26,24,20,.45)',
-  line: 'rgba(26,24,20,.06)',
-  paper: '#f5f2ed',
-  sb: '#f5f2ed',
-  card: '#fff',
+  pri: 'var(--color-primary)',
+  priDim: 'var(--color-primary-hover)',
+  ink: 'var(--color-foreground)',
+  muted: 'var(--color-muted-foreground)',
+  line: 'var(--color-border)',
+  paper: 'var(--color-background)',
+  sb: 'var(--color-sidebar)',
+  card: 'var(--color-card)',
   radius: '8px',
   navW: '220px',
 } as const
