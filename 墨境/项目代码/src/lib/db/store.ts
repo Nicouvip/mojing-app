@@ -12,14 +12,8 @@ import {
 import readingTime from 'reading-time'
 
 // Memory cache for SSR + hydration
-let memProjects: Project[] = [
-  { id: 'demo-1', name: '未命名作品', genre: '都市', description: '',
-    createdAt: Date.now(), updatedAt: Date.now(), chapterCount: 1, totalWords: 0 },
-]
-let memChapters: Chapter[] = [
-  { id: 'ch-demo-1', projectId: 'demo-1', title: '第一章', content: '',
-    order: 1, wordCount: 0, createdAt: Date.now(), updatedAt: Date.now(), status: 'draft' },
-]
+let memProjects: Project[] = []
+let memChapters: Chapter[] = []
 let loadedFromSupabase = false
 let loadedFromTurso = false
 

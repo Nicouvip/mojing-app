@@ -57,18 +57,15 @@ export default function AudiobookProjectPage() {
   const [chapters, setChapters] = useState<Chapter[]>([])
 
   /* ── 选择 & 设置 ── */
-  const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set())
   const [defaultVoice, setDefaultVoice] = useState('冰糖')
   const [defaultEmotion, setDefaultEmotion] = useState('平静')
-  const [activeTab, setActiveTab] = useState<'chapters' | 'dialogue' | 'voices' | 'settings'>('chapters')
+  const [activeTab, setActiveTab] = useState<'dialogue' | 'voices' | 'settings'>('dialogue')
   const [dialogueChapterId, setDialogueChapterId] = useState<string>('')
 
   /* ── 生成状态 ── */
-  const [generating, setGenerating] = useState(false)
   /* ── 合并导出章节音频 ── */
   const [mergingChapters, setMergingChapters] = useState(false)
   const [chapterExportFormat, setChapterExportFormat] = useState<'wav' | 'mp3' | 'm4b'>('wav')
-  const [generateProgress, setGenerateProgress] = useState({ current: 0, total: 0, currentChapter: '' })
   const [generatedChapters, setGeneratedChapters] = useState<Map<string, { audioBase64: string; duration: number; subtitles: SubtitleLine[] }>>(new Map())
 
   /* ── 播放器 ── */
@@ -200,14 +197,6 @@ export default function AudiobookProjectPage() {
     return () => { audio.removeEventListener('timeupdate', onTime); audio.removeEventListener('loadedmetadata', onDur); audio.removeEventListener('ended', onEnd) }
   }, [])
 
-  /* ── 章节选择 ── */
-  const toggleChapter = (id: string) => {
-    setSelectedChapters(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
-  }
-  const selectAll = () => {
-    if (selectedChapters.size === chapters.length) setSelectedChapters(new Set())
-    else setSelectedChapters(new Set(chapters.map(c => c.id)))
-  }
 
   /* ── 试听音色 ── */
   const handlePreviewVoice = async (voiceId: string) => {
@@ -242,68 +231,8 @@ export default function AudiobookProjectPage() {
     }
   }
 
-  /* ── 生成章节（支持进度 + ASR 字幕） ── */
-  const handleGenerate = async () => {
-    if (selectedChapters.size === 0) { alert('请先选择要生成的章节'); return }
-    setGenerating(true)
-    const total = selectedChapters.size
-    let current = 0
-    const newGenerated = new Map(generatedChapters)
 
-    for (const chapterId of selectedChapters) {
-      const chapter = chapters.find(c => c.id === chapterId)
-      if (!chapter) continue
-      setGenerateProgress({ current, total, currentChapter: chapter.title })
 
-      try {
-        const text = chapter.content || chapter.title
-        const res = await fetch('/api/audiobook/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, voice: defaultVoice, emotion: defaultEmotion !== '平静' ? defaultEmotion : undefined }),
-        })
-        const data = await res.json()
-
-        if (data.success && data.audio) {
-          /* ASR 字幕 */
-          let subtitles: SubtitleLine[] = []
-          try {
-            const asrRes = await fetch('/api/audiobook/asr/timestamp', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ audioBase64: data.audio, mimeType: 'audio/wav' }),
-            })
-            const asrData = await asrRes.json()
-            if (asrData.success && asrData.timestamps?.length > 0) {
-              subtitles = asrData.timestamps.map((t: { start: number; end: number; text: string }) => ({
-                text: t.text, startSec: t.start, endSec: t.end,
-              }))
-            }
-          } catch { /* ASR 可选，失败不阻断 */ }
-
-          /* 如果 ASR 没返回时间戳，按句号分割模拟 */
-          if (subtitles.length === 0) {
-            const sentences = text.split(/[。！？\n]/).filter(s => s.trim())
-            const estDuration = data.duration || 3
-            const perSentence = estDuration / Math.max(sentences.length, 1)
-            subtitles = sentences.map((s, i) => ({
-              text: s.trim(), startSec: i * perSentence, endSec: (i + 1) * perSentence,
-            }))
-          }
-
-          newGenerated.set(chapterId, { audioBase64: data.audio, duration: data.duration, subtitles })
-        }
-      } catch (err) {
-        console.error(`Generate failed for ${chapterId}:`, err)
-      }
-      current++
-    }
-
-    setGeneratedChapters(newGenerated)
-    setGenerating(false)
-    setGenerateProgress({ current: 0, total: 0, currentChapter: '' })
-    setSelectedChapters(new Set())
-  }
 
   /* ── 播放章节 ── */
   const handlePlay = (chapterId: string) => {
@@ -541,39 +470,26 @@ export default function AudiobookProjectPage() {
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button
-                onClick={handleGenerate}
-                disabled={generating || selectedChapters.size === 0}
-                style={{
-                  padding: '7px 18px',
-                  background: generating ? '#ccc' : C.pri,
-                  color: '#fff', border: 'none', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                  cursor: generating ? 'default' : 'pointer', fontFamily: 'inherit',
-                  opacity: selectedChapters.size === 0 && !generating ? 0.5 : 1,
-                }}
-              >
-                {generating ? `⏳ ${generateProgress.current}/${generateProgress.total}` : `🎵 生成 (${selectedChapters.size})`}
-              </button>
+                            {generatedChapters.size > 0 && (
+                <button
+                  onClick={handleMergeChapters}
+                  disabled={mergingChapters}
+                  style={{
+                    padding: '7px 18px',
+                    background: mergingChapters ? '#ccc' : C.indigo,
+                    color: '#fff', border: 'none', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                    cursor: mergingChapters ? 'default' : 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  {mergingChapters ? '...' : `Merge (${generatedChapters.size})`}
+                </button>
+              )}
             </div>
           </header>
-
-          {/* ── 生成进度条 ── */}
-          {generating && (
-            <div style={{ padding: '8px 28px', background: 'rgba(196,149,106,.06)', borderBottom: `1px solid ${C.line}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, marginBottom: 4 }}>
-                <span>正在生成：{generateProgress.currentChapter}</span>
-                <span>{generateProgress.current}/{generateProgress.total}</span>
-              </div>
-              <div style={{ height: 4, background: C.line, borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(generateProgress.current / Math.max(generateProgress.total, 1)) * 100}%`, background: C.pri, borderRadius: 2, transition: 'width .3s' }} />
-              </div>
-            </div>
-          )}
 
           {/* ── Tab 切换 ── */}
           <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.line}`, padding: '0 28px', flexShrink: 0 }}>
             {([
-              { key: 'chapters' as const, label: '章节管理', icon: '📖' },
               { key: 'dialogue' as const, label: '对话模式', icon: '🎭' },
               { key: 'voices' as const, label: '音色管理', icon: '🎤' },
               { key: 'settings' as const, label: '生成设置', icon: '⚙️' },
@@ -591,92 +507,6 @@ export default function AudiobookProjectPage() {
 
           {/* ── 内容 ── */}
           <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', paddingBottom: playingChapterId ? 80 : 20 }}>
-
-            {/* ═══ 章节管理 ═══ */}
-            {activeTab === 'chapters' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>勾选章节 → 选择音色 → 点击「生成」→ 播放/下载</p>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <button onClick={selectAll} style={{ fontSize: 11, color: C.pri, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {selectedChapters.size === chapters.length ? '取消全选' : '全选'}
-                    </button>
-                    {generatedChapters.size > 0 && (
-                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                        <select value={chapterExportFormat} onChange={e => setChapterExportFormat(e.target.value as 'wav' | 'mp3')}
-                          style={{ padding: '3px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
-                          <option value="wav">WAV</option>
-                          <option value="mp3">MP3</option>
-                          <option value="m4b">M4B</option>
-                        </select>
-                        <button onClick={handleMergeChapters} disabled={mergingChapters}
-                          style={{ padding: '4px 12px', background: C.indigo, border: 'none', borderRadius: 4, fontSize: 10, fontWeight: 500, color: '#fff', cursor: mergingChapters ? 'default' : 'pointer', fontFamily: 'inherit', opacity: mergingChapters ? 0.6 : 1 }}>
-                          {mergingChapters ? '⏳' : '🔗 合并全部'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {chapters.map((ch, idx) => {
-                    const isSelected = selectedChapters.has(ch.id)
-                    const gen = generatedChapters.get(ch.id)
-                    const isPlayingThis = playingChapterId === ch.id && isPlaying
-                    const subIdx = isPlayingThis ? getCurrentSubtitleIndex(ch.id) : -1
-
-                    return (
-                      <div key={`${ch.id}-${idx}`} style={{
-                        padding: '14px 16px', background: C.card,
-                        borderTop: `1px solid ${isSelected ? C.pri : isPlayingThis ? C.pri : C.line}`,
-                        borderRight: `1px solid ${isSelected ? C.pri : isPlayingThis ? C.pri : C.line}`,
-                        borderBottom: `1px solid ${isSelected ? C.pri : isPlayingThis ? C.pri : C.line}`,
-                        borderLeft: `${isPlayingThis ? 3 : 1}px solid ${isSelected ? C.pri : isPlayingThis ? C.pri : C.line}`,
-                        borderRadius: C.radius, transition: 'all .12s',
-                      }}>
-                        {/* 标题行 */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => toggleChapter(ch.id)}>
-                          <input type="checkbox" checked={isSelected} onChange={() => toggleChapter(ch.id)} onClick={e => e.stopPropagation()} style={{ accentColor: C.pri, width: 16, height: 16, cursor: 'pointer' }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: C.ink }}>{ch.title}</div>
-                            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{(ch.wordCount || 0).toLocaleString()} 字{gen ? ` · ${Math.floor(gen.duration)}秒` : ''}</div>
-                          </div>
-
-                          {gen && (
-                            <div style={{ display: 'flex', gap: 4 }}>
-                              <button onClick={(e) => { e.stopPropagation(); handlePlay(ch.id) }} style={{ width: 28, height: 28, borderRadius: '50%', background: isPlayingThis ? 'rgba(196,149,106,.15)' : 'rgba(26,24,20,.04)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }} title={isPlayingThis ? '暂停' : '播放'}>
-                                {isPlayingThis ? '⏸' : '▶'}
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); handleDownload(ch.id) }} style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(26,24,20,.04)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }} title="下载音频">📥</button>
-                              <button onClick={(e) => { e.stopPropagation(); handleDownloadSubtitle(ch.id) }} style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(26,24,20,.04)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }} title="下载字幕(LRC)">📝</button>
-                              <button onClick={(e) => { e.stopPropagation(); handleDownloadSRT(ch.id) }} style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(26,24,20,.04)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }} title="下载字幕(SRT)">🎬</button>
-                            </div>
-                          )}
-
-                          {gen && <span style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(122,158,122,.12)', color: C.green, borderRadius: 10, flexShrink: 0 }}>✓</span>}
-                        </div>
-
-                        {/* 字幕同步显示 */}
-                        {isPlayingThis && gen && gen.subtitles.length > 0 && (
-                          <div style={{ marginTop: 10, padding: '10px 12px', background: 'rgba(196,149,106,.04)', borderRadius: 6, maxHeight: 120, overflow: 'auto' }}>
-                            {gen.subtitles.map((sub, i) => (
-                              <p key={i} style={{
-                                margin: '0 0 4px', fontSize: 12, lineHeight: '1.6',
-                                color: i === subIdx ? C.pri : C.muted,
-                                fontWeight: i === subIdx ? 600 : 400,
-                                transition: 'all .2s',
-                              }}>
-                                {sub.text}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
 
             {/* ═══ 对话模式 ═══ */}
             {activeTab === 'dialogue' && (

@@ -167,45 +167,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 如果请求 M4B/MP3 格式，用 ffmpeg 转码
-    if (format === 'm4b' || format === 'mp3') {
-      try {
-        const { execSync } = await import('child_process')
-        const { writeFileSync, unlinkSync, readFileSync } = await import('fs')
-        const { tmpdir } = await import('os')
-        const { join } = await import('path')
-        const tmpDir = tmpdir()
-        const wavPath = join(tmpDir, `merge_${Date.now()}.wav`)
-        const outExt = format === 'm4b' ? 'm4b' : 'mp3'
-        const outPath = join(tmpDir, `merge_${Date.now()}.${outExt}`)
-
-        writeFileSync(wavPath, wavBuffer)
-
-        // ffmpeg 转码
-        const codecArgs = format === 'm4b'
-          ? ['-c:a', 'aac', '-b:a', '128k', '-f', 'ipod']
-          : ['-c:a', 'libmp3lame', '-b:a', '128k']
-
-        execSync(`ffmpeg -y -i "${wavPath}" ${codecArgs.join(' ')} "${outPath}"`, { stdio: 'pipe', timeout: 30000 })
-
-        const convertedBuf = readFileSync(outPath)
-
-        // Clean up
-        try { unlinkSync(wavPath); unlinkSync(outPath) } catch {}
-
         return NextResponse.json({
-          success: true,
-          audio: convertedBuf.toString('base64'),
-          duration: totalDuration,
-          format: outExt,
-          mergedSegments: rawChunks.length,
-          totalSegments: segments.length,
-        })
-      } catch (convErr) {
-        console.error('M4B/MP3 conversion failed:', convErr)
-      }
-    }
-
-    return NextResponse.json({
       success: true,
       audio: wavBuffer.toString('base64'),
       duration: totalDuration,
