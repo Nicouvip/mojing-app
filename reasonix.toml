@@ -83,3 +83,8 @@ args    = ["D:\\codexvip\\mcp-servers\\xfyun-voiceclone\\server.py"]
 name    = "paddleocr-vl"
 command = "python"
 args    = ["D:\\codexvip\\mcp-servers\\paddleocr-vl\\server.py"]
+
+[[plugins]]
+name    = "doubao-voice"
+command = "python"
+args    = ["D:\\codexvip\\mcp-servers\\doubao-voice\\server.py"]
