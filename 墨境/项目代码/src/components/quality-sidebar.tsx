@@ -54,6 +54,12 @@ export function QualitySidebar({ content, editorRef, open, onClose, onOpenReport
         return
       }
     }
+    // P3-5: 关键词未找到时弹出 toast 提示
+    const toast = document.createElement('div')
+    toast.textContent = `已定位到「${item.name}」`
+    toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-foreground text-background px-4 py-2 rounded-lg text-xs z-[9999] shadow-lg'
+    document.body.appendChild(toast)
+    setTimeout(() => toast.remove(), 1500)
   }
 
   return (
