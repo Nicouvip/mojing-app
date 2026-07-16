@@ -109,12 +109,12 @@ export function CoolingMatrix({ currentChapter, coolingState }: CoolingMatrixPro
               {SCENE_IDS.map(id => {
                 const c = cooling('scene', id)
                 return (
-                  <div key={id} className={`flex items-center justify-between px-2 py-1 rounded-md text-xs ${
-                    c ? 'opacity-30' : 'bg-[rgba(106,138,106,0.06)]'
+                  <div key={id} className={`flex items-center justify-between px-2 py-1 rounded-md text-xs border transition-colors ${
+                    c ? 'opacity-50 bg-destructive/5 border-destructive/15 text-muted-foreground' : 'bg-success/5 border-success/10 text-foreground'
                   }`}>
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] ${c ? '' : 'text-[#6a8a6a]'}`}>{c ? '◐' : '●'}</span>
-                      <span className="font-medium text-foreground">{id}</span>
+                      <span className={`text-[10px] ${c ? 'text-destructive/60' : 'text-success'}`}>{c ? '⊘' : '●'}</span>
+                      <span className="font-medium">{id}</span>
                       <span className="text-muted-foreground">{SCENE_MAP[id].label}</span>
                     </div>
                     <span className="text-[10px] text-muted-foreground/60">{SCENE_MAP[id].desc}</span>
@@ -130,10 +130,10 @@ export function CoolingMatrix({ currentChapter, coolingState }: CoolingMatrixPro
               {ENDING_IDS.map(id => {
                 const c = cooling('ending', id)
                 return (
-                  <div key={id} className={`flex items-center gap-1 px-1.5 py-1 rounded text-[10px] ${
-                    c ? 'opacity-25' : ''
+                  <div key={id} className={`flex items-center gap-1 px-1.5 py-1 rounded text-[10px] border transition-colors ${
+                    c ? 'opacity-50 bg-destructive/5 border-destructive/15' : 'bg-success/5 border-success/10'
                   }`}>
-                    <span className={c ? '' : 'text-[#6a8a6a]'}>{c ? '◐' : '●'}</span>
+                    <span className={c ? 'text-destructive/60' : 'text-success'}>{c ? '⊘' : '●'}</span>
                     <span className="font-medium">{id}</span>
                     <span className="text-muted-foreground">{ENDING_MAP[id].label}</span>
                   </div>
@@ -148,10 +148,10 @@ export function CoolingMatrix({ currentChapter, coolingState }: CoolingMatrixPro
               {HOOK_IDS.map(id => {
                 const c = cooling('hook', id)
                 return (
-                  <div key={id} className={`flex items-center gap-1 px-1.5 py-1 rounded text-[10px] ${
-                    c ? 'opacity-25' : ''
+                  <div key={id} className={`flex items-center gap-1 px-1.5 py-1 rounded text-[10px] border transition-colors ${
+                    c ? 'opacity-50 bg-destructive/5 border-destructive/15' : 'bg-success/5 border-success/10'
                   }`}>
-                    <span className={c ? '' : 'text-[#6a8a6a]'}>{c ? '◐' : '●'}</span>
+                    <span className={c ? 'text-destructive/60' : 'text-success'}>{c ? '⊘' : '●'}</span>
                     <span className="font-medium">{id}</span>
                     <span className="text-muted-foreground">{HOOK_MAP[id].label}</span>
                   </div>
@@ -160,9 +160,9 @@ export function CoolingMatrix({ currentChapter, coolingState }: CoolingMatrixPro
             </div>
           )}
 
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground pt-1.5 border-t border-border">
-            <span><span className="text-[#6a8a6a]">●</span> 可用</span>
-            <span><span className="opacity-30">◐</span> 冷却中</span>
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-1.5 border-t border-border">
+            <span className="flex items-center gap-1"><span className="text-success">●</span> 可用</span>
+            <span className="flex items-center gap-1"><span className="text-destructive/60">⊘</span> 冷却中</span>
           </div>
         </div>
       )}

@@ -186,6 +186,7 @@ export const WritingEditor = forwardRef<EditorHandle, Props>(function WritingEdi
 
   if (!editor) return <div className="text-muted-foreground text-sm py-10 text-center">加载中...</div>
   const wc = editor.storage.characterCount?.words?.() || 0
+  const isEmpty = !content || content.replace(/<[^>]*>/g, '').trim().length === 0
   const act = (name: string, opts?: Record<string, unknown>) => editor.isActive(name, opts)
   const commitGoal = () => { const n = parseInt(inputGoal, 10); if (!isNaN(n) && n > 0) onWordGoalChange?.(n); else setInputGoal(String(wordGoal)) }
   return (
@@ -217,7 +218,22 @@ export const WritingEditor = forwardRef<EditorHandle, Props>(function WritingEdi
         <span className="text-xs text-muted-foreground">{wc}/{wordGoal}字</span>
         <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-primary rounded-full transition-all" style={{ width: Math.min(100, (wc / wordGoal) * 100) + '%' }} /></div>
       </div>
-      <div className="flex-1"><EditorContent editor={editor} /></div>
+      <div className="flex-1 relative">
+        <EditorContent editor={editor} />
+        {isEmpty && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+            <div className="text-center space-y-3 max-w-xs">
+              <div className="text-3xl opacity-30">✍️</div>
+              <p className="text-sm text-muted-foreground/40">开始输入你的故事...</p>
+              <div className="flex flex-wrap justify-center gap-2 text-[10px] text-muted-foreground/30">
+                <span>加粗 <kbd className="px-1 py-0.5 rounded bg-muted/50 border border-border/30">Ctrl+B</kbd></span>
+                <span>斜体 <kbd className="px-1 py-0.5 rounded bg-muted/50 border border-border/30">Ctrl+I</kbd></span>
+                <span>标题 <kbd className="px-1 py-0.5 rounded bg-muted/50 border border-border/30">Ctrl+H</kbd></span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 })

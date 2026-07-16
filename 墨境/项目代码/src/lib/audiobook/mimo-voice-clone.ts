@@ -50,7 +50,6 @@ export class MiMoVoiceCloneEngine {
     const base64Audio = `data:${params.sampleMimeType};base64,${params.sampleAudioBuffer.toString('base64')}`
 
     // 音频样本仅通过 audio.voice 字段传递，messages 中只放文本指令
-    // （同时放到 messages 中会导致 tokens 远超 context length 8192 限制）
     const styleText = [params.emotion, params.style].filter(Boolean).join('，')
     const systemHint = styleText ? `请用${styleText}的风格` : ''
     const userContent = systemHint
@@ -71,95 +70,51 @@ export class MiMoVoiceCloneEngine {
       },
     }
 
-    // 带指数退避的重试逻辑（应对 429 频率限制）
+    // 指数退避重试（429 + 网络错误均重试，最多3次）
     const maxRetries = 3
-    let lastError: Error | null = null
-    let retryAfterSec = 0
-
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       if (attempt > 0) {
-        // 指数退避：10s → 20s → 40s
-        const waitMs = (retryAfterSec > 0 ? retryAfterSec * 1000 : Math.min(10000 * Math.pow(2, attempt - 1), 40000))
-        console.warn(`[VoiceClone] 429 rate limited, retry ${attempt}/${maxRetries} after ${waitMs}ms`)
+        const waitMs = Math.min(10000 * Math.pow(2, attempt - 1), 40000)
+        console.warn(`[VoiceClone] retry ${attempt}/${maxRetries} after ${waitMs}ms`)
         await new Promise(r => setTimeout(r, waitMs))
       }
 
       try {
         const response = await fetch(`${this.baseUrl}/chat/completions`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'api-key': this.apiKey,
-          },
+          headers: { 'Content-Type': 'application/json', 'api-key': this.apiKey },
           body: JSON.stringify(body),
         })
 
         if (response.ok) {
           const result = await response.json()
-
-          // 解析音频数据
           const audioData = result.choices?.[0]?.message?.audio?.data
-          if (!audioData) {
-            throw new Error('No audio data in response')
-          }
-
-          // Base64 解码
+          if (!audioData) throw new Error('No audio data in response')
           const audioBuffer = Buffer.from(audioData, 'base64')
-
-          // 估算时长（24kHz PCM16 mono = 2 bytes per sample）
-          const duration = audioBuffer.length / (24000 * 2)
-
-          return {
-            audioBuffer,
-            duration,
-            format: params.format || 'wav',
-          }
+          return { audioBuffer, duration: audioBuffer.length / (24000 * 2), format: params.format || 'wav' }
         }
 
-        // 429 频率限制 → 重试（优先读取 Retry-After 头）
-        if (response.status === 429 && attempt < maxRetries) {
-          retryAfterSec = parseInt(response.headers.get('Retry-After') || '0', 10)
-          const errorText = await response.text()
-          console.warn('[VoiceClone] 429 rate limited, retryAfter=' + retryAfterSec + 's')
-          lastError = new Error(`MiMo VoiceClone error: ${response.status} - ${errorText}`)
-          continue
-        }
-
-        // 其他错误 → 直接抛出
-        const error = await response.text()
-        throw new Error(`MiMo VoiceClone error: ${response.status} - ${error}`)
+        if (response.status === 429 && attempt < maxRetries) continue
+        throw new Error(`MiMo VoiceClone error: ${response.status} - ${await response.text()}`)
       } catch (err) {
-        // 429 已经被上面捕获并设置了 lastError，这里跳过
-        if (err instanceof Error && err.message.startsWith('MiMo VoiceClone error: 429')) {
-          continue
-        }
-        // 非 429 错误直接抛出
-        if (!(err instanceof Error && err.message.startsWith('MiMo VoiceClone'))) {
-          // 网络错误等 → 重试
-          if (attempt < maxRetries) {
-            console.warn(`[VoiceClone] network error, retry ${attempt + 1}/${maxRetries}:`, err)
-            lastError = err instanceof Error ? err : new Error(String(err))
-            continue
-          }
+        if (attempt < maxRetries && !(err as Error)?.message?.startsWith('MiMo VoiceClone error:')) {
+          continue // 网络错误等重试
         }
         throw err
       }
     }
-
-    throw lastError || new Error('VoiceClone failed after retries')
+    throw new Error('MiMo VoiceClone failed after retries')
   }
 
   /**
    * 验证音频样本
    */
   validateSample(buffer: Buffer, mimeType: string): { valid: boolean; error?: string } {
-    // 检查大小（Base64 后 ≤ 10MB，原始文件约 7.5MB）
     const maxSize = 7.5 * 1024 * 1024
     if (buffer.length > maxSize) {
       return { valid: false, error: `音频文件过大，最大支持 ${maxSize / 1024 / 1024}MB` }
     }
 
-    // 检查格式
     const supportedFormats = ['audio/mpeg', 'audio/mp3', 'audio/wav']
     if (!supportedFormats.includes(mimeType)) {
       return { valid: false, error: `不支持的音频格式: ${mimeType}，支持 mp3/wav` }
