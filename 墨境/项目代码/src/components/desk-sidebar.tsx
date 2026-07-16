@@ -79,9 +79,10 @@ export default function DeskSidebar({ activeHref, active }: DeskSidebarProps) {
 
   useEffect(() => {
     setProjects(getProjects())
-    // 定期刷新作品数（创建/删除作品后 badge 自动更新）
-    const timer = setInterval(() => { setProjects(getProjects()) }, 5000)
-    return () => clearInterval(timer)
+    // 监听项目变更事件，替代轮询
+    const handler = () => setProjects(getProjects())
+    window.addEventListener('mojing:projects-changed', handler)
+    return () => window.removeEventListener('mojing:projects-changed', handler)
   }, [])
 
   const current = activeHref ?? active ?? pathname

@@ -246,6 +246,8 @@ function setProjectsAll(p: Project[]) {
   if (isClient()) saveClient('projects', p)
   projectsDirty = true
   scheduleFlush()
+  // 派发事件通知所有监听者刷新
+  if (isClient()) window.dispatchEvent(new CustomEvent('mojing:projects-changed'))
 }
 
 function getChaptersAll(includeDeleted = false): Chapter[] {
