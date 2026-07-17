@@ -18,6 +18,7 @@ import { PlanPanel } from '@/components/plan-panel'
 import { useEditorActions } from '@/components/editor/use-editor-actions'
 import { ChapterSidebar } from '@/components/editor/chapter-sidebar'
 import { StatusPanel } from '@/components/status-panel'
+import { FormatToolbar } from '@/components/editor/format-toolbar'
 import type { Editor } from '@tiptap/react'
 import { useTheme } from '@/lib/utils/theme-context'
 import { ArrowLeft, Save, CheckCircle2, AlertTriangle, X, Search, Trash2, BookOpen, FileText, User, Lightbulb, Sparkles, BookMarked, Bot, Sun, Sunrise, Moon, Snowflake, Upload, Download, Printer, Keyboard, Zap } from 'lucide-react'
@@ -575,47 +576,8 @@ const [showBrainstorm, setShowBrainstorm] = useState(false)
         <main className="flex flex-col flex-1 min-w-0 overflow-hidden" style={{background:S.bg2}}>
 
           {/* Format toolbar */}
+          <FormatToolbar editorRef={editorRef} S={S} />
           <div className="flex items-center gap-1 px-4 py-2 border-b flex-wrap shrink-0" style={{borderColor:S.border,background:S.bg2}}>
-            {[['B','b' as const],['I','i' as const],['U','u' as const],['S','s' as const]].map(([label,tag]) => (
-              <button key={tag}
-                onClick={() => {const ed=editorRef.current;if(ed){const cmd=ed.chain().focus();if(tag==='b')cmd.toggleBold();else if(tag==='i')cmd.toggleItalic();else if(tag==='u')cmd.toggleUnderline();else if(tag==='s')cmd.toggleStrike();cmd.run()}}}
-                className="min-w-[34px] min-h-[34px] max-[480px]:min-w-[28px] max-[480px]:min-h-[28px] max-[480px]:text-[13px] flex items-center justify-center rounded text-sm transition-all"
-                style={{color:S.muted}}
-                onMouseEnter={e=>{(e.target as HTMLElement).style.background='rgba(196,149,106,.06)'}}
-                onMouseLeave={e=>{(e.target as HTMLElement).style.background=''}}>
-                {tag === 'b' ? <b>B</b> : tag === 'i' ? <i>I</i> : tag === 'u' ? <u>U</u> : <s>S</s>}
-              </button>
-            ))}
-            <span className="w-px h-5 mx-1 max-[480px]:hidden" style={{background:S.border}} />
-            <select className="text-xs px-2 py-1.5 rounded outline-none cursor-pointer max-[480px]:hidden" style={{border:'1px solid '+S.border,color:S.ink,background:S.bg2}}>
-              <option>默认</option><option>宋体</option><option>楷体</option>
-            </select>
-            <select className="text-xs px-2 py-1.5 rounded outline-none cursor-pointer max-[480px]:hidden" style={{border:'1px solid '+S.border,color:S.ink,background:S.bg2}}>
-              <option>标准</option><option>大号</option><option>特大</option>
-            </select>
-            <span className="w-px h-5 mx-1 max-[480px]:hidden" style={{background:S.border}} />
-            <button className="min-w-[34px] min-h-[34px] flex items-center justify-center rounded text-sm" style={{color:S.muted}}
-              onClick={() => {const ed=editorRef.current;if(ed)ed.chain().focus().toggleHeading({level:2}).run()}}
-              onMouseEnter={e=>{(e.target as HTMLElement).style.background='rgba(196,149,106,.06)'}}
-              onMouseLeave={e=>{(e.target as HTMLElement).style.background=''}}>H</button>
-            <button className="min-w-[34px] min-h-[34px] flex items-center justify-center rounded text-sm" style={{color:S.muted}}
-              onClick={() => {const ed=editorRef.current;if(ed)ed.chain().focus().toggleBlockquote().run()}}
-              onMouseEnter={e=>{(e.target as HTMLElement).style.background='rgba(196,149,106,.06)'}}
-              onMouseLeave={e=>{(e.target as HTMLElement).style.background=''}}>&#8220;</button>
-            <span className="w-px h-5 mx-1" style={{background:S.border}} />
-            <button className="min-w-[34px] min-h-[34px] flex items-center justify-center rounded text-sm" style={{color:S.muted}}
-              onClick={() => {const ed=editorRef.current;if(ed)ed.chain().focus().undo().run()}}
-              onMouseEnter={e=>{(e.target as HTMLElement).style.background='rgba(196,149,106,.06)'}}
-              onMouseLeave={e=>{(e.target as HTMLElement).style.background=''}}>↩</button>
-            <button className="min-w-[34px] min-h-[34px] flex items-center justify-center rounded text-sm" style={{color:S.muted}}
-              onClick={() => {const ed=editorRef.current;if(ed)ed.chain().focus().redo().run()}}
-              onMouseEnter={e=>{(e.target as HTMLElement).style.background='rgba(196,149,106,.06)'}}
-              onMouseLeave={e=>{(e.target as HTMLElement).style.background=''}}>↪</button>
-            <span className="w-px h-5 mx-1" style={{background:S.border}} />
-            <button className="min-w-[34px] min-h-[34px] flex items-center justify-center rounded text-sm" style={{color:S.muted}} onClick={() => {}} onMouseEnter={e=>{(e.target as HTMLElement).style.background='rgba(196,149,106,.06)'}} onMouseLeave={e=>{(e.target as HTMLElement).style.background=''}}>&para;</button>
-            <span className="flex-1" />
-            <button className="min-w-[34px] min-h-[34px] flex items-center justify-center rounded text-sm" style={{color:S.muted}} onClick={() => {}} onMouseEnter={e=>{(e.target as HTMLElement).style.background='rgba(196,149,106,.06)'}} onMouseLeave={e=>{(e.target as HTMLElement).style.background=''}}>&#9670;</button>
-            <span className="w-px h-5 mx-1" style={{background:S.border}} />
             <button onClick={handleAutoFormat} className="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all" style={{background:'rgba(196,149,106,.08)',color:S.pri}}
               onMouseEnter={e=>{(e.target as HTMLElement).style.background=S.pri;(e.target as HTMLElement).style.color='#fff'}} onMouseLeave={e=>{(e.target as HTMLElement).style.background='rgba(196,149,106,.08)';(e.target as HTMLElement).style.color=S.pri}}>
               ✦ 排版
