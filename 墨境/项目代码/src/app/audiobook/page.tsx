@@ -8,6 +8,7 @@ import DeskSidebar from '@/components/desk-sidebar'
 import { getProjects, getChapters, createChapter, createProject, updateChapterContent } from '@/lib/db/store'
 import type { Project, Chapter } from '@/lib/db/types'
 import { encodeWAV } from '@/lib/audiobook/audio-utils'
+import { loadGeneratedChapters } from '@/lib/audiobook/audio-persistence'
 
 const C = {
   pri: '#c4956a',
@@ -73,6 +74,7 @@ export default function AudiobookPage() {
   const [search, setSearch] = useState('')
   const [genreFilter, setGenreFilter] = useState('全部')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [audioProgress, setAudioProgress] = useState<Record<string, number>>({})
 
   /* ── 导入状态 ── */
   const [showImport, setShowImport] = useState(false)
@@ -114,6 +116,20 @@ export default function AudiobookPage() {
   const recordedChunksRef = useRef<Blob[]>([])
 
   useEffect(() => { if (!isRecording) { setRecordingTime(0); return }; const t = setInterval(() => setRecordingTime(s => s + 1), 1000); return () => clearInterval(t) }, [isRecording])
+
+  /* ── 加载各项目音频生成进度 ── */
+  useEffect(() => {
+    if (projects.length === 0) return
+    let cancelled = false
+    ;(async () => {
+      const map: Record<string, number> = {}
+      await Promise.all(projects.map(async (p) => {
+        try { const m = await loadGeneratedChapters(p.id); map[p.id] = m.size } catch { map[p.id] = 0 }
+      }))
+      if (!cancelled) setAudioProgress(map)
+    })()
+    return () => { cancelled = true }
+  }, [projects])
 
   /* ── 播放音频 ── */
   const audioUrlRef = useRef<string | null>(null)
@@ -491,6 +507,9 @@ export default function AudiobookPage() {
                           <span>📖 {chapterCount} 章</span>
                           <span>📝 {(totalWords || 0).toLocaleString()} 字</span>
                           <span>🕐 {new Date(project.updatedAt).toLocaleDateString('zh-CN')}</span>
+                          {audioProgress[project.id] > 0 && (
+                            <span style={{ color: C.pri }}>🎵 {audioProgress[project.id]}/{chapterCount} 已生成</span>
+                          )}
                         </div>
                         {recentChapters.length > 0 && (
                           <div style={{ marginBottom: 12 }}>
