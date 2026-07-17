@@ -12,6 +12,10 @@ export interface Project {
   userId?: string
 }
 
+/**
+ * @deprecated 使用 CharacterProfile 代替，将在后续版本移除。
+ * 保留用于 editor 页面的轻量角色列表。
+ */
 export interface Character {
   name: string
   type: '主角' | '配角' | '反派' | '次要角色' | '客串'
