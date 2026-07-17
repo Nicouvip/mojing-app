@@ -7,6 +7,7 @@ import Navbar from '@/components/navbar'
 import DeskSidebar from '@/components/desk-sidebar'
 import { getProjects, getChapters, createChapter, createProject, updateChapterContent } from '@/lib/db/store'
 import type { Project, Chapter } from '@/lib/db/types'
+import { encodeWAV } from '@/lib/audiobook/audio-utils'
 
 const C = {
   pri: '#c4956a',

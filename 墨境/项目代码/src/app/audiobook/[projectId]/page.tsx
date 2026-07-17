@@ -10,6 +10,7 @@ import type { Project, Chapter } from '@/lib/db/types'
 import { DialogueMode } from '@/components/audiobook/dialogue-mode'
 import { generateSRT } from '@/lib/audiobook/srt-generator'
 import { loadGeneratedChapters, saveGeneratedChapter, clearGeneratedChapters } from '@/lib/audiobook/audio-persistence'
+import { encodeWAV } from '@/lib/audiobook/audio-utils'
 
 /* ── 设计令牌 ── */
 const C = {
