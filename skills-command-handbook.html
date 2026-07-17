@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>技能包命令手册 — 一键复制</title>
+<script src="https://cdn.tailwindcss.com">
+</script>
+<link href="https://fonts.cdnfonts.com/css/geist" rel="stylesheet">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --glow-purple: rgba(139, 92, 246, 0.15);
+    --glow-emerald: rgba(52, 211, 153, 0.10);
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --hairline: rgba(255, 255, 255, 0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background: #050505;
+    color: #f5f5f5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* 背景径向光晕 */
+  .bg-glow {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 70% 60% at 15% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 80%, rgba(52, 211, 153, 0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 50% 50%, rgba(99, 102, 241, 0.04) 0%, transparent 50%);
+  }
+
+  /* 噪声纹理 (固定层) */
+  .noise-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+  }
+
+  /* 自定义滚动条 */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+  /* 页面内容容器 */
+  .page-content {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* 双边框卡片 */
+  .double-bezel-outer {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 2px;
+    border-radius: 1.25rem;
+    transition: all 0.6s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .double-bezel-outer:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    transform: translateY(-2px);
+  }
+
+  .double-bezel-inner {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: calc(1.25rem - 2px);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
+    padding: 1.25rem;
+    transition: all 0.6s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  /* 命令代码块 */
+  .cmd-code {
+    font-family: 'Geist', 'SF Mono', ui-monospace, monospace;
+    font-size: 0.875rem;
+    color: #e2e8f0;
+    background: rgba(255,255,255,0.04);
+    border-radius: 0.5rem;
+    padding: 0.25rem 0.625rem;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    letter-spacing: -0.01em;
+  }
+
+  /* 复制按钮 - Button-in-Button 架构 */
+  .copy-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem 0.375rem 0.75rem;
+    border-radius: 9999px;
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.75rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    white-space: nowrap;
+  }
+  .copy-btn:hover {
+    background: rgba(139, 92, 246, 0.15);
+    color: #c4b5fd;
+    transform: scale(0.97);
+  }
+  .copy-btn:active {
+    transform: scale(0.94);
+  }
+  .copy-btn .icon-ring {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    flex-shrink: 0;
+  }
+  .copy-btn:hover .icon-ring {
+    background: rgba(139, 92, 246, 0.2);
+    transform: translateX(1px) translateY(-1px) scale(1.05);
+  }
+  .copy-btn .icon-ring svg {
+    width: 0.75rem;
+    height: 0.75rem;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .copy-btn.copied {
+    background: rgba(52, 211, 153, 0.12);
+    color: #6ee7b7;
+  }
+  .copy-btn.copied .icon-ring {
+    background: rgba(52, 211, 153, 0.15);
+  }
+
+  /* 分类标语 */
+  .category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+  }
+
+  /* 滚动渐入动画 */
+  .reveal {
+    opacity: 0;
+    transform: translateY(2rem) scale(0.98);
+    filter: blur(4px);
+    transition: all 0.8s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+
+  /* 导航岛 */
+  .nav-island {
+    position: fixed;
+    top: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    background: rgba(5, 5, 5, 0.75);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+    padding: 0.5rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.5);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .nav-island .badge-count {
+    background: rgba(139,92,246,0.15);
+    color: #c4b5fd;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(1rem);
+    z-index: 200;
+    background: rgba(5,5,5,0.9);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(52,211,153,0.2);
+    border-radius: 9999px;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.8125rem;
+    color: #6ee7b7;
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+    pointer-events: none;
+    font-weight: 500;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (max-width: 768px) {
+    .nav-island {
+      top: 0.75rem;
+      padding: 0.375rem 1rem;
+      font-size: 0.75rem;
+      width: calc(100% - 1.5rem);
+      border-radius: 0.75rem;
+      justify-content: center;
+    }
+    .double-bezel-inner {
+      padding: 0.875rem;
+    }
+    .cmd-code {
+      font-size: 0.8125rem;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+    .copy-btn {
+      font-size: 0.6875rem;
+      padding: 0.25rem 0.375rem 0.25rem 0.625rem;
+    }
+    .copy-btn .icon-ring {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+    .toast {
+      bottom: 1.5rem;
+      width: calc(100% - 2rem);
+      text-align: center;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- 背景光晕 -->
+<div class="bg-glow"></div>
+<div class="noise-overlay"></div>
+
+<!-- 导航岛 -->
+<nav class="nav-island" role="navigation" aria-label="页面导航">
+  <span style="color: rgba(255,255,255,0.7); font-weight: 600;">⌘ 技能包</span>
+  <span style="opacity:0.3;">·</span>
+  <span>命令手册</span>
+  <span class="badge-count">56 个命令</span>
+</nav>
+
+<!-- Toast 通知 -->
+<div id="toast" class="toast">✓ 已复制到剪贴板</div>
+
+<!-- 主内容 -->
+<main class="page-content">
+
+  <!-- Hero -->
+  <header style="padding: 8rem 1.5rem 3rem; max-width: 80rem; margin: 0 auto; text-align: center;">
+    <div style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.75rem; border-radius: 9999px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); font-size: 0.625rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 1.5rem;">
+      ⚡ QUICK REFERENCE
+    </div>
+    <h1 style="font-size: clamp(2.25rem, 6vw, 4.5rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; background: linear-gradient(135deg, #f5f5f5 0%, #a78bfa 50%, #6ee7b7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+      技能包命令手册
+    </h1>
+    <p style="margin-top: 1rem; font-size: 1.0625rem; color: rgba(255,255,255,0.4); font-weight: 400; max-width: 32rem; margin-left: auto; margin-right: auto; line-height: 1.6;">
+      点击命令右侧的 <span style="color: rgba(255,255,255,0.5);">⎘</span> 按钮即可一键复制
+    </p>
+  </header>
+
+  <!-- 命令网格 -->
+  <div style="max-width: 80rem; margin: 0 auto; padding: 0 1.5rem 8rem;">
+    <div id="commands-grid" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 1rem;">
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ====== 数据 ======
+const categories = [
+  {
+    name: "有声书 / 语音类",
+    icon: "🎙",
+    commands: [
+      { cmd: "/aubook-narration-producer", desc: "有声书口播制作：文本分析、语气设计、分段合成、引擎调参。旁白/角色音全套流程" },
+      { cmd: "/voice-toolkit", desc: "语音工具集成：TTS合成、声音克隆、音频处理。多个引擎统一调度" },
+      { cmd: "/speech", desc: "语音合成：快速文本转语音，选择发音人" }
+    ]
+  },
+  {
+    name: "墨境项目类",
+    icon: "🎮",
+    commands: [
+      { cmd: "/mojing-diagnose", desc: "墨境故障诊断：项目出问题时按流程排查，先出方案再修" },
+      { cmd: "/mojing-self-check", desc: "墨境收工自检：进度、文档、质量、纪律四项检查，不跳步" }
+    ]
+  },
+  {
+    name: "浏览器 / 自动化类",
+    icon: "🌐",
+    commands: [
+      { cmd: "/agent-browser", desc: "浏览器自动化：打开网页、填表单、截图、抓数据、测试Web应用" },
+      { cmd: "/playwright", desc: "Playwright浏览器测试：端到端测试、自动化操作" },
+      { cmd: "/playwright-cli", desc: "Playwright命令行：快速浏览器操作" },
+      { cmd: "/playwright-interactive", desc: "Playwright交互模式：调试浏览器行为" }
+    ]
+  },
+  {
+    name: "代码 / 开发类",
+    icon: "⚡",
+    commands: [
+      { cmd: "/code-review", desc: "代码审查：检查改动质量、安全、风格" },
+      { cmd: "/code-review-and-quality", desc: "多维度代码审查：更全面的检查，合码前必用" },
+      { cmd: "/code-simplification", desc: "代码简化：重构为更清晰的写法，不改功能" },
+      { cmd: "/debugging-and-error-recovery", desc: "系统化调试：测试失败/构建报错时按步骤排查" },
+      { cmd: "/test", desc: "测试：运行或编写测试" },
+      { cmd: "/test-driven-development", desc: "TDD流程：先写测试再写代码" },
+      { cmd: "/security-review", desc: "安全审查：检查注入、认证、敏感数据等问题" },
+      { cmd: "/security-best-practices", desc: "安全最佳实践：安全加固指南" },
+      { cmd: "/performance-optimization", desc: "性能优化：速度、资源占用调优" },
+      { cmd: "/observability-and-instrumentation", desc: "可观测性：日志、监控、追踪" },
+      { cmd: "/ci-cd-and-automation", desc: "CI/CD自动化：构建和部署流水线" },
+      { cmd: "/planning-and-task-breakdown", desc: "任务规划：拆解步骤、排优先级" },
+      { cmd: "/refactor-request", desc: "重构请求：分析并提出重构方案" }
+    ]
+  },
+  {
+    name: "网页 / 前端类",
+    icon: "🖥",
+    commands: [
+      { cmd: "/frontend-design", desc: "前端设计：UI/UX 组件设计" },
+      { cmd: "/frontend-ui-engineering", desc: "前端UI工程：组件架构、性能、可维护性" },
+      { cmd: "/responsive-design", desc: "响应式设计：多端适配" },
+      { cmd: "/accessibility-compliance", desc: "无障碍合规：WCAG 标准" },
+      { cmd: "/web-component-design", desc: "Web组件设计：可复用组件架构" },
+      { cmd: "/image-to-code", desc: "图片转代码：从设计图生成前端代码" },
+      { cmd: "/prototype", desc: "原型制作：快速交互原型" },
+      { cmd: "/webapp-testing", desc: "Web应用测试：功能、性能、兼容性" }
+    ]
+  },
+  {
+    name: "设计 / 创意类",
+    icon: "🎨",
+    commands: [
+      { cmd: "/brand-guidelines", desc: "品牌配色：应用 Anthropic 官方的品牌色和字体" },
+      { cmd: "/brandkit", desc: "品牌工具包：Logo系统、品牌展板、高级品牌视觉设计" },
+      { cmd: "/canvas-design", desc: "画布设计：生成 .png/.pdf 格式的精美视觉艺术" },
+      { cmd: "/algorithmic-art", desc: "算法艺术：使用 p5.js 创作带随机种子的互动艺术作品" },
+      { cmd: "/infographic", desc: "信息图设计：数据可视化、图表设计" },
+      { cmd: "/imagegen", desc: "图片生成：AI 生图，支持多种风格" },
+      { cmd: "/imagegen-frontend-web", desc: "网页端生图：Web 界面的图片生成" },
+      { cmd: "/imagegen-frontend-mobile", desc: "移动端生图：手机端的图片生成" },
+      { cmd: "/high-end-visual-design", desc: "高端视觉设计：精致 UI 视觉设计" },
+      { cmd: "/industrial-brutalist-ui", desc: "工业风UI：粗野主义风格界面" },
+      { cmd: "/minimalist-ui", desc: "极简UI：简洁干净的界面设计" },
+      { cmd: "/ui-ux-pro-max", desc: "UI/UX设计：全面专业设计" },
+      { cmd: "/design-taste-frontend", desc: "前端设计品味：美观且实用的设计" },
+      { cmd: "/interaction-design", desc: "交互设计：动效、过渡、用户反馈" }
+    ]
+  },
+  {
+    name: "文档 / 写作类",
+    icon: "✍️",
+    commands: [
+      { cmd: "/documentation-and-adrs", desc: "文档与架构决策：ADR、技术文档、API文档编写" },
+      { cmd: "/doc-coauthoring", desc: "文档协作：多人编辑、审阅流程" },
+      { cmd: "/writing-guidelines", desc: "写作规范：清晰一致的写作风格" },
+      { cmd: "/writing-beats", desc: "写作节奏：文章结构、段落控制" },
+      { cmd: "/writing-fragments", desc: "写作片段：段落级精修" },
+      { cmd: "/writing-shape", desc: "文章结构：整体架构与信息流" },
+      { cmd: "/edit-article", desc: "文章编辑：润色、改写、优化" },
+      { cmd: "/obsidian-vault", desc: "Obsidian知识库：笔记管理和双向链接" },
+      { cmd: "/pdf", desc: "PDF生成：生成 PDF 文档" },
+      { cmd: "/docx", desc: "Word文档生成：生成 .docx 文件" },
+      { cmd: "/pptx", desc: "PPT生成：生成 PowerPoint 演示文稿" },
+      { cmd: "/xlsx", desc: "Excel生成：生成 .xlsx 表格" }
+    ]
+  },
+  {
+    name: "AI / 模型类",
+    icon: "🤖",
+    commands: [
+      { cmd: "/paddleocr-vl-mcp", desc: "PaddleOCR-VL 文档识别：图片/PDF中的文字提取" },
+      { cmd: "/claude-api", desc: "Claude API参考：模型参数、定价、工具调用" },
+      { cmd: "/openai-docs", desc: "OpenAI API参考：GPT/Whisper/DALL-E 等" },
+      { cmd: "/brainstorming", desc: "头脑风暴：创意构思、方案探索" },
+      { cmd: "/idea-refine", desc: "创意优化：把不成熟的想法打磨成可行方案" },
+      { cmd: "/doubt-driven-development", desc: "质疑驱动开发：先找方案漏洞再动手" },
+      { cmd: "/ubiquitous-language", desc: "统一语言：项目中术语和命名规范" }
+    ]
+  },
+  {
+    name: "部署 / 运维类",
+    icon: "🚀",
+    commands: [
+      { cmd: "/deploy-to-vercel", desc: "部署到Vercel：前端/全栈项目一键部署" },
+      { cmd: "/vercel-optimize", desc: "Vercel优化：性能、成本、构建配置" },
+      { cmd: "/vercel-cli-with-tokens", desc: "Vercel CLI：命令行部署和管理" },
+      { cmd: "/vercel-composition-patterns", desc: "Vercel组合模式：多项目架构" },
+      { cmd: "/vercel-react-best-practices", desc: "Vercel + React 最佳实践" },
+      { cmd: "/supabase", desc: "Supabase接入：数据库、认证、存储" },
+      { cmd: "/supabase-postgres-best-practices", desc: "Supabase PostgreSQL 最佳实践" }
+    ]
+  },
+  {
+    name: "Git / 版本控制类",
+    icon: "🔀",
+    commands: [
+      { cmd: "/git-workflow-and-versioning", desc: "Git工作流：分支策略、提交规范" },
+      { cmd: "/git-guardrails-claude-code", desc: "Git防护：防止误提交、误合并" },
+      { cmd: "/resolving-merge-conflicts", desc: "解决冲突：Git合并冲突处理" },
+      { cmd: "/finishing-a-development-branch", desc: "完成开发分支：合并前检查清单" },
+      { cmd: "/receiving-code-review", desc: "接受代码审查：如何回应评审意见" },
+      { cmd: "/requesting-code-review", desc: "请求代码审查：如何提交PR" },
+      { cmd: "/to-issues", desc: "转Issue：从对话创建任务" },
+      { cmd: "/to-prd", desc: "转PRD：从对话生成产品需求文档" }
+    ]
+  },
+  {
+    name: "其他实用类",
+    icon: "🧰",
+    commands: [
+      { cmd: "/caveman", desc: "穴居人模式：极致压缩输出，省token" },
+      { cmd: "/caveman-commit", desc: "压缩提交信息：生成极简 git commit message" },
+      { cmd: "/caveman-review", desc: "压缩代码审查：极简版审查意见" },
+      { cmd: "/caveman-help", desc: "穴居人帮助卡：所有穴居人模式的速查" },
+      { cmd: "/caveman-compress", desc: "记忆压缩：把自然语言记忆压成穴居人格式" },
+      { cmd: "/caveman-stats", desc: "穴居人统计：当前会话实际节省的 token 数" },
+      { cmd: "/triage", desc: "问题分类：按紧急性和优先级排序" },
+      { cmd: "/context-engineering", desc: "上下文优化：提升 agent 输出质量" },
+      { cmd: "/skill-creator", desc: "创建技能包：把常用流程封装成可复用的 skill" },
+      { cmd: "/mcp-builder", desc: "构建MCP Server：封装API为工具" },
+      { cmd: "/slack-gif-creator", desc: "Slack动图：生成分享用的 GIF" }
+    ]
+  }
+];
+
+// ====== 渲染 ======
+const grid = document.getElementById('commands-grid');
+
+function createCopyButton(cmd) {
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.setAttribute('aria-label', `复制 ${cmd}`);
+  btn.innerHTML = `
+    <span>复制</span>
+    <span class="icon-ring">
+      <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    </span>
+  `;
+
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(cmd);
+      btn.classList.add('copied');
+      btn.innerHTML = `
+        <span>已复制</span>
+        <span class="icon-ring">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+      `;
+      showToast(`✓ 已复制 ${cmd}`);
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = `
+          <span>复制</span>
+          <span class="icon-ring">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </span>
+        `;
+      }, 2000);
+    } catch (err) {
+      // 降级方案
+      const ta = document.createElement('textarea');
+      ta.value = cmd;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.classList.add('copied');
+      btn.innerHTML = `<span>已复制</span><span class="icon-ring"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>`;
+      showToast(`✓ 已复制 ${cmd}`);
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = `
+          <span>复制</span>
+          <span class="icon-ring">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </span>
+        `;
+      }, 2000);
+    }
+  });
+
+  return btn;
+}
+
+function createCommandCard(item, index) {
+  const colSpan = (index % 5 === 0) ? 'col-span-12 md:col-span-6' :
+                  (index % 7 === 0) ? 'col-span-12 md:col-span-5' :
+                  'col-span-12 md:col-span-4';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = `${colSpan} reveal`;
+  wrapper.setAttribute('data-index', index);
+
+  wrapper.innerHTML = `
+    <div class="double-bezel-outer">
+      <div class="double-bezel-inner">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;">
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+              <code class="cmd-code">${item.cmd}</code>
+            </div>
+            <p style="font-size: 0.8125rem; color: rgba(255,255,255,0.45); line-height: 1.5; font-weight: 400;">
+              ${item.desc}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 将复制按钮注入到 card 中
+  const inner = wrapper.querySelector('.double-bezel-inner > div');
+  const btn = createCopyButton(item.cmd);
+  inner.appendChild(btn);
+
+  return wrapper;
+}
+
+function createCategorySection(cat, catIndex) {
+  const section = document.createElement('div');
+  section.className = 'col-span-12 reveal';
+  section.setAttribute('data-index', `cat-${catIndex}`);
+  section.style.marginTop = catIndex === 0 ? '0' : '2rem';
+
+  const heading = document.createElement('div');
+  heading.style.cssText = 'display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;';
+
+  const badge = document.createElement('span');
+  badge.className = 'category-badge';
+  badge.textContent = `${cat.icon} ${cat.name}`;
+  heading.appendChild(badge);
+
+  const count = document.createElement('span');
+  count.style.cssText = 'font-size: 0.75rem; color: rgba(255,255,255,0.2); font-weight: 500;';
+  count.textContent = `${cat.commands.length} 个命令`;
+  heading.appendChild(count);
+
+  section.appendChild(heading);
+
+  const subGrid = document.createElement('div');
+  subGrid.style.cssText = 'display: grid; grid-template-columns: repeat(12, 1fr); gap: 0.875rem;';
+  subGrid.className = 'sub-grid';
+
+  cat.commands.forEach((item, idx) => {
+    const card = createCommandCard(item, idx + catIndex * 7);
+    subGrid.appendChild(card);
+  });
+
+  section.appendChild(subGrid);
+  return section;
+}
+
+categories.forEach((cat, i) => {
+  grid.appendChild(createCategorySection(cat, i));
+});
+
+// ====== Toast ======
+let toastTimer = null;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2000);
+}
+
+// ====== IntersectionObserver - 滚动渐入 ======
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.05, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// 初始可见 - 让首屏直接显示
+setTimeout(() => {
+  document.querySelectorAll('.reveal').forEach(el => {
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight) {
+      el.classList.add('visible');
+    }
+  });
+}, 100);
+</script>
+
+</body>
+</html>
