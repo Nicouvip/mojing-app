@@ -79,3 +79,39 @@ export function readUsageSync(): Record<string, number> {
     return {}
   }
 }
+
+/** 获取用户本月AI调用次数（以邮箱为key） */
+export function getUserAiUsage(email: string): number {
+  const all = readUsageSync()
+  const key = `user_${email}`
+  return all[key] || 0
+}
+
+/** 检查用户是否超过AI调用限额 */
+export function checkAiQuota(email: string, plan: 'free' | 'pro' | 'admin'): { allowed: boolean; used: number; limit: number } {
+  const used = getUserAiUsage(email)
+  // free=100次/月, pro/admin=无限
+  const limit = plan === 'free' ? 100 : Infinity
+  return { allowed: used < limit, used, limit }
+}
+
+/** 原子递增用户级使用量（邮箱粒度） */
+export async function incrementUserUsage(email: string): Promise<void> {
+  const data = await readUsage()
+  const key = `user_${email}`
+  data[key] = (data[key] || 0) + 1
+
+  if (readOnly()) {
+    memUsage = data
+    return
+  }
+
+  const filePath = getUsageFilePath()
+  try {
+    const tmpPath = filePath + '.tmp'
+    await fsp.writeFile(tmpPath, JSON.stringify(data, null, 2), 'utf8')
+    await fsp.rename(tmpPath, filePath)
+  } catch (err) {
+    console.warn('[usage-store] 写入失败:', err)
+  }
+}

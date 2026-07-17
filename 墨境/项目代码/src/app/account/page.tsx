@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getProjects, getChapters, getUserSubscription } from '@/lib/db/store'
 import type { Project, UserSubscription } from '@/lib/db/types'
 import { BookOpen, Crown, BarChart3, Settings, LogOut, User, Check } from 'lucide-react'
@@ -10,10 +10,15 @@ import { toast } from 'sonner'
 
 type Tab = 'works' | 'member' | 'usage' | 'settings'
 
-export default function AccountPage() {
+function AccountContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [user, setUser] = useState<{ email: string; createdAt?: number } | null>(null)
-  const [tab, setTab] = useState<Tab>('works')
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = searchParams?.get('tab')
+    if (t === 'member' || t === 'usage' || t === 'settings') return t
+    return 'works'
+  })
   const [projects, setProjects] = useState<Project[]>([])
   const [totalWords, setTotalWords] = useState(0)
   const [subscription, setSubscription] = useState<UserSubscription | null>(null)
@@ -217,22 +222,21 @@ export default function AccountPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-card border border-border rounded-xl p-4 text-center">
                 <p className="text-xs text-muted-foreground">本月调用</p>
-                <p className="text-2xl font-bold mt-1">—</p>
+                <p className="text-2xl font-bold mt-1">{subscription?.monthlyAiUsed ?? '—'}</p>
               </div>
               <div className="bg-card border border-border rounded-xl p-4 text-center">
-                <p className="text-xs text-muted-foreground">本月 Token</p>
-                <p className="text-2xl font-bold mt-1">—</p>
+                <p className="text-xs text-muted-foreground">本月限额</p>
+                <p className="text-2xl font-bold mt-1">{subscription?.monthlyAiQuota === 999999 ? '∞' : subscription?.monthlyAiQuota ?? '—'}</p>
               </div>
               <div className="bg-card border border-border rounded-xl p-4 text-center">
-                <p className="text-xs text-muted-foreground">剩余额度</p>
-                <p className="text-2xl font-bold mt-1">—</p>
+                <p className="text-xs text-muted-foreground">当前套餐</p>
+                <p className="text-2xl font-bold mt-1 capitalize">{subscription?.plan ?? '—'}</p>
               </div>
               <div className="bg-card border border-border rounded-xl p-4 text-center">
-                <p className="text-xs text-muted-foreground">成功率</p>
-                <p className="text-2xl font-bold mt-1">—</p>
+                <p className="text-xs text-muted-foreground">状态</p>
+                <p className="text-2xl font-bold mt-1 text-success">{(subscription?.monthlyAiUsed ?? 0) < (subscription?.monthlyAiQuota ?? 0) ? '正常' : '已达限额'}</p>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground text-center">用量统计将在接入 AI 调用记录后启用</p>
           </div>
         )}
 
@@ -263,5 +267,12 @@ export default function AccountPage() {
         )}
       </div>
     </div>
+  )
+}
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">加载中...</div>}>
+      <AccountContent />
+    </Suspense>
   )
 }
