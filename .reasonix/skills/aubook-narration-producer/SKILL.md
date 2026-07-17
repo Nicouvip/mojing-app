@@ -10,6 +10,182 @@ description: 有声书口播制作全流程：文本分析→语气/停顿方案
 **分析时必须了解这本小说属于什么题材，再按题材的演播风格分析。**
 **有声喵画本格式时，必须先按画本解析规则处理文本，再做分析和合成。**
 
+## 角色定义（执行本技能时必须全程代入）
+
+### 你的双重身份
+
+**身份一：资深有声书演播导演（10年经验）**
+- 你导过上百部有声书，覆盖都市、悬疑、言情、历史、玄幻、恐怖等各题材
+- 你精通每类题材的演播风格——知道什么时候该压、什么时候该放
+- 你能一眼看穿文本的情绪曲线，精准设计每段的语气走向
+- 你给配音演员的指导从来不是"悲伤一点"这种外行话
+- 你的指导是："用颤抖沙哑、带着崩溃与绝望的哭腔，夹杂着质问与心碎的语气说"
+
+**身份二：专业语音提示词工程师**
+- 你精通豆包/讯飞/MiMo等主流语音引擎的参数体系
+- 你知道 context_texts 怎么写效果最好、cot 标签怎么设计最精准
+- 你熟悉官方文档和最佳实践，能活用所有可用技巧
+- 你写出的语音指令，不是参数堆砌，而是导演给演员的表演指导
+
+### 你的核心信念
+
+> **语音指令的质量，取决于执行者的专业素养，而不是技巧本身。**
+> 
+> 业余者看到的是"调参数"，专业者看到的是"导表演"。
+> 你的角色越专业，写出的指令就越精准，效果就越好。
+
+### 每次执行前必须自问
+
+1. 这篇小说是什么题材？这个题材的演播风格是什么？
+2. 整章的情绪曲线是怎样的？起点→发展→高潮→回落？
+3. 每段的段落类型是什么（叙事/动作/感官/内心/情绪爆发）？
+4. 这段的 cot 标签应该怎么描述才能让引擎理解我想要的语气？
+5. 下段的 context_texts 要怎么承接上一段的情绪？
+
+---
+
+## 语音指令提示词写作规范（必须掌握）
+
+### 核心原则
+
+**语音指令不是参数调节，而是导演给演员的表演指导。**
+你写的每一句话，都是在告诉引擎"你应该用什么样的情绪说出这句话"。
+
+### 专业写法的四维度模型
+
+每一句语音指令都应该包含以下四个维度，叠加使用：
+
+```
+用{语气基调}的语气、带着{情绪状态}，{生理特征}，{场景暗示}地说
+```
+
+| 维度 | 说明 | 示例 |
+|:---|:---|:---|
+| **语气基调** | 整体声音质感 | 低沉、沙哑、轻柔、明亮、冷峻 |
+| **情绪状态** | 内心的情感 | 沧桑、绝望、隐忍、焦虑、期待 |
+| **生理特征** | 身体表现 | 颤抖、哭腔、呼吸急促、声音放轻 |
+| **场景暗示** | 什么场景下 | 像在深夜独白、像刚得知噩耗时 |
+
+### 专业 vs 业余对比
+
+| 业余写法 ❌ | 专业写法 ✅ |
+|:---|:---|
+| "悲伤一点" | "用低沉沙哑的语气、带着沧桑与绝望地说" |
+| "慢一点" | "语速缓慢、每个字都像从喉咙里挤出来" |
+| "紧张一点" | "用颤抖的哭腔、带着崩溃与绝望的语气说" |
+| "开心点" | "用试探性的犹豫、带点害羞又藏着温柔期待的语气说" |
+
+### 不同场景的写法参考
+
+**压抑/沉重：**
+- 语气基调：低沉、压抑、克制
+- 情绪状态：隐忍的焦虑、沉重的悲伤
+- 生理特征：声音放轻、语速缓慢
+- 场景暗示：像在深夜独白、像不敢让人听见
+
+**紧张/急促：**
+- 语气基调：急促、紧绷
+- 情绪状态：焦虑、惊慌、难以置信
+- 生理特征：呼吸急促、语速加快
+- 场景暗示：像在奔跑中说话、像刚得知坏消息
+
+**愤怒/爆发：**
+- 语气基调：低沉有力、冷峻
+- 情绪状态：压抑的怒火、冷到极致的愤怒
+- 生理特征：咬牙切齿、字字用力
+- 场景暗示：像在忍着不爆发、像最后的警告
+
+**悲伤/痛心：**
+- 语气基调：沙哑、虚弱
+- 情绪状态：心碎、绝望、无助
+- 生理特征：颤抖、哭腔、哽咽
+- 场景暗示：像在哭过之后、像在强忍泪水
+
+**回忆/内心独白：**
+- 语气基调：轻柔、放慢
+- 情绪状态：怀念、感慨、温暖或酸楚
+- 生理特征：音量降低、气息拉长
+- 场景暗示：像是在自言自语、像是在回忆往事
+
+---
+
+## 上下文设计法（专业导演的工作方法）
+
+### 核心认知
+
+作为导演，你给引擎的 context_texts 不应该只是一句"承接上文情绪"。
+你应该像指导真人演员一样，告诉它三个层次的信息：
+
+```
+前情摘要 → 让引擎知道刚才发生了什么
+剧本笔记 → 让引擎理解这段在故事中的作用
+表演指导 → 让引擎知道具体怎么演
+```
+
+### 三个层次详细说明
+
+**第一层：前情摘要**
+- 前一段发生了什么关键事件？
+- 主角现在的心理状态是什么？
+- 用简短的"上文：xxx"写清楚
+
+**第二层：剧本笔记**
+- 这段的内容是什么？
+- 这段在整条情绪弧线上处于什么位置？
+- 是承接、推进、转折、还是爆发？
+
+**第三层：表演指导**
+- 用什么语气基调（低沉/急促/轻柔...）
+- 带着什么情绪状态（焦虑/压抑/悲伤...）
+- 有什么生理特征（呼吸促/声音抖/语速慢...）
+- 在什么场景中（像在奔跑/像在独白...）
+
+### 示例：第1章完整上下文设计
+
+```
+第1段：飞机刚落地→得知噩耗（震惊→急促）
+  前情：主人公出差回来刚下飞机
+  笔记：开机看到十几个未接来电，全是医院打来的，瞬间意识到出事了
+  指导：用低沉压抑的语气，带着刚得知噩耗后的震惊与难以置信，语速由平缓突然加快，呼吸变促
+
+第2段：小叔ICU→回忆（放慢→温柔→酸楚）
+  前情：得知小叔病危的消息
+  笔记：小叔肺癌晚期，之前控制得不错，出差前还能笑着挥手
+  指导：承接前文的震惊，转为回忆时语速放缓、声音放轻，语气温柔带着怀念，但藏不住物是人非的酸楚
+
+第3段：护士说情况恶化（拉回现实→焦虑）
+  前情：回忆完小叔之前的状态，回到现实
+  笔记：护士说情况急转直下，要尽快回去
+  指导：从回忆拉回现实，语速重新加快，带着愈发焦虑和急切的心情，声音中透出不安
+
+第4段：飙车到医院→推开病房门（紧张→沉重）
+  前情：一路飙车赶到医院
+  笔记：推开病房门，药味混着消毒水味，小叔瘦得脱了形
+  指导：延续前文的焦急，推开病房门后转为沉重压抑，语速放慢，用克制的声音描述眼前景象
+
+第5段：张姨→心里一沉（最慢→最轻→隐忍）
+  前情：看到小叔的状态
+  笔记：护工张姨眼睛红肿，攥着东西，嘴唇哆嗦没说话
+  指导：延续沉重情绪，语速放到最慢、声音放到最轻，带着隐忍的悲伤和内心一沉的无力感收尾
+```
+
+### 为什么这样写效果更好？
+
+引擎虽然是AI，但它理解自然语言的能力很强。
+当你告诉它"前情：开机看到十几个未接来电，全是医院打来的"时，
+它对这个场景的"震惊"情绪的理解，比单纯说"用震惊的语气"要准确得多。
+
+**因为引擎不是在看参数，而是在"理解故事"。**
+你给的故事细节越具体，它演绎出来的情绪就越到位。
+
+### 通用流程
+
+1. **通读本章，画出情绪弧线**：起点→铺垫→发展→转折→高潮→回落
+2. **在情绪转折点处分段**（每段200-500字）
+3. **为每段写三层设计**：前情摘要 + 剧本笔记 + 表演指导
+4. **合成时写入 context_texts**：把三层信息压缩成一段自然语言描述
+5. **段内用 cot 标签微调关键句**：在全局基础上做局部精确控制
+
 ---
 
 ## Step 0.5：文本解析（两种场景）
@@ -223,11 +399,11 @@ description: 有声书口播制作全流程：文本分析→语气/停顿方案
 ## Step 3：引擎选择与合成
 
 ### 3.1 引擎优先级
-1. **MiMo VoiceDesign**（导演模式，效果最好，无需用户录音）
-2. **MiMo VoiceClone**（需要用户录音样本）
-3. **讯飞多风格版**（voice_id=assetId, vcn=x6_clone）
-4. **讯飞标准版**（voice_id=assetId, vcn=x5_clone）
-5. **豆包声音复刻**（speaker=S_xxxxx）
+1. **豆包声音复刻 ICL2.0 Expressive 版**（当前主力，支持 context_texts + cot标签 + 情绪承接）
+2. **MiMo VoiceDesign**（导演模式，效果最好，无需用户录音）
+3. **MiMo VoiceClone**（需要用户录音样本）
+4. **讯飞多风格版**（voice_id=assetId, vcn=x6_clone）
+5. **讯飞标准版**（voice_id=assetId, vcn=x5_clone）
 
 ### 3.2 各引擎合成参数
 
@@ -252,20 +428,181 @@ audio: { voice: data:audio/mpeg;base64,..., format: 'wav' }
 ```
 
 **讯飞声音复刻（标准版/多风格版）：**
+- ⚠ **合成接口不是标准TTS格式！** 用 `header/parameter/payload` 格式，**不要用** `common/business/data`
 - WebSocket: `ws://cn-huabei-1.xf-yun.com/v1/private/voice_clone`
-- 鉴权：header 里放 `app_id`、`status=0`、`res_id`（assetId）
-- `parameter.tts.vcn`: 标准版=x5_clone，多风格版=x6_clone
-- `parameter.tts.speed`: 0-100（50=正常）
-- 停顿：文本中插入 `[p500]` 标签
+- **鉴权方式**：标准 hmac-sha256（api_key=APIKey, api_secret=APISecret），与标准TTS相同
+- URL 参数：`host`、`date`、`authorization`，**不传 res_id**
+- **`res_id` 放 header 里**（不是 URL 参数，也不是 business 里）
+- 请求 JSON 结构：
+  ```json
+  {
+    "header": {"app_id": "APPID", "status": 0, "res_id": "assetId"},
+    "parameter": {"tts": {"vcn": "x6_clone", "speed": 55}},
+    "payload": {"text": {"status": 2, "text": "base64(文本)"}}
+  }
+  ```
+- `vcn`：标准版=x5_clone，多风格版=x6_clone
+- **不要传 `aue`/`auf` 参数**（对声音复刻无效，传了会被忽略）
+- `speed`: 0-100（50=正常）
+- 停顿：文本中插入 `[p500]`（短停顿）或 `[p3000]`（AU打标占位，约3秒）
 - 多音字：`着[=zhuo2]手`
-- 输出：裸PCM 16bit 24kHz，需要加WAV头
+- 响应取音频路径：`payload.audio.audio`（base64编码），status=2 时结束
+- **输出格式**：裸 PCM（16bit / 24000Hz / 单声道）
+- **后处理必备**：加WAV头 → 重采样 24kHz→44.1kHz → 16bit→32bit → 编码 MP3/320kbps
 
-**豆包声音复刻：**
-- SSE: `POST https://openspeech.bytedance.com/api/v3/tts/unidirectional/sse`
-- `X-Api-Resource-Id`: `seed-icl-2.0`
-- `speaker`: S_xxxxx（音色ID）
-- 停顿：用标点和换行控制
-- 输出：流式MP3/WAV
+**讯飞声音复刻——已知踩坑记录（必须看！）：**
+1. MCP Server `server.py` 中 `_tts_synthesize` 用了错误的 `common/business/data` 格式，需改为 `header/parameter/payload`
+2. MCP Server 的 `_get_tts_auth_url` 生成的 URL 缺少 `res_id` 参数（但声音复刻接口的 `res_id` 放 header 里，所以不影响）
+3. 合成接口返回的音频数据路径是 `payload.audio.audio`，不是 `data.audio`
+4. 输出是裸 PCM 不是 MP3，**不能直接保存为 .mp3**
+5. 后处理不能省：PCM→WAV→ffmpeg重采样编码→MP3
+6. API 凭证不要写死在文件中（会被系统 auto-redact），用变量在命令行传入
+
+**后处理 Python 代码模板：**
+```python
+import struct, subprocess, os
+
+def pcm16_to_wav(pcm_bytes):
+    datasize = len(pcm_bytes)
+    return struct.pack('<4sI4s4sIHHIIHH4sI',
+        b'RIFF', 36+datasize, b'WAVE',
+        b'fmt ', 16, 1, 1, 24000, 48000, 2, 16,
+        b'data', datasize) + pcm_bytes
+
+wav_bytes = pcm16_to_wav(pcm_data)
+with open('temp.wav', 'wb') as f: f.write(wav_bytes)
+subprocess.run(['ffmpeg', '-y', '-i', 'temp.wav',
+    '-ar', '44100', '-sample_fmt', 's32', '-b:a', '320k', 'output.mp3'])
+```
+
+**豆包声音复刻（ICL2.0，新版鉴权，推荐）：**
+- ⚠ **不是豆包TTS！** 豆包声音复刻和豆包TTS是**两个不同的接口**，不要用 `doubao_tts_synthesize` 工具
+- URL: `POST https://openspeech.bytedance.com/api/v3/tts/unidirectional/sse`
+- 协议：SSE（流式），非 WebSocket
+- 资源ID：`seed-icl-2.0`
+- 请求头格式（新版鉴权 X-Api-Key）：
+  ```
+  X-Api-Key: 8adde342-1e23-4880-8594-0907ddb2c0df
+  X-Api-Resource-Id: seed-icl-2.0
+  Content-Type: application/json
+  ```
+- **训练好的音色**：`myvoice_a852e8`（model_type=5, ICL2.0, 新版鉴权）
+- 请求体格式：
+  ```json
+  {
+    "user": {"uid": "reasonix"},
+    "req_params": {
+      "text": "要合成的文本",
+      "speaker": "myvoice_a852e8",
+      "audio_params": {
+        "format": "wav",
+        "sample_rate": 24000,
+        "speech_rate": 0
+      }
+    }
+  }
+  ```
+- **speech_rate: 0** 固定默认语速，防止引擎自调
+- 输出：24kHz WAV（需重采样到44.1kHz后才能与AU配合使用）
+- **没有MCP工具封装**，合成需直接写Python代码
+
+**ICL2.0 Expressive 版完整配置方案（✓已验证通过）：**
+
+### 核心参数
+
+```json
+{
+  "model": "seed-tts-2.0-expressive",          // ← 必传！开启表现力
+  "additions": "{\n" +
+    '  "context_texts": ["[情绪承接+本段基调描述]"],\n' +  // ← 每段不同，承接上文
+    '  "use_tag_parser": true,\n' +                    // 开启cot标签
+    '  "speech_rate": 0,\n' +                          // 固定基准语速
+    '  "loudness_rate": 0\n' +                         // 固定基准音量
+  "}"
+}
+```
+
+**注意：** `additions` 必须是 **JSON 字符串**（不是对象），否则 API 报错：`cannot unmarshal object into Go struct field`
+
+### 三明治控制体系
+
+```
+第一层：context_texts（每段全局基调）
+  → "承接上文的震惊，转为回忆时语速放缓、语气温柔，但带着物是人非的酸楚"
+  → 每段都写上承接关系，保证情绪弧线连贯
+
+第二层：speech_rate/loudness_rate（基准参数）
+  → 固定0，不做整体调节，把控制权交给cot标签
+
+第三层：cot标签（局部精确微调）
+  → <cot text=语速缓慢,语气沉重>内容</cot>
+  → 在全局基调上精确控制某一句的语气
+```
+
+### cot 标签设计指南
+
+| 段落类型 | cot 写法 | 效果 |
+|:---|:---|:---|
+| 紧张/震惊 | `<cot text=震惊,难以置信>内容</cot>` | 快进，呼吸急促 |
+| 回忆/内心 | `<cot text=语速放慢,语气低沉,回忆>内容</cot>` | 放缓，压低 |
+| 压抑/沉重 | `<cot text=语速缓慢,语气沉重>内容</cot>` | 慢速，凝重 |
+| 悲伤/痛心 | `<cot text=语速最慢,声音放轻,压抑>内容</cot>` | 最慢，最轻 |
+| 愤怒/爆发 | `<cot text=压抑着怒火,语速缓慢但有力>内容</cot>` | 慢而有力 |
+| 冷峻决断 | `<cot text=语速缓慢,语气冷峻>内容</cot>` | 字字钉出去 |
+
+**注意事项：**
+- 单句text字符长度建议 ≤64（含cot标签）
+- cot标签之间不要加空格/换行，连续拼接
+- 情感描述用自然语言，越具体越好
+- 参考官方示例库风格："用低沉沙哑的语气、带着沧桑与绝望地说"
+
+### 分段合成规则
+
+| 规则 | 说明 |
+|:---|:---|
+| 每段字数 | 200-500字，在情绪转折处切分 |
+| 段间处理 | 1.5秒静音 + 淡入淡出(≥80ms) |
+| 每段独立请求 | 避免引擎累积情绪 |
+| 语速不均匀 | expressive版会根据文本情绪自调，这是正常行为 |
+
+### 踩坑总结
+
+1. **cot标签用自然语言描述**：`<cot text=语速缓慢>内容</cot>`，不需要预设值
+2. **`additions` 是 JSON 字符串**：`'{"use_tag_parser": true}'`，不是对象
+3. **段间淡入淡出**：PCM拼接时必须做fade-in/fade-out（≥80ms），否则会有"哒哒"声
+4. **段间静音用原生静音**：直接用 `\x00` 填充
+5. **data块size修复**：SSE返回的WAV data size可能是0xFFFFFFFF，后处理必须修正
+
+**分段合成+拼接代码模板：**
+```python
+import struct
+
+def fade_inout(pcm_bytes, fade_ms=100, sr=24000):
+    fade_samples = int(sr * fade_ms / 1000)
+    samples = list(struct.unpack('<' + 'h' * (len(pcm_bytes)//2), pcm_bytes))
+    for i in range(min(fade_samples, len(samples))):
+        samples[i] = int(samples[i] * (i / fade_samples))
+    for i in range(min(fade_samples, len(samples))):
+        idx = len(samples) - 1 - i
+        samples[idx] = int(samples[idx] * (i / fade_samples))
+    return struct.pack('<' + 'h' * len(samples), *samples)
+
+# 合成后拼接
+all_pcm = b''
+silence = b'\x00' * (24000 * 2 * 1.5)  # 1.5秒静音
+for i, seg_text in enumerate(segments):
+    wav_data = synthesize(seg_text)  # 调用SSE接口
+    pcm = wav_data[44:]  # 去掉WAV头
+    pcm = fade_inout(pcm, fade_ms=100)
+    all_pcm += pcm
+    if i < len(segments) - 1:
+        all_pcm += silence
+
+# 生成最终WAV
+final_wav = struct.pack('<4sI4s4sIHHIIHH4sI',
+    b'RIFF', 36+len(all_pcm), b'WAVE',
+    b'fmt ', 16, 1, 1, 24000, 48000, 2, 16, b'data', len(all_pcm)) + all_pcm
+```
 
 ### 3.3 分段合成策略
 
@@ -277,13 +614,100 @@ audio: { voice: data:audio/mpeg;base64,..., format: 'wav' }
 | 豆包声音复刻 | 2000字 | API限制 |
 
 ### 3.4 输出文件
-- 格式：WAV / 44.1kHz / 32-bit float
-- 命名：`{章节}_{引擎}_{日期}.wav`
+- 格式：MP3 / 44.1kHz / 32bit / 320kbps（默认，除非用户特别要求）
+- 命名格式：`{书名}-{集数:02d}-{CV名}-旁白.mp3`
+  - 书名由用户确认，如 `枕边人的毒计`
+  - 集数从 01 开始递增
+  - CV名由用户指定，如 `墨染青衣Nicou`
+  - 示例：`枕边人的毒计-01-墨染青衣Nicou-旁白.mp3`
 - 目录：`D:\codexvip\audio-outputs\`
   - `voice-clone/doubao/` — 豆包
   - `voice-clone/xfyun/` — 讯飞
   - `voice-clone/mimo/` — MiMo
   - `tts/mimo/` — MiMo VoiceDesign
+
+### 3.5 AU（Adobe Audition）打标规则
+
+**适用场景：** 旁白与角色音分开录制，后期需要在 AU 中合成的项目。
+
+**核心原理：**
+在旁白音频的每个"应该插入角色对话"的位置，植入 **3秒静音**（`[p3000]`）作为占位间隙。合成后检测静音段位置，**自动嵌入 WAV Cue 标记**，AU 打开即可看到标记点。
+
+**具体做法：**
+
+1. **识别打标位置**：对照版文本中，每个 `（|这里打一个标）` 标记的位置，即旁白段落结束、原本有 `【角色-CV】"对话"` 被删除的位置
+2. **合成文本植入停顿**：在打标位置插入 `[p3000]`（约3秒静音）
+3. **合成后检测静音位置**：用 `ffmpeg silencedetect` 定位每个 `[p3000]` 的精确采样位置
+4. **修复data块大小**：原始WAV的data size可能是0xFFFFFFFF（非法值），必须修正为实际数据长度
+5. **自动写入WAV标记**：在data块**之后**追加 `cue` 块 + `LIST/adtl` 块（只加labl，不加note，不加_PMX）
+
+**WAV标记结构（AU标准）：**
+
+```
+cue 块:    标记数量 + 每个标记{ID, 采样位置, "data", 0, 0, 采样位置}
+LIST/adtl: labl子块{ID, 标记名称}（只加labl，不加note）
+```
+
+**自动嵌入代码模板（已验证通过）：**
+```python
+import struct
+
+def add_cue_markers(wav_data, marker_samples, marker_names):
+    """修复data size + 在WAV文件末尾追加cue和LIST/adtl标记"""
+    pos = 12
+    chunks = []
+    while pos < len(wav_data) - 8:
+        cid = wav_data[pos:pos+4]
+        csize = struct.unpack('<I', wav_data[pos+4:pos+8])[0]
+        chunk_data = wav_data[pos:pos+8+csize]
+        if cid == b'data':
+            # 修复data大小
+            real_size = len(wav_data) - (pos + 8)
+            chunk_data = struct.pack('<4sI', b'data', real_size) + wav_data[pos+8:pos+8+real_size]
+            chunks.append(chunk_data)
+            break
+        chunks.append(chunk_data)
+        pos += 8 + csize
+        if pos % 2: pos += 1
+    
+    # 构建cue块
+    num = len(marker_samples)
+    cue_data = struct.pack('<I', num)
+    for i, sp in enumerate(marker_samples):
+        cue_data += struct.pack('<II4sIII', i+1, sp, b'data', 0, 0, sp)
+    cue_chunk = struct.pack('<4sI', b'cue ', len(cue_data)) + cue_data
+    if len(cue_chunk) % 2: cue_chunk += b'\x00'
+    
+    # 构建LIST/adtl（只加labl，不加note）
+    adtl_data = b'adtl'
+    for i, name in enumerate(marker_names):
+        nb = name.encode('utf-8') + b'\x00'
+        labl = struct.pack('<4sI', b'labl', len(nb)+4) + struct.pack('<I', i+1) + nb
+        if len(labl) % 2: labl += b'\x00'
+        adtl_data += labl
+    list_chunk = struct.pack('<4sI', b'LIST', len(adtl_data)) + adtl_data
+    if len(list_chunk) % 2: list_chunk += b'\x00'
+    
+    # 组装：RIFF头 + 原始块 + cue + LIST（cue和LIST在data之后）
+    new_wav = b'RIFF' + struct.pack('<I', 0) + b'WAVE'
+    for c in chunks:
+        new_wav += c
+    new_wav += cue_chunk + list_chunk
+    new_wav = new_wav[:4] + struct.pack('<I', len(new_wav)-8) + new_wav[8:]
+    return new_wav
+```
+
+**标记检测命令：**
+```bash
+ffmpeg -i input.wav -af "silencedetect=noise=-30dB:d=2.5" -f null -
+```
+从输出中提取 `silence_start` 的时间，乘以采样率得采样位置。
+
+**注意事项：**
+- WAV格式：cue + LIST/adtl 是AU标准，无需 `_PMX` 块也能识别
+- MP3格式：标记需写入ID3v2的PRIV帧（XMP格式），但推荐直接用WAV
+- 标记名称格式：`标记 01`、`标记 02` ...（与张总习惯一致）
+- 输出文件名已标注"旁白"，用户一眼区分旁白文件和角色音文件
 
 ---
 

@@ -75,11 +75,29 @@ class TTSInput(BaseModel):
         ge=-50,
         le=100,
     )
+    loudness_rate: Optional[int] = Field(
+        default=0,
+        description="音量: -50(0.5倍) ~ 100(2.0倍)，默认0",
+        ge=-50,
+        le=100,
+    )
     pitch: Optional[int] = Field(
         default=0,
         description="音调: -12 ~ 12，默认0",
         ge=-12,
         le=12,
+    )
+    model: Optional[str] = Field(
+        default=None,
+        description="[ICL2.0] 模型版本: seed-tts-2.0-standard(标准版) / seed-tts-2.0-expressive(表现力版)",
+    )
+    context_texts: Optional[str] = Field(
+        default=None,
+        description="[expressive] 语音指令，如'用低沉压抑的语气讲述'",
+    )
+    use_tag_parser: Optional[bool] = Field(
+        default=False,
+        description="[expressive] 开启cot标签，可在text中嵌入 <cot text=语速缓慢>内容</cot>",
     )
 
 
@@ -126,14 +144,24 @@ async def doubao_tts_synthesize(params: TTSInput) -> str:
             },
         }
 
-        # 添加可选参数
-        additions = {}
+        # model 参数（ICL2.0声音复刻专用）
+        if params.model:
+            payload["req_params"]["model"] = params.model
+
+        # 构建 additions（注意：必须是 JSON 字符串，不是对象！）
+        additions_dict = {}
         if params.speech_rate != 0:
-            additions["speech_rate"] = params.speech_rate
+            additions_dict["speech_rate"] = params.speech_rate
+        if params.loudness_rate != 0:
+            additions_dict["loudness_rate"] = params.loudness_rate
         if params.pitch != 0:
-            additions["post_process"] = {"pitch": params.pitch}
-        if additions:
-            payload["req_params"]["additions"] = additions
+            additions_dict["post_process"] = {"pitch": params.pitch}
+        if params.context_texts:
+            additions_dict["context_texts"] = [params.context_texts]
+        if params.use_tag_parser:
+            additions_dict["use_tag_parser"] = True
+        if additions_dict:
+            payload["req_params"]["additions"] = json.dumps(additions_dict, ensure_ascii=False)
 
         headers = {
             "X-Api-App-Id": APP_ID,
@@ -198,6 +226,9 @@ async def doubao_tts_synthesize(params: TTSInput) -> str:
             "size_bytes": len(full_audio),
             "text_length": len(params.text),
             "voice_type": params.voice_type,
+            "model": params.model,
+            "use_tag_parser": params.use_tag_parser,
+            "context_texts": params.context_texts,
         }, ensure_ascii=False, indent=2)
 
     except httpx.TimeoutException:
