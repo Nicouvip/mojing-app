@@ -755,7 +755,6 @@ export function saveWritingPlan(plan: WritingPlan): void {
 // P2 新增：会员订阅管理
 // ═══════════════════════════════════════
 
-import type { UserSubscription } from '@/lib/db/types'
 
 const SUB_KEY = 'mojing_subscriptions'
 

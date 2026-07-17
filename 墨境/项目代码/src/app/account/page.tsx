@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getProjects, getChapters } from '@/lib/db/store'
-import type { Project } from '@/lib/db/types'
-import { BookOpen, Crown, BarChart3, Settings, LogOut, User } from 'lucide-react'
+import { getProjects, getChapters, getUserSubscription } from '@/lib/db/store'
+import type { Project, UserSubscription } from '@/lib/db/types'
+import { BookOpen, Crown, BarChart3, Settings, LogOut, User, Check } from 'lucide-react'
 import { cn } from '@/lib/utils/utils'
+import { toast } from 'sonner'
 
 type Tab = 'works' | 'member' | 'usage' | 'settings'
 
@@ -15,6 +16,7 @@ export default function AccountPage() {
   const [tab, setTab] = useState<Tab>('works')
   const [projects, setProjects] = useState<Project[]>([])
   const [totalWords, setTotalWords] = useState(0)
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null)
 
   useEffect(() => {
     const stored = typeof window !== 'undefined' ? localStorage.getItem('mojing_auth') : null
@@ -28,6 +30,11 @@ export default function AccountPage() {
       const parsed = JSON.parse(stored)
       if (parsed.token) {
         setUser(parsed.user || null)
+        const email = parsed.user?.email
+        if (email) {
+          const sub = getUserSubscription(email)
+          if (sub) setSubscription(sub)
+        }
       } else {
         router.push('/login')
         return
@@ -151,34 +158,55 @@ export default function AccountPage() {
             <h2 className="text-lg font-semibold">会员套餐</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { name: '免费版', price: '0', features: ['基础 AI 续写', '1 个作品', '3 个章节'], current: true },
-                { name: '创作者', price: '29/月', features: ['无限 AI 续写', '10 个作品', '素材库', '导出 TXT'], highlight: true },
-                { name: '专业版', price: '79/月', features: ['全部 Pro 模型', '无限作品', '团队协作', '优先支持'] },
-              ].map(plan => (
+                { name: '免费版', key: 'free', price: '0', features: ['基础 AI 续写', '1 个作品', '3 个章节'] },
+                { name: '创作者', key: 'pro', price: '29/月', features: ['无限 AI 续写', '10 个作品', '素材库', '导出 TXT'], highlight: true },
+                { name: '专业版', key: 'admin', price: '79/月', features: ['全部 Pro 模型', '无限作品', '团队协作', '优先支持'] },
+              ].map(plan => {
+                const isCurrent = subscription?.plan === plan.key
+                return (
                 <div key={plan.name}
                   className={cn(
-                    "border rounded-xl p-5 text-center",
-                    plan.highlight ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-card",
-                    plan.current && "opacity-70"
+                    "border rounded-xl p-5 text-center transition-all",
+                    plan.highlight && !isCurrent ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-card",
+                    isCurrent && "ring-2 ring-success/50"
                   )}
                 >
+                  {isCurrent && <span className="inline-block px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-medium mb-2">当前套餐</span>}
                   <p className="text-sm font-semibold">{plan.name}</p>
                   <p className="text-2xl font-bold mt-2">¥{plan.price}</p>
                   <ul className="mt-4 space-y-1.5 text-xs text-muted-foreground">
                     {plan.features.map(f => <li key={f}>{f}</li>)}
                   </ul>
                   <button
-                    disabled={plan.current}
+                    disabled={isCurrent || !user?.email}
+                    onClick={() => {
+                      if (!user?.email) return
+                      import('@/lib/db/store').then(({ setUserSubscription }) => {
+                        setUserSubscription(user.email!, {
+                          plan: plan.key as 'free' | 'pro' | 'admin',
+                          startedAt: Date.now(),
+                          monthlyAiQuota: plan.key === 'free' ? 100 : 999999,
+                          monthlyAiUsed: 0,
+                        })
+                        setSubscription({
+                          plan: plan.key as 'free' | 'pro' | 'admin',
+                          startedAt: Date.now(),
+                          monthlyAiQuota: plan.key === 'free' ? 100 : 999999,
+                          monthlyAiUsed: 0,
+                        })
+                        toast.success(`已升级到 ${plan.name} 套餐`)
+                      })
+                    }}
                     className={cn(
                       "mt-4 w-full py-2 rounded-lg text-sm font-medium transition-colors",
-                      plan.highlight ? "bg-primary text-white hover:bg-primary/90" : "border border-border text-muted-foreground hover:bg-secondary",
-                      plan.current && "bg-secondary text-muted-foreground cursor-not-allowed"
+                      plan.highlight && !isCurrent ? "bg-primary text-white hover:bg-primary/90" : "border border-border text-muted-foreground hover:bg-secondary",
+                      isCurrent && "bg-secondary text-muted-foreground cursor-not-allowed"
                     )}
                   >
-                    {plan.current ? '当前套餐' : '升级'}
+                    {isCurrent ? '当前套餐' : '升级'}
                   </button>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         )}
