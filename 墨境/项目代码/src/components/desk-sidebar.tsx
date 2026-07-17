@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/db/auth-context'
 import { getProjects } from '@/lib/db/store'
+import { signOut } from 'next-auth/react'
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Project } from '@/lib/db/types'
-import { Home, BookOpen, PenTool, Headphones, FlaskConical, Clapperboard, PlayCircle, Pen, Star, Wrench, Sun, BookMarked, FolderOpen, GraduationCap, ClipboardList, Lightbulb, Bot, Sparkles, Mail } from 'lucide-react'
+import { Home, BookOpen, PenTool, Headphones, FlaskConical, Clapperboard, PlayCircle, Pen, Star, Wrench, Sun, BookMarked, FolderOpen, GraduationCap, ClipboardList, Lightbulb, Bot, Sparkles, Mail, LogOut } from 'lucide-react'
 
 interface NavItem {
   href: string
@@ -224,6 +225,16 @@ export default function DeskSidebar({ activeHref, active }: DeskSidebarProps) {
         >
           {userName}
         </span>
+        <button
+          onClick={() => signOut({ callbackUrl: '/' })}
+          className="ml-auto shrink-0 p-1 rounded transition-colors"
+          style={{ color: C.muted }}
+          title="退出登录"
+          onMouseEnter={e => (e.currentTarget.style.color = C.pri)}
+          onMouseLeave={e => (e.currentTarget.style.color = C.muted)}
+        >
+          <LogOut size={14} />
+        </button>
       </div>
     </aside>
   )
