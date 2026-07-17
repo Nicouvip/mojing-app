@@ -433,8 +433,10 @@ export default function AudiobookProjectPage() {
         <Navbar />
         <div style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
           <DeskSidebar active="/audiobook" />
-          <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: C.muted }}>加载中...</p>
+          <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <span style={{ fontSize: 48 }}>📂</span>
+            <p style={{ color: C.muted, fontSize: 14 }}>作品不存在</p>
+            <Link href="/audiobook" style={{ padding: '8px 20px', background: C.pri, color: '#fff', borderRadius: 8, fontSize: 13, textDecoration: 'none' }}>← 返回有声书列表</Link>
           </main>
         </div>
       </div>
