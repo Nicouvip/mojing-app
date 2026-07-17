@@ -115,35 +115,6 @@ export default function AudiobookPage() {
 
   useEffect(() => { if (!isRecording) { setRecordingTime(0); return }; const t = setInterval(() => setRecordingTime(s => s + 1), 1000); return () => clearInterval(t) }, [isRecording])
 
-  /* ── WAV 编码 ── */
-  function encodeWAV(audioBuf: AudioBuffer): Blob {
-    const numCh = audioBuf.numberOfChannels
-    const sampleRate = audioBuf.sampleRate
-    const format = 1
-    const bitsPerSample = 16
-    const bytesPerSample = bitsPerSample / 8
-    const blockAlign = numCh * bytesPerSample
-    const dataLength = audioBuf.length * blockAlign
-    const buffer = new ArrayBuffer(44 + dataLength)
-    const view = new DataView(buffer)
-    const writeStr = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)) }
-    writeStr(0, 'RIFF'); view.setUint32(4, 36 + dataLength, true); writeStr(8, 'WAVE')
-    writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, format, true); view.setUint16(22, numCh, true)
-    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * blockAlign, true); view.setUint16(32, blockAlign, true); view.setUint16(34, bitsPerSample, true)
-    writeStr(36, 'data'); view.setUint32(40, dataLength, true)
-    const channels: Float32Array[] = []
-    for (let ch = 0; ch < numCh; ch++) channels.push(audioBuf.getChannelData(ch))
-    let offset = 44
-    for (let i = 0; i < audioBuf.length; i++) {
-      for (let ch = 0; ch < numCh; ch++) {
-        const sample = Math.max(-1, Math.min(1, channels[ch][i]))
-        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true)
-        offset += 2
-      }
-    }
-    return new Blob([buffer], { type: 'audio/wav' })
-  }
-
   /* ── 播放音频 ── */
   const audioUrlRef = useRef<string | null>(null)
   const playBase64Audio = (base64: string, mime: string) => {

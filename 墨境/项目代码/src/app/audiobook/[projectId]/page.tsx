@@ -95,36 +95,6 @@ export default function AudiobookProjectPage() {
 
   /* ── TTS 引擎选择 ── */
   const [ttsEngine, setTtsEngine] = useState<'normal' | 'vip'>('normal')
-
-  /* ── WAV 编码器 ── */
-  function encodeWAV(audioBuf: AudioBuffer): Blob {
-    const numCh = audioBuf.numberOfChannels
-    const sampleRate = audioBuf.sampleRate
-    const format = 1 // PCM
-    const bitsPerSample = 16
-    const bytesPerSample = bitsPerSample / 8
-    const blockAlign = numCh * bytesPerSample
-    const dataLength = audioBuf.length * blockAlign
-    const buffer = new ArrayBuffer(44 + dataLength)
-    const view = new DataView(buffer)
-    const writeStr = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)) }
-    writeStr(0, 'RIFF'); view.setUint32(4, 36 + dataLength, true); writeStr(8, 'WAVE')
-    writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, format, true); view.setUint16(22, numCh, true)
-    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * blockAlign, true); view.setUint16(32, blockAlign, true); view.setUint16(34, bitsPerSample, true)
-    writeStr(36, 'data'); view.setUint32(40, dataLength, true)
-    const channels: Float32Array[] = []
-    for (let ch = 0; ch < numCh; ch++) channels.push(audioBuf.getChannelData(ch))
-    let offset = 44
-    for (let i = 0; i < audioBuf.length; i++) {
-      for (let ch = 0; ch < numCh; ch++) {
-        const sample = Math.max(-1, Math.min(1, channels[ch][i]))
-        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true)
-        offset += 2
-      }
-    }
-    return new Blob([buffer], { type: 'audio/wav' })
-  }
-
   /* ── 录音范本 ── */
   const RECORDING_TEMPLATE = '春天的花开，秋天的月，夏天的风，冬天的雪。我在微风中轻轻吟唱，那是一首关于时光和记忆的歌。窗外的雨滴落在玻璃上，像是大自然写给大地的情书。'
 
