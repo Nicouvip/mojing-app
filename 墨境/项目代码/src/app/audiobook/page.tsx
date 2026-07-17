@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -156,7 +157,7 @@ export default function AudiobookPage() {
       const data = await res.json()
       if (data.success && data.audio) playBase64Audio(data.audio, 'audio/wav')
     } catch (err) {
-      alert('试听失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('试听失败：' + (err instanceof Error ? err.message : String(err)))
     }
   }
 
@@ -181,14 +182,14 @@ export default function AudiobookPage() {
         } catch {
           const file = new File([webmBlob], `录音-${new Date().toLocaleTimeString('zh-CN')}.webm`, { type: 'audio/webm' })
           setCloneSample(file)
-          alert('wav转换失败，已保存为webm格式')
+          toast.error('wav转换失败，已保存为webm格式')
         }
       }
       recorder.start()
       mediaRecorderRef.current = recorder
       setIsRecording(true)
     } catch {
-      alert('无法访问麦克风，请检查浏览器权限设置')
+      toast.error('无法访问麦克风，请检查浏览器权限设置')
     }
   }
 
@@ -196,7 +197,7 @@ export default function AudiobookPage() {
 
   /* ── 润色音色描述 ── */
   const handlePolishDesc = async () => {
-    if (!designDesc.trim()) { alert('请先输入音色描述'); return }
+    if (!designDesc.trim()) { toast.error('请先输入音色描述'); return }
     setPolishDescLoading(true)
     try {
       const res = await fetch('/api/audiobook/voices/polish', {
@@ -208,10 +209,10 @@ export default function AudiobookPage() {
       if (data.success && data.polished) {
         setDesignDesc(data.polished)
       } else {
-        alert('润色失败：' + (data.error || '未知错误'))
+        toast.error('润色失败：' + (data.error || '未知错误'))
       }
     } catch (err) {
-      alert('润色失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('润色失败：' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setPolishDescLoading(false)
     }
@@ -219,7 +220,7 @@ export default function AudiobookPage() {
 
   /* ── VoiceDesign 生成 ── */
   const handleDesignVoice = async () => {
-    if (!designDesc.trim()) { alert('请输入音色描述'); return }
+    if (!designDesc.trim()) { toast.error('请输入音色描述'); return }
     setDesignLoading(true)
     try {
       const res = await fetch('/api/audiobook/voices/design', {
@@ -233,10 +234,10 @@ export default function AudiobookPage() {
         setDesignedVoices(prev => [...prev, { id, name: designDesc.slice(0, 20), desc: designDesc, audioBase64: data.audio }])
         playBase64Audio(data.audio, 'audio/wav')
       } else {
-        alert('设计失败：' + (data.error || '未知错误'))
+        toast.error('设计失败：' + (data.error || '未知错误'))
       }
     } catch (err) {
-      alert('设计失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('设计失败：' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setDesignLoading(false)
     }
@@ -244,8 +245,8 @@ export default function AudiobookPage() {
 
   /* ── VoiceClone 生成 ── */
   const handleCloneVoice = async () => {
-    if (!cloneSample) { alert('请先上传或录制音频样本'); return }
-    if (!cloneName.trim()) { alert('请输入音色名称'); return }
+    if (!cloneSample) { toast.error('请先上传或录制音频样本'); return }
+    if (!cloneName.trim()) { toast.error('请输入音色名称'); return }
     setCloneLoading(true)
     try {
       const reader = new FileReader()
@@ -269,16 +270,16 @@ export default function AudiobookPage() {
             setClonedVoices(prev => [...prev, { id, name: cloneName.trim(), sampleName: cloneSample.name, audioBase64: data.audio }])
             playBase64Audio(data.audio, 'audio/wav')
           } else {
-            alert('克隆失败：' + (data.error || '未知错误'))
+            toast.error('克隆失败：' + (data.error || '未知错误'))
           }
         } catch (err) {
-          alert('克隆失败：' + (err instanceof Error ? err.message : String(err)))
+          toast.error('克隆失败：' + (err instanceof Error ? err.message : String(err)))
         } finally {
           setCloneLoading(false)
         }
       }
     } catch (err) {
-      alert('克隆失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('克隆失败：' + (err instanceof Error ? err.message : String(err)))
       setCloneLoading(false)
     }
   }
@@ -329,7 +330,7 @@ export default function AudiobookPage() {
         setImportParsed(data.chapters)
       }
     } catch (err) {
-      alert('解析失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('解析失败：' + (err instanceof Error ? err.message : String(err)))
     }
   }
 
@@ -353,14 +354,14 @@ export default function AudiobookPage() {
 
   /* ── 第二步：确认导入，把分章结果写入 store ── */
   const handleConfirmImport = () => {
-    if (!importParsed) { alert('请先上传文本文件'); return }
-    if (!importTarget) { alert('请选择目标作品'); return }
+    if (!importParsed) { toast.error('请先上传文本文件'); return }
+    if (!importTarget) { toast.error('请选择目标作品'); return }
     setImportLoading(true)
 
     // 如果选择了「新建作品」，先创建作品
     let targetId = importTarget
     if (importTarget === '__new__') {
-      if (!importNewName.trim()) { alert('请输入作品名称'); setImportLoading(false); return }
+      if (!importNewName.trim()) { toast.error('请输入作品名称'); setImportLoading(false); return }
       const newProj = createProject(importNewName.trim(), importNewGenre)
       targetId = newProj.id
     }
@@ -618,7 +619,7 @@ export default function AudiobookPage() {
                 </div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <button onClick={() => { setShowImport(false); setImportStep('upload'); setImportParsed(null) }} style={{ padding: '9px 20px', background: 'none', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>取消</button>
-                  <button onClick={() => { if (!importText) { alert('请先上传文本文件'); return }; if (!importTarget) { alert('请选择目标作品'); return }; handleConfirmImport() }} disabled={!importText || !importTarget || importLoading} style={{ padding: '9px 20px', background: !importText || !importTarget ? '#ccc' : C.pri, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#fff', cursor: !importText || !importTarget ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                  <button onClick={() => { if (!importText) { toast.error('请先上传文本文件'); return }; if (!importTarget) { toast.error('请选择目标作品'); return }; handleConfirmImport() }} disabled={!importText || !importTarget || importLoading} style={{ padding: '9px 20px', background: !importText || !importTarget ? '#ccc' : C.pri, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#fff', cursor: !importText || !importTarget ? 'default' : 'pointer', fontFamily: 'inherit' }}>
                     {importLoading ? '⏳ 导入中...' : '📥 确认导入'}
                   </button>
                 </div>

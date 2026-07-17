@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import type { Chapter } from '@/lib/db/types'
@@ -210,13 +211,13 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
   const exportAllByOrder = () => exportText(segments, '全部（按顺序）')
   const exportSelected = () => {
     const sel = segments.filter(s => selectedIds.has(s.index))
-    if (sel.length === 0) { alert('请先勾选要导出的段落'); return }
+    if (sel.length === 0) { toast.error('请先勾选要导出的段落'); return }
     exportText(sel, '选中段落')
   }
 
   /* ── Step 1: AI 分析 ── */
   const handleAnalyze = async () => {
-    if (!chapter.content) { alert('该章节暂无内容'); return }
+    if (!chapter.content) { toast.error('该章节暂无内容'); return }
     setAnalyzing(true)
     setAnalyzeError('')
     try {
@@ -244,7 +245,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
 
   /* ── 手动设置模式：按行拆段，默认旁白 ── */
   const handleManualSetup = () => {
-    if (!chapter.content) { alert('该章节暂无内容'); return }
+    if (!chapter.content) { toast.error('该章节暂无内容'); return }
     const lines = chapter.content.split('\n').map(l => l.trim()).filter(l => l.length > 0)
     const newSegments: SegmentAnalysis[] = lines.map((line, i) => ({
       index: i,
@@ -381,7 +382,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
   /* ── 合并全部并导出 ── */
   const handleMergeExport = async () => {
     const audioKeys = Object.keys(audioCache)
-    if (audioKeys.length === 0) { alert('请先生成音频'); return }
+    if (audioKeys.length === 0) { toast.error('请先生成音频'); return }
     setMerging(true)
     try {
       const segs = audioKeys.map(k => ({ audioBase64: audioCache[k].audioBase64, duration: audioCache[k].duration }))
@@ -403,10 +404,10 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
         a.href = url; a.download = `${chapter.title || '有声书'}.${ext}`; a.click()
         URL.revokeObjectURL(url)
       } else {
-        alert('合并失败：' + (data.error || '未知错误'))
+        toast.error('合并失败：' + (data.error || '未知错误'))
       }
     } catch (err) {
-      alert('合并失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('合并失败：' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setMerging(false)
     }
@@ -415,7 +416,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
   /* ── 人格自动生成音色 ── */
   const handleGeneratePersonas = async () => {
     const chars = characters.filter(c => c.name !== '旁白' && c.personality)
-    if (chars.length === 0) { alert('没有可生成的角色（需要角色有性格描述）'); return }
+    if (chars.length === 0) { toast.error('没有可生成的角色（需要角色有性格描述）'); return }
     setGeneratingPersonas(true)
     setPersonaProgress({ current: 0, total: chars.length, currentName: '' })
     const newVoices: Array<{ id: string; name: string; voiceDesc: string; audioBase64: string }> = []
@@ -448,9 +449,9 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
     setDesignedVoices(prev => [...prev, ...newVoices])
     setGeneratingPersonas(false)
     if (newVoices.length > 0) {
-      alert(`已为 ${newVoices.length} 个角色生成专属音色：${newVoices.map(v => v.name).join('、')}`)
+      toast.error(`已为 ${newVoices.length} 个角色生成专属音色：${newVoices.map(v => v.name).join('、')}`)
     } else {
-      alert('音色生成失败，请检查 API 连接后重试')
+      toast.error('音色生成失败，请检查 API 连接后重试')
     }
   }
 
@@ -499,7 +500,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           setEditedSegments(processed.segments || [])
           try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
         } else {
-          alert('导入画本失败：' + (data.error || '格式错误'))
+          toast.error('导入画本失败：' + (data.error || '格式错误'))
         }
       } else {
         /* ── TXT/JSON：原有逻辑 ── */
@@ -521,11 +522,11 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           setEditedSegments(processed.segments || [])
           try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch {}
         } else {
-          alert('导入画本失败：' + (data.error || '格式错误'))
+          toast.error('导入画本失败：' + (data.error || '格式错误'))
         }
       }
     } catch (err) {
-      alert('导入失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('导入失败：' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setImportBookLoading(false)
       if (importBookRef.current) importBookRef.current.value = ''

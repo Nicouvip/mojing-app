@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -133,14 +134,14 @@ export default function AudiobookProjectPage() {
           // 转换失败则直接用 webm
           const file = new File([webmBlob], `录音-${new Date().toLocaleTimeString('zh-CN')}.webm`, { type: 'audio/webm' })
           setCloneSample(file)
-          alert('wav转换失败，已保存为webm格式')
+          toast.error('wav转换失败，已保存为webm格式')
         }
       }
       recorder.start()
       mediaRecorderRef.current = recorder
       setIsRecording(true)
     } catch {
-      alert('无法访问麦克风，请检查浏览器权限设置')
+      toast.error('无法访问麦克风，请检查浏览器权限设置')
     }
   }
 
@@ -190,7 +191,7 @@ export default function AudiobookProjectPage() {
         playBase64Audio(data.audio, 'audio/wav')
       }
     } catch (err) {
-      alert('试听失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('试听失败：' + (err instanceof Error ? err.message : String(err)))
     }
   }
 
@@ -222,7 +223,7 @@ export default function AudiobookProjectPage() {
     }
     const gen = generatedChapters.get(chapterId)
     if (!gen) {
-      alert('请先生成该章节的音频')
+      toast.error('请先生成该章节的音频')
       return
     }
     setPlayingChapterId(chapterId)
@@ -265,7 +266,7 @@ export default function AudiobookProjectPage() {
   /* ── 下载 LRC 字幕 ── */
   /* ── 合并已生成章节音频 ── */
   const handleMergeChapters = async () => {
-    if (generatedChapters.size === 0) { alert('请先生成音频'); return }
+    if (generatedChapters.size === 0) { toast.error('请先生成音频'); return }
     setMergingChapters(true)
     try {
       const segments: Array<{ audioBase64: string; duration?: number }> = []
@@ -290,10 +291,10 @@ export default function AudiobookProjectPage() {
         a.href = url; a.download = `${project?.name || '有声书'}.${ext}`; a.click()
         URL.revokeObjectURL(url)
       } else {
-        alert('合并失败：' + (data.error || '未知错误'))
+        toast.error('合并失败：' + (data.error || '未知错误'))
       }
     } catch (err) {
-      alert('合并失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('合并失败：' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setMergingChapters(false)
     }
@@ -321,7 +322,7 @@ export default function AudiobookProjectPage() {
 
   /* ── 润色音色描述 ── */
   const handlePolishDesc = async () => {
-    if (!designDesc.trim()) { alert('请先输入音色描述'); return }
+    if (!designDesc.trim()) { toast.error('请先输入音色描述'); return }
     setPolishDescLoading(true)
     try {
       const res = await fetch('/api/audiobook/voices/polish', {
@@ -333,10 +334,10 @@ export default function AudiobookProjectPage() {
       if (data.success && data.polished) {
         setDesignDesc(data.polished)
       } else {
-        alert('润色失败：' + (data.error || '未知错误'))
+        toast.error('润色失败：' + (data.error || '未知错误'))
       }
     } catch (err) {
-      alert('润色失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('润色失败：' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setPolishDescLoading(false)
     }
@@ -344,7 +345,7 @@ export default function AudiobookProjectPage() {
 
   /* ── VoiceDesign 生成 ── */
   const handleDesignVoice = async () => {
-    if (!designDesc.trim()) { alert('请输入音色描述'); return }
+    if (!designDesc.trim()) { toast.error('请输入音色描述'); return }
     setDesignLoading(true)
     try {
       const res = await fetch('/api/audiobook/voices/design', {
@@ -358,10 +359,10 @@ export default function AudiobookProjectPage() {
         setDesignedVoices(prev => [...prev, { id, name: designDesc.slice(0, 20), desc: designDesc, audioBase64: data.audio }])
         playBase64Audio(data.audio, 'audio/wav')
       } else {
-        alert('设计失败：' + (data.error || '未知错误'))
+        toast.error('设计失败：' + (data.error || '未知错误'))
       }
     } catch (err) {
-      alert('设计失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('设计失败：' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setDesignLoading(false)
     }
@@ -369,8 +370,8 @@ export default function AudiobookProjectPage() {
 
   /* ── VoiceClone 克隆 ── */
   const handleCloneVoice = async () => {
-    if (!cloneSample) { alert('请选择样本音频'); return }
-    if (!cloneName.trim()) { alert('请输入名称'); return }
+    if (!cloneSample) { toast.error('请选择样本音频'); return }
+    if (!cloneName.trim()) { toast.error('请输入名称'); return }
     setCloneLoading(true)
     try {
       const reader = new FileReader()
@@ -388,13 +389,13 @@ export default function AudiobookProjectPage() {
           setClonedVoices(prev => [...prev, { id, name: cloneName, sampleName: cloneSample!.name, audioBase64: data.audio }])
           playBase64Audio(data.audio, 'audio/wav')
         } else {
-          alert('克隆失败：' + (data.error || '未知错误'))
+          toast.error('克隆失败：' + (data.error || '未知错误'))
         }
         setCloneLoading(false)
       }
       reader.readAsDataURL(cloneSample)
     } catch (err) {
-      alert('克隆失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('克隆失败：' + (err instanceof Error ? err.message : String(err)))
       setCloneLoading(false)
     }
   }

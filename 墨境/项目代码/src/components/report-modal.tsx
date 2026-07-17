@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils/utils'
@@ -451,7 +452,7 @@ function AiOverviewBar({ content, projectId, chapterId, onRefresh }: { content: 
       }
       setDone(true); onRefresh?.()
     } catch (e) {
-      alert('AI 批量分析失败: ' + (e instanceof Error ? e.message : '请求失败'))
+      toast.error('AI 批量分析失败: ' + (e instanceof Error ? e.message : '请求失败'))
     } finally {
       setLoading(false)
     }

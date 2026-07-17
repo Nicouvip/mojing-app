@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -43,8 +44,8 @@ export default function PagesAdmin() {
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
-      try { const text = await file.text(); importPage(path, text); setRefresh(r => r + 1); alert('导入成功') }
-      catch { alert('导入失败：JSON格式无效') }
+      try { const text = await file.text(); importPage(path, text); setRefresh(r => r + 1); toast.error('导入成功') }
+      catch { toast.error('导入失败：JSON格式无效') }
     }; input.click()
   }
 

@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 
 import { useState, useEffect } from 'react'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -51,7 +52,7 @@ export default function PageBuilder() {
     setData(p => ({ ...p, components: p.components.map(c => c.id === selectedId ? { ...c, props: { ...c.props, ...upd } } : c) }))
   }
 
-  const handleSave = () => { savePage('/', data); alert('已保存') }
+  const handleSave = () => { savePage('/', data); toast.success('已保存') }
 
   return (
     <div className="max-w-4xl mx-auto p-6">

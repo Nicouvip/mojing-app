@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 
 import { useState, useRef, useMemo, useEffect } from 'react'
 import Navbar from '@/components/navbar'
@@ -61,7 +62,7 @@ export default function TextAnalyzerPage() {
 
   /* ── 分析 ── */
   const handleAnalyze = async () => {
-    if (!inputText.trim()) { alert('请先输入或粘贴文本'); return }
+    if (!inputText.trim()) { toast.error('请先输入或粘贴文本'); return }
     setAnalyzing(true)
     setAnalyzeError('')
     try {
@@ -156,7 +157,7 @@ export default function TextAnalyzerPage() {
   /* ── 一键生成全部 ── */
   const handleGenerateAll = async () => {
     const todo = segments.filter(s => !audioCache[`seg-${s.index}`])
-    if (todo.length === 0) { alert('所有段落已生成'); return }
+    if (todo.length === 0) { toast.error('所有段落已生成'); return }
     setBatchGenerating(true)
     setBatchProgress({ current: 0, total: todo.length })
     for (let i = 0; i < todo.length; i++) {
@@ -169,7 +170,7 @@ export default function TextAnalyzerPage() {
   /* ── 合并导出 ── */
   const handleMergeExport = async () => {
     const audioKeys = Object.keys(audioCache)
-    if (audioKeys.length === 0) { alert('请先生成音频'); return }
+    if (audioKeys.length === 0) { toast.error('请先生成音频'); return }
     setMerging(true)
     try {
       const segs = audioKeys.map(k => ({ audioBase64: audioCache[k].audioBase64, duration: audioCache[k].duration }))
@@ -189,10 +190,10 @@ export default function TextAnalyzerPage() {
         a.href = url; a.download = '文本分析_合并音频.wav'; a.click()
         URL.revokeObjectURL(url)
       } else {
-        alert('合并失败：' + (data.error || '未知错误'))
+        toast.error('合并失败：' + (data.error || '未知错误'))
       }
     } catch (err) {
-      alert('合并失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('合并失败：' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setMerging(false)
     }
@@ -204,7 +205,7 @@ export default function TextAnalyzerPage() {
       ? segments.filter(s => selectedIds.has(s.index))
       : filteredSegments
 
-    if (targetSegs.length === 0) { alert('没有可导出的内容'); return }
+    if (targetSegs.length === 0) { toast.error('没有可导出的内容'); return }
 
     if (exportFormat === 'text') {
       const lines = targetSegs.map(s => {
@@ -231,7 +232,7 @@ export default function TextAnalyzerPage() {
         const segKey = `seg-${seg.index}`
         if (!audioCache[segKey]) await generateOne(seg)
       }
-      alert(`已生成 ${targetSegs.length} 段音频，可逐段试听下载`)
+      toast.error(`已生成 ${targetSegs.length} 段音频，可逐段试听下载`)
     }
   }
 

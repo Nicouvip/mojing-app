@@ -1,4 +1,5 @@
-'use client';
+'use client'
+import { toast } from 'sonner';
 
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,9 +14,9 @@ export default function BackupPage() {
       const res = await fetch('/api/admin/backup', { method: 'POST' });
       if (!res.ok) throw new Error('备份失败');
       const data = await res.json();
-      alert(data.message || '备份成功');
+      toast.error(data.message || '备份成功');
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : '备份失败');
+      toast.error(e instanceof Error ? e.message : '备份失败');
     } finally {
       setLoading(false);
     }
