@@ -1,4 +1,4 @@
-import type { Project, Chapter, Volume, CharacterProfile, WorldSetting, Outline, Foreshadow, CoolingState, WritingPlan } from '@/lib/db/types'
+import type { Project, Chapter, Volume, CharacterProfile, WorldSetting, Outline, Foreshadow, CoolingState, WritingPlan, UserSubscription } from '@/lib/db/types'
 import { isSupabaseAvailable, supabase } from '@/lib/db/supabase-client'
 
 /** 生成带前缀的唯一 ID（crypto.randomUUID + 前缀） */
@@ -749,4 +749,30 @@ export function saveWritingPlan(plan: WritingPlan): void {
   else all.push(plan)
   saveClient('writing_plans', all)
   if (isTursoAvailable()) { tursoSaveWritingPlan(plan).catch(() => {}) }
+}
+
+// ═══════════════════════════════════════
+// P2 新增：会员订阅管理
+// ═══════════════════════════════════════
+
+import type { UserSubscription } from '@/lib/db/types'
+
+const SUB_KEY = 'mojing_subscriptions'
+
+export function getUserSubscription(email: string): UserSubscription | null {
+  if (!isClient()) return null
+  const all = loadClient<Record<string, UserSubscription>>(SUB_KEY, {})
+  return all[email] || null
+}
+
+export function setUserSubscription(email: string, sub: UserSubscription): void {
+  if (!isClient()) return
+  const all = loadClient<Record<string, UserSubscription>>(SUB_KEY, {})
+  all[email] = sub
+  saveClient(SUB_KEY, all)
+}
+
+export function getAllSubscriptions(): Record<string, UserSubscription> {
+  if (!isClient()) return {}
+  return loadClient<Record<string, UserSubscription>>(SUB_KEY, {})
 }

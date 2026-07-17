@@ -1,3 +1,17 @@
+/** 用户会员计划 */
+export type UserPlan = 'free' | 'pro' | 'admin'
+
+/** 用户会员信息 */
+export interface UserSubscription {
+  plan: UserPlan
+  startedAt: number
+  expiresAt?: number
+  /** 每月AI调用限额（pro=无限） */
+  monthlyAiQuota: number
+  /** 本月已用AI调用次数 */
+  monthlyAiUsed: number
+}
+
 export interface Project {
   id: string
   name: string
