@@ -452,14 +452,14 @@ export default function AudiobookPage() {
           )}
 
           {/* ── 作品列表 ── */}
-          <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px' }}>
+          <div className="flex-1 overflow-auto px-7 py-5">
             {filtered.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '80px 0' }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>🎧</div>
-                <p style={{ fontSize: 14, color: C.muted, margin: '0 0 16px' }}>
+              <div className="text-center py-20">
+                <Headphones className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-sm text-muted-foreground mb-4">
                   {search || genreFilter !== '全部' ? '没有找到匹配的作品' : '还没有作品'}
                 </p>
-                <Link href="/desk" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 24px', background: C.pri, color: '#fff', borderRadius: 20, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>✏️ 去创作</Link>
+                <Link href="/desk" className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-primary text-white rounded-full text-[13px] font-medium no-underline hover:bg-primary/90 transition-colors">✏️ 去创作</Link>
               </div>
             ) : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
