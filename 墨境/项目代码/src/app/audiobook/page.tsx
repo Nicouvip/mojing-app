@@ -15,19 +15,7 @@ import { VoiceSelector } from '@/components/audiobook/voice-selector'
 import { EmotionPicker } from '@/components/audiobook/emotion-picker'
 import { Headphones, Search } from 'lucide-react'
 
-const C = {
-  pri: '#c4956a',
-  priDim: '#b08050',
-  ink: '#1a1814',
-  muted: 'rgba(26,24,20,.45)',
-  line: 'rgba(26,24,20,.06)',
-  paper: '#f5f2ed',
-  card: '#fff',
-  indigo: '#3a5279',
-  crimson: '#b5454a',
-  green: '#7a9e7a',
-  radius: 8,
-} as const
+
 
 const GENRES = ['全部', '都市', '玄幻', '悬疑', '科幻', '历史', '灵异', '言情', '竞技'] as const
 
