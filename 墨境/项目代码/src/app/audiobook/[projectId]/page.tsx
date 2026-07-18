@@ -44,8 +44,6 @@ export default function AudiobookProjectPage() {
   /* ── 项目数据 ── */
   const [project, setProject] = useState<Project | null>(null)
   const [chapters, setChapters] = useState<Chapter[]>([])
-  const [selectedChapterId, setSelectedChapterId] = useState<string>('')
-
   /* ── 选择 & 设置 ── */
   const [defaultVoice, setDefaultVoice] = useState('冰糖')
   const [defaultEmotion, setDefaultEmotion] = useState('平静')
@@ -461,44 +459,6 @@ export default function AudiobookProjectPage() {
           {/* ── 三栏布局 ── */}
           <div className="flex-1 flex overflow-hidden">
 
-            {/* ── 左栏：章节列表 ── */}
-            <aside className="w-56 border-r border-border flex flex-col flex-shrink-0 overflow-hidden">
-              <div className="px-3 py-2 border-b border-border flex-shrink-0">
-                <h2 className="text-xs font-semibold text-foreground m-0">章节列表</h2>
-                <span className="text-[11px] text-muted-foreground">{activeChapters.length} 章</span>
-              </div>
-              <div className="flex-1 overflow-y-auto px-2 py-1.5 space-y-0.5">
-                {activeChapters.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-[11px] m-0">暂无章节</p>
-                  </div>
-                ) : (
-                  activeChapters.map((ch, i) => {
-                    const isSelected = selectedChapterId === ch.id
-                    const isPlaying = playingChapterId === ch.id
-                    const hasAudio = generatedChapters.has(ch.id)
-                    return (
-                      <button key={ch.id}
-                        onClick={() => { setSelectedChapterId(ch.id); setDialogueChapterId(ch.id); }}
-                        className={`w-full text-left flex items-center justify-between text-xs px-2.5 py-2 rounded-lg cursor-pointer border-none transition-all ${
-                          isSelected ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'
-                        }`}>
-                        <span className="flex items-center gap-1.5 flex-1 min-w-0">
-                          <FileText className="h-3 w-3 shrink-0 opacity-40" />
-                          <span className="truncate">{ch.title}</span>
-                        </span>
-                        <span className="flex items-center gap-1 ml-1.5 shrink-0">
-                          {hasAudio && <Music className="h-3 w-3 text-success" />}
-                          <span className="text-muted-foreground text-[10px]">{(ch.wordCount || 0).toLocaleString()}</span>
-                        </span>
-                      </button>
-                    )
-                  })
-                )}
-              </div>
-            </aside>
-
             {/* ── 中栏：Tab + 内容 ── */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
@@ -537,12 +497,12 @@ export default function AudiobookProjectPage() {
                             ttsEngine === 'vip' ? 'font-semibold bg-primary text-primary-foreground' : 'font-normal bg-card text-muted-foreground'
                           }`}>VIP版</button>
                       </div>
-                      <p className="text-xs text-muted-foreground m-0 flex-1">选择章节 → 自动识别对话/叙述 → 为角色分配音色 → 逐句生成</p>
                       <select value={dialogueChapterId} onChange={e => setDialogueChapterId(e.target.value)}
-                        className="px-3 py-1.5 border border-border rounded-md text-xs text-card-foreground bg-card font-inherit">
+                        className="px-3 py-1.5 border border-border rounded-md text-xs text-card-foreground bg-card font-inherit flex-shrink-0">
                         <option value="">选择章节...</option>
                         {activeChapters.map((ch, ci) => <option key={`${ch.id}-${ci}`} value={ch.id}>{ch.title}</option>)}
                       </select>
+                      <p className="text-xs text-muted-foreground m-0 flex-1">选择章节 → AI自动识别对话/叙述 → 为角色分配音色 → 逐句生成</p>
                     </div>
                     {dialogueChapterId ? (
                       <DialogueMode
