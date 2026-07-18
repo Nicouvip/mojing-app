@@ -51,17 +51,27 @@
 
 ---
 
-## 四、📚 项目文档
+## 四、🔧 脚本工具
+
+| 脚本 | 说明 |
+|:---|:---|
+| `scripts/narrate-arrange.py` | 多轨编排脚本：解析画本→批量合成→拼接打标→（可选）后处理润色 |
+
+---
+
+## 五、📚 项目文档
 
 | 文件 | 内容 |
 |:---|:---|
 | `docs/doubao-voice-params-reference.md` | 豆包语音完整参数手册（含expressive版全部参数） |
 | `docs/doubao-voice-source-docs.md` | 火山引擎官方文档原文保存（最佳实践+语音指令与标签） |
+| `docs/narrate-arrange-guide.md` | 多轨编排脚本使用说明 |
 | `audio-outputs/` | 所有合成音频输出目录 |
+| `audio-outputs/arranged/` | 编排版音频输出目录 |
 
 ---
 
-## 五、🧠 持久记忆
+## 六、🧠 持久记忆
 
 记忆自动加载到每个会话中。可以用 `memory list` 查看全部，用 `memory read {name}` 读取详情。
 
@@ -95,7 +105,7 @@
 
 ---
 
-## 六、⚙️ 核心配置速查
+## 七、⚙️ 核心配置速查
 
 ### 豆包 Expressive 版（当前有声书主力）
 
