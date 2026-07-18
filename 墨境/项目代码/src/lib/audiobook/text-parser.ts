@@ -75,6 +75,112 @@ function extractCharName(text: string): string | null {
   return null
 }
 
+/**
+ * 解析标准画本格式：【角色名-CV名】"对话内容"
+ * 适用于技能包 narration-extraction.md 定义的标准画本格式
+ *
+ * 示例输入：
+ *   【旁白-墨染】尚某接过那份资料，翻了几页。
+ *   【张三-墨染】"这个文在哪儿？"
+ *   【旁白-墨染】魏总笑了。
+ *
+ * 返回：解析后的段落列表（旁白+对话分离）
+ */
+export function parseBracketDialogue(text: string): TextSegment[] {
+  const segments: TextSegment[] = []
+  let idx = 0
+
+  const lines = text.split('\n').filter(l => l.trim())
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+
+    // 匹配【角色-CV】"对话" 或 【角色-CV】纯文本
+    const bracketPattern = /【([^】]+?)(?:-([^】]+?))?】\s*["\u201c]?([^"]*?)["\u201d]?$/g
+    let lastEnd = 0
+    let m: RegExpExecArray | null
+
+    while ((m = bracketPattern.exec(trimmed)) !== null) {
+      // 标记前的旁白
+      if (m.index > lastEnd) {
+        const before = trimmed.slice(lastEnd, m.index).trim()
+        if (before) segments.push({ id: `s-${idx++}`, type: 'narration', text: before, index: idx })
+      }
+
+      const roleName = m[1]?.trim()
+      const cvName = m[2]?.trim() || ''
+      const dialogue = m[3]?.trim() || ''
+
+      if (roleName === '旁白' || !dialogue) {
+        // 旁白角色 → 叙述段
+        segments.push({ id: `s-${idx++}`, type: 'narration', text: dialogue || roleName, index: idx })
+      } else {
+        // 对话角色 → 对话段
+        segments.push({ id: `s-${idx++}`, type: 'dialogue', text: dialogue, characterName: roleName, index: idx })
+      }
+
+      lastEnd = m.index + m[0].length
+    }
+
+    // 标记后的剩余旁白
+    if (lastEnd < trimmed.length) {
+      const rest = trimmed.slice(lastEnd).trim()
+      if (rest) segments.push({ id: `s-${idx++}`, type: 'narration', text: rest, index: idx })
+    }
+    // 整行无标记 → 旁白
+    if (lastEnd === 0) {
+      segments.push({ id: `s-${idx++}`, type: 'narration', text: trimmed, index: idx })
+    }
+  }
+
+  return segments
+}
+
+/**
+ * 解析手动标注格式：|旁白_START|...|旁白_END| + |角色_标记NN|
+ * 适用于技能包 narration-extraction.md 定义的手动标注画本格式
+ *
+ * 示例输入：
+ *   |旁白_START|
+ *   尚某接过那份资料，翻了几页。
+ *   |旁白_END|
+ *   |角色_标记01|
+ *   |旁白_START|
+ *   魏总笑了。
+ *   |旁白_END|
+ *
+ * 返回：解析后的段落列表
+ */
+export function parseAnnotatedFormat(text: string): TextSegment[] {
+  const segments: TextSegment[] = []
+  let idx = 0
+
+  // 按标记分割
+  const parts = text.split(/(\|旁白_START\||\|旁白_END\||\|角色_标记\d+\|)/)
+  let inNarration = false
+
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (!trimmed) continue
+
+    if (trimmed === '|旁白_START|') {
+      inNarration = true
+    } else if (trimmed === '|旁白_END|') {
+      inNarration = false
+    } else if (/^\|角色_标记\d+\|$/.test(trimmed)) {
+      // 对话标记位 → 插入标记
+      segments.push({ id: `s-${idx++}`, type: 'dialogue', text: '', characterName: '角色位', index: idx })
+    } else if (inNarration) {
+      segments.push({ id: `s-${idx++}`, type: 'narration', text: trimmed, index: idx })
+    } else if (!trimmed.startsWith('|')) {
+      segments.push({ id: `s-${idx++}`, type: 'narration', text: trimmed, index: idx })
+    }
+  }
+
+  return segments
+}
+
 /** 获取角色列表 */
 export function extractCharacters(segments: TextSegment[]): DetectedCharacter[] {
   const map = new Map<string, DetectedCharacter>()
