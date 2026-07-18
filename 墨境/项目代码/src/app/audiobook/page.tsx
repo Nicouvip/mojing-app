@@ -10,6 +10,9 @@ import { getProjects, getChapters, createChapter, createProject, updateChapterCo
 import type { Project, Chapter } from '@/lib/db/types'
 import { encodeWAV } from '@/lib/audiobook/audio-utils'
 import { loadGeneratedChapters } from '@/lib/audiobook/audio-persistence'
+import { ProjectCard } from '@/components/audiobook/project-card'
+import { VoiceSelector } from '@/components/audiobook/voice-selector'
+import { EmotionPicker } from '@/components/audiobook/emotion-picker'
 
 const C = {
   pri: '#c4956a',
@@ -486,64 +489,17 @@ export default function AudiobookPage() {
                 <Link href="/desk" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 24px', background: C.pri, color: '#fff', borderRadius: 20, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>✏️ 去创作</Link>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-                {filtered.map((project, idx) => {
-                  const isExpanded = expandedId === project.id
-                  const totalWords = project.totalWords || project.chapters.reduce((s, c) => s + (c.wordCount || 0), 0)
-                  const chapterCount = project.chapterCount || project.chapters.length
-                  const recentChapters = project.chapters.slice(0, 3)
-
-                  return (
-                    <div key={project.id} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, overflow: 'hidden', transition: 'box-shadow .15s' }} onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,.06)')} onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
-                      <div style={{ height: 100, background: COVER_GRADS[idx % COVER_GRADS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                        <span style={{ fontSize: 32 }}>{GENRE_ICONS[project.genre] || '📖'}</span>
-                        <div style={{ position: 'absolute', top: 10, right: 10 }}>
-                          <span style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(255,255,255,.85)', borderRadius: 10, color: C.ink, fontWeight: 500 }}>{project.genre}</span>
-                        </div>
-                      </div>
-                      <div style={{ padding: '14px 16px' }}>
-                        <h3 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: '0 0 6px', lineHeight: 1.3 }}>{project.name}</h3>
-                        {project.description && <p style={{ fontSize: 11, color: C.muted, margin: '0 0 8px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{project.description}</p>}
-                        <div style={{ display: 'flex', gap: 12, fontSize: 11, color: C.muted, marginBottom: 12 }}>
-                          <span>📖 {chapterCount} 章</span>
-                          <span>📝 {(totalWords || 0).toLocaleString()} 字</span>
-                          <span>🕐 {new Date(project.updatedAt).toLocaleDateString('zh-CN')}</span>
-                          {audioProgress[project.id] > 0 && (
-                            <span style={{ color: C.pri }}>🎵 {audioProgress[project.id]}/{chapterCount} 已生成</span>
-                          )}
-                        </div>
-                        {recentChapters.length > 0 && (
-                          <div style={{ marginBottom: 12 }}>
-                            <div style={{ fontSize: 11, color: C.muted, marginBottom: 6, fontWeight: 500 }}>章节预览</div>
-                            {recentChapters.map((ch, ri) => (
-                              <div key={`${ch.id}-${ri}`} style={{ fontSize: 11, color: C.ink, padding: '4px 8px', background: 'rgba(26,24,20,.02)', borderRadius: 4, marginBottom: 3, display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{ch.title}</span>
-                                <span style={{ color: C.muted, marginLeft: 8, flexShrink: 0 }}>{(ch.wordCount || 0).toLocaleString()} 字</span>
-                              </div>
-                            ))}
-                            {chapterCount > 3 && <div style={{ fontSize: 10, color: C.muted, textAlign: 'center', marginTop: 4 }}>还有 {chapterCount - 3} 章...</div>}
-                          </div>
-                        )}
-                        {recentChapters[0]?.content && <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontStyle: 'italic', padding: '8px 10px', background: 'rgba(196,149,106,.04)', borderRadius: 6, borderLeft: `3px solid ${C.pri}30` }}>「{recentChapters[0].content.slice(0, 100)}...」</div>}
-                        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                          <Link href={`/audiobook/${project.id}`} style={{ flex: 1, padding: '9px 0', background: C.pri, color: '#fff', borderRadius: 8, fontSize: 12, fontWeight: 500, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>🎧 进入有声书</Link>
-                          <Link href={`/editor/${project.id}`} style={{ padding: '9px 14px', background: 'rgba(26,24,20,.04)', borderRadius: 8, fontSize: 12, color: C.muted, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="编辑章节">✏️</Link>
-                          <button onClick={() => setExpandedId(isExpanded ? null : project.id)} style={{ padding: '9px 14px', background: 'rgba(26,24,20,.04)', borderRadius: 8, fontSize: 12, color: C.muted, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }} title="展开全部章节">{isExpanded ? '▲' : '▼'}</button>
-                        </div>
-                        {isExpanded && project.chapters.length > 3 && (
-                          <div style={{ marginTop: 12, padding: '10px', background: 'rgba(26,24,20,.02)', borderRadius: 8 }}>
-                            {project.chapters.slice(3).map((ch, ei) => (
-                              <div key={`${ch.id}-${ei}`} style={{ fontSize: 11, color: C.ink, padding: '4px 8px', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
-                                <span>{ch.title}</span>
-                                <span style={{ color: C.muted }}>{(ch.wordCount || 0).toLocaleString()} 字</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+                {filtered.map((project, idx) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    idx={idx}
+                    audioProgress={audioProgress[project.id] || 0}
+                    isExpanded={expandedId === project.id}
+                    onToggleExpand={() => setExpandedId(expandedId === project.id ? null : project.id)}
+                  />
+                ))}
               </div>
             )}
           </div>
