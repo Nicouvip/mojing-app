@@ -26,7 +26,6 @@ const NAV_ITEMS_LOGGED_OUT = [
   { href: '/tools', label: '工具广场' },
   { href: '/cases', label: '写作案例' },
   { href: '/library', label: '素材库' },
-  { href: '/login', label: '登录' },
 ] as const
 
 const NAV_ITEMS_LOGGED_IN = [
