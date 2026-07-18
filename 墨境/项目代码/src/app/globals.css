@@ -3,8 +3,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --color-background: #161514;
-  --color-foreground: #e8e6e1;
+  --color-background: #f5f2ed;
+  --color-foreground: #0f172a;
   --color-primary: #c4956a;
   --color-primary-foreground: #161514;
   --color-primary-light: rgba(196,149,106,0.12);
@@ -409,6 +409,9 @@ h1 + p, h2 + p { text-indent: 0; }
   --color-sidebar-foreground: hsl(30 40% 20%);
   --color-sidebar-hover: hsl(35 20% 88%);
   --color-sidebar-active: rgba(196,149,106,0.15);
+  --color-indigo: #3a5279;
+  --color-crimson: #b5454a;
+  --color-mint: #7a9e7a;
 }
 
 .theme-warm .ProseMirror { color: var(--color-foreground); }

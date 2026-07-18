@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ArrowLeft, Headphones, Mic, Music, MessageCircle, X, Play, Pause, Upload, Circle, Square, Settings, Sparkles } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import DeskSidebar from '@/components/desk-sidebar'
 import { getProject, getChapters } from '@/lib/db/store'
@@ -12,22 +13,6 @@ import { DialogueMode } from '@/components/audiobook/dialogue-mode'
 import { generateSRT } from '@/lib/audiobook/srt-generator'
 import { loadGeneratedChapters, saveGeneratedChapter, clearGeneratedChapters } from '@/lib/audiobook/audio-persistence'
 import { encodeWAV } from '@/lib/audiobook/audio-utils'
-
-/* ── 设计令牌 ── */
-const C = {
-  pri: '#c4956a',
-  priDim: '#b08050',
-  ink: '#1a1814',
-  muted: 'rgba(26,24,20,.45)',
-  line: 'rgba(26,24,20,.06)',
-  paper: '#f5f2ed',
-  sb: '#f5f2ed',
-  card: '#fff',
-  indigo: '#3a5279',
-  crimson: '#b5454a',
-  green: '#7a9e7a',
-  radius: 8,
-} as const
 
 /* ── 预置音色（MiMo V2.5） ── */
 const PRESET_VOICES = [
@@ -122,7 +107,6 @@ export default function AudiobookProjectPage() {
         stream.getTracks().forEach(t => t.stop())
         const webmBlob = new Blob(recordedChunksRef.current, { type: 'audio/webm' })
         try {
-          // webm → wav 转换
           const arrayBuf = await webmBlob.arrayBuffer()
           const audioCtx = new AudioContext()
           const audioBuf = await audioCtx.decodeAudioData(arrayBuf)
@@ -131,7 +115,6 @@ export default function AudiobookProjectPage() {
           const file = new File([wavBlob], `录音-${new Date().toLocaleTimeString('zh-CN')}.wav`, { type: 'audio/wav' })
           setCloneSample(file)
         } catch {
-          // 转换失败则直接用 webm
           const file = new File([webmBlob], `录音-${new Date().toLocaleTimeString('zh-CN')}.webm`, { type: 'audio/webm' })
           setCloneSample(file)
           toast.error('wav转换失败，已保存为webm格式')
@@ -158,7 +141,6 @@ export default function AudiobookProjectPage() {
       setProject(p)
       setChapters(getChapters(projectId))
     }
-    // P0-1: Load persisted audio from IndexedDB
     loadGeneratedChapters(projectId).then(map => {
       if (map.size > 0) setGeneratedChapters(map)
     })
@@ -176,7 +158,6 @@ export default function AudiobookProjectPage() {
     audio.addEventListener('ended', onEnd)
     return () => { audio.removeEventListener('timeupdate', onTime); audio.removeEventListener('loadedmetadata', onDur); audio.removeEventListener('ended', onEnd) }
   }, [])
-
 
   /* ── 试听音色 ── */
   const handlePreviewVoice = async (voiceId: string) => {
@@ -210,9 +191,6 @@ export default function AudiobookProjectPage() {
       setIsPlaying(true)
     }
   }
-
-
-
 
   /* ── 播放章节 ── */
   const handlePlay = (chapterId: string) => {
@@ -263,7 +241,6 @@ export default function AudiobookProjectPage() {
     URL.revokeObjectURL(url)
   }
 
-  /* ── 下载 LRC 字幕 ── */
   /* ── 合并已生成章节音频 ── */
   const handleMergeChapters = async () => {
     if (generatedChapters.size === 0) { toast.error('请先生成音频'); return }
@@ -400,7 +377,7 @@ export default function AudiobookProjectPage() {
     }
   }
 
-  /* ── 字幕同步：找到当前时间对应的行 ── */
+  /* ── 字幕同步 ── */
   const getCurrentSubtitleIndex = (chapterId: string): number => {
     const gen = generatedChapters.get(chapterId)
     if (!gen) return -1
@@ -418,7 +395,6 @@ export default function AudiobookProjectPage() {
   const persistAndSetChapters = useCallback((updater: (prev: Map<string, { audioBase64: string; duration: number; subtitles: Array<{ text: string; startSec: number; endSec: number }> }>) => Map<string, { audioBase64: string; duration: number; subtitles: Array<{ text: string; startSec: number; endSec: number }> }>) => {
     setGeneratedChapters(prev => {
       const next = updater(prev)
-      // Persist each new/updated entry to IndexedDB
       next.forEach((data, chId) => {
         if (!prev.has(chId)) {
           saveGeneratedChapter(projectId, chId, data)
@@ -430,14 +406,16 @@ export default function AudiobookProjectPage() {
 
   if (!project) {
     return (
-      <div style={{ minHeight: '100vh', background: C.paper }}>
+      <div className="min-h-screen bg-background">
         <Navbar />
-        <div style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
+        <div className="flex min-h-[calc(100vh-56px)]">
           <DeskSidebar active="/audiobook" />
-          <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-            <span style={{ fontSize: 48 }}>📂</span>
-            <p style={{ color: C.muted, fontSize: 14 }}>作品不存在</p>
-            <Link href="/audiobook" style={{ padding: '8px 20px', background: C.pri, color: '#fff', borderRadius: 8, fontSize: 13, textDecoration: 'none' }}>← 返回有声书列表</Link>
+          <main className="flex-1 flex flex-col items-center justify-center gap-4">
+            <Headphones className="h-12 w-12 text-muted-foreground" />
+            <p className="text-muted-foreground text-sm">作品不存在</p>
+            <Link href="/audiobook" className="px-5 py-2 bg-primary text-primary-foreground rounded-lg text-sm no-underline hover:bg-primary-hover transition-colors">
+              ← 返回有声书列表
+            </Link>
           </main>
         </div>
       </div>
@@ -447,35 +425,32 @@ export default function AudiobookProjectPage() {
   const totalDuration = Array.from(generatedChapters.values()).reduce((s, g) => s + g.duration, 0)
 
   return (
-    <div style={{ minHeight: '100vh', background: C.paper }}>
+    <div className="min-h-screen bg-background">
       <Navbar />
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
+      <div className="flex min-h-[calc(100vh-56px)]">
         <DeskSidebar active="/audiobook" />
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* ── 顶栏 ── */}
-          <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 56, borderBottom: `1px solid ${C.line}`, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Link href="/audiobook" style={{ fontSize: 12, color: C.muted, textDecoration: 'none' }}>← 返回</Link>
-              <span style={{ color: C.line }}>|</span>
-              <span style={{ fontSize: 20 }}>🎧</span>
-              <h1 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: 0 }}>{project.name} · 有声书</h1>
+          <header className="flex items-center justify-between px-7 h-14 border-b border-border flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <Link href="/audiobook" className="text-xs text-muted-foreground no-underline hover:text-foreground transition-colors">
+                <ArrowLeft className="inline h-3.5 w-3.5 mr-1" />返回
+              </Link>
+              <span className="text-border">|</span>
+              <Headphones className="h-5 w-5 text-muted-foreground" />
+              <h1 className="text-[15px] font-semibold text-card-foreground m-0">{project.name} · 有声书</h1>
               {generatedChapters.size > 0 && (
-                <span style={{ fontSize: 11, color: C.green, padding: '2px 8px', background: 'rgba(122,158,122,.12)', borderRadius: 10 }}>
+                <span className="text-[11px] text-mint px-2 py-0.5 bg-mint/10 rounded-full">
                   ✓ {generatedChapters.size} 章已生成 · {Math.floor(totalDuration / 60)}:{String(Math.floor(totalDuration % 60)).padStart(2, '0')}
                 </span>
               )}
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            {generatedChapters.size > 0 && (
+            <div className="flex gap-2 items-center">
+              {generatedChapters.size > 0 && (
                 <button
                   onClick={handleMergeChapters}
                   disabled={mergingChapters}
-                  style={{
-                    padding: '7px 18px',
-                    background: mergingChapters ? '#ccc' : C.indigo,
-                    color: '#fff', border: 'none', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                    cursor: mergingChapters ? 'default' : 'pointer', fontFamily: 'inherit',
-                  }}
+                  className="px-[18px] py-[7px] bg-indigo text-white border-none rounded-full text-xs font-medium cursor-pointer disabled:cursor-default disabled:opacity-50 transition-opacity"
                 >
                   {mergingChapters ? '...' : `Merge (${generatedChapters.size})`}
                 </button>
@@ -484,56 +459,52 @@ export default function AudiobookProjectPage() {
           </header>
 
           {/* ── Tab 切换 ── */}
-          <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.line}`, padding: '0 28px', flexShrink: 0 }}>
+          <div className="flex gap-0 border-b border-border px-7 flex-shrink-0">
             {([
-              { key: 'dialogue' as const, label: '对话模式', icon: '🎭' },
-              { key: 'voices' as const, label: '音色管理', icon: '🎤' },
-              { key: 'settings' as const, label: '生成设置', icon: '⚙️' },
+              { key: 'dialogue' as const, label: '对话模式', icon: MessageCircle },
+              { key: 'voices' as const, label: '音色管理', icon: Mic },
+              { key: 'settings' as const, label: '生成设置', icon: Settings },
             ]).map(tab => (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-                padding: '10px 16px', fontSize: 12, fontWeight: activeTab === tab.key ? 600 : 400,
-                color: activeTab === tab.key ? C.pri : C.muted, background: 'none', border: 'none',
-                borderBottom: activeTab === tab.key ? `2px solid ${C.pri}` : '2px solid transparent',
-                cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
-              }}>
-                <span>{tab.icon}</span>{tab.label}
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-xs border-none bg-transparent cursor-pointer font-inherit transition-colors ${
+                  activeTab === tab.key
+                    ? 'font-semibold text-primary border-b-2 border-primary'
+                    : 'font-normal text-muted-foreground border-b-2 border-transparent hover:text-foreground'
+                }`}
+              >
+                <tab.icon className="h-3.5 w-3.5" />{tab.label}
               </button>
             ))}
           </div>
 
           {/* ── 内容 ── */}
-          <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px', paddingBottom: playingChapterId ? 80 : 20 }}>
+          <div className={`flex-1 overflow-auto px-7 py-5 ${playingChapterId ? 'pb-20' : 'pb-5'}`}>
 
             {/* ═══ 对话模式 ═══ */}
             {activeTab === 'dialogue' && (
               <div>
-                {/* ═══ 引擎切换 + 章节选择 ═══ */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                  {/* 普通版/VIP版 切换 */}
-                  <div style={{ display: 'flex', border: `1px solid ${C.line}`, borderRadius: 6, overflow: 'hidden' }}>
+                {/* 引擎切换 + 章节选择 */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex border border-border rounded-md overflow-hidden">
                     <button
                       onClick={() => setTtsEngine('normal')}
-                      style={{
-                        padding: '6px 14px', fontSize: 12, fontWeight: ttsEngine === 'normal' ? 600 : 400,
-                        background: ttsEngine === 'normal' ? '#c4956a' : C.card,
-                        color: ttsEngine === 'normal' ? '#fff' : C.muted,
-                        border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
-                      }}
+                      className={`px-3.5 py-1.5 text-xs border-none cursor-pointer font-inherit transition-all ${
+                        ttsEngine === 'normal' ? 'font-semibold bg-primary text-primary-foreground' : 'font-normal bg-card text-muted-foreground'
+                      }`}
                     >普通版</button>
                     <button
                       onClick={() => setTtsEngine('vip')}
-                      style={{
-                        padding: '6px 14px', fontSize: 12, fontWeight: ttsEngine === 'vip' ? 600 : 400,
-                        background: ttsEngine === 'vip' ? '#c4956a' : C.card,
-                        color: ttsEngine === 'vip' ? '#fff' : C.muted,
-                        border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
-                      }}
+                      className={`px-3.5 py-1.5 text-xs border-none cursor-pointer font-inherit transition-all ${
+                        ttsEngine === 'vip' ? 'font-semibold bg-primary text-primary-foreground' : 'font-normal bg-card text-muted-foreground'
+                      }`}
                     >VIP版</button>
                   </div>
 
-                  <p style={{ fontSize: 12, color: C.muted, margin: 0, flex: 1 }}>选择章节 → 自动识别对话/叙述 → 为角色分配音色 → 逐句生成</p>
+                  <p className="text-xs text-muted-foreground m-0 flex-1">选择章节 → 自动识别对话/叙述 → 为角色分配音色 → 逐句生成</p>
 
-                  <select value={dialogueChapterId} onChange={e => setDialogueChapterId(e.target.value)} style={{ padding: '6px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
+                  <select value={dialogueChapterId} onChange={e => setDialogueChapterId(e.target.value)} className="px-3 py-1.5 border border-border rounded-md text-xs text-card-foreground bg-card font-inherit">
                     <option value="">选择章节...</option>
                     {chapters.filter(c => !c.deletedAt).map((ch, ci) => <option key={`${ch.id}-${ci}`} value={ch.id}>{ch.title}</option>)}
                   </select>
@@ -550,9 +521,9 @@ export default function AudiobookProjectPage() {
                     ]}
                   />
                 ) : (
-                  <div style={{ textAlign: 'center', padding: 60, color: C.muted }}>
-                    <div style={{ fontSize: 36, marginBottom: 12 }}>🎭</div>
-                    <p style={{ fontSize: 13, margin: 0 }}>请先选择一个章节，系统会自动识别对话和角色</p>
+                  <div className="text-center py-16 text-muted-foreground">
+                    <MessageCircle className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+                    <p className="text-[13px] m-0">请先选择一个章节，系统会自动识别对话和角色</p>
                   </div>
                 )}
               </div>
@@ -561,27 +532,37 @@ export default function AudiobookProjectPage() {
             {/* ═══ 音色管理 ═══ */}
             {activeTab === 'voices' && (
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>选择默认音色，或设计/克隆自定义音色</p>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setShowDesign(true)} style={{ padding: '6px 14px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>✨ 设计音色</button>
-                    <button onClick={() => setShowClone(true)} style={{ padding: '6px 14px', background: C.pri, border: 'none', borderRadius: 6, fontSize: 12, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>🎤 克隆声音</button>
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-xs text-muted-foreground m-0">选择默认音色，或设计/克隆自定义音色</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowDesign(true)} className="px-3.5 py-1.5 bg-card border border-border rounded-md text-xs text-card-foreground cursor-pointer font-inherit hover:bg-muted transition-colors">
+                      <Sparkles className="inline h-3.5 w-3.5 mr-1" />设计音色
+                    </button>
+                    <button onClick={() => setShowClone(true)} className="px-3.5 py-1.5 bg-primary border-none rounded-md text-xs text-primary-foreground cursor-pointer font-inherit hover:bg-primary-hover transition-colors">
+                      <Mic className="inline h-3.5 w-3.5 mr-1" />克隆声音
+                    </button>
                   </div>
                 </div>
 
                 {/* 预置音色 */}
-                <h3 style={{ fontSize: 12, fontWeight: 600, color: C.ink, margin: '0 0 10px' }}>预置音色</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10, marginBottom: 20 }}>
+                <h3 className="text-xs font-semibold text-card-foreground m-0 mb-2.5">预置音色</h3>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2.5 mb-5">
                   {PRESET_VOICES.map(v => (
-                    <div key={v.id} onClick={() => setDefaultVoice(v.id)} style={{ padding: 12, background: C.card, border: `2px solid ${defaultVoice === v.id ? C.pri : C.line}`, borderRadius: C.radius, cursor: 'pointer', transition: 'all .12s' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontSize: 18 }}>{v.icon}</span>
+                    <div key={v.id} onClick={() => setDefaultVoice(v.id)} className={`p-3 bg-card border-2 rounded-lg cursor-pointer transition-all hover:shadow-card ${
+                      defaultVoice === v.id ? 'border-primary' : 'border-border'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">{v.icon}</span>
                         <div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: C.ink }}>{v.name}</div>
-                          <div style={{ fontSize: 10, color: C.muted }}>{v.desc}</div>
+                          <div className="text-xs font-semibold text-card-foreground">{v.name}</div>
+                          <div className="text-[10px] text-muted-foreground">{v.desc}</div>
                         </div>
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); handlePreviewVoice(v.id) }} style={{ width: '100%', padding: '4px 0', background: defaultVoice === v.id ? 'rgba(196,149,106,.12)' : 'rgba(26,24,20,.04)', border: 'none', borderRadius: 4, fontSize: 11, color: defaultVoice === v.id ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>▶ 试听</button>
+                      <button onClick={(e) => { e.stopPropagation(); handlePreviewVoice(v.id) }} className={`w-full py-1 border-none rounded text-[11px] cursor-pointer font-inherit transition-colors ${
+                        defaultVoice === v.id ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        <Play className="inline h-3 w-3 mr-1" />试听
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -589,13 +570,17 @@ export default function AudiobookProjectPage() {
                 {/* 自定义音色 */}
                 {designedVoices.length + clonedVoices.length > 0 && (
                   <>
-                    <h3 style={{ fontSize: 12, fontWeight: 600, color: C.ink, margin: '0 0 10px' }}>我的自定义音色</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+                    <h3 className="text-xs font-semibold text-card-foreground m-0 mb-2.5">我的自定义音色</h3>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2.5">
                       {[...designedVoices, ...clonedVoices.map(v => ({ id: v.id, name: v.name, desc: v.sampleName, audioBase64: v.audioBase64 }))].map(v => (
-                        <div key={v.id} onClick={() => setDefaultVoice(v.id)} style={{ padding: 12, background: C.card, border: `2px solid ${defaultVoice === v.id ? C.pri : C.line}`, borderRadius: C.radius, cursor: 'pointer', transition: 'all .12s' }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 4 }}>{v.name}</div>
-                          <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>{v.desc}</div>
-                          <button onClick={(e) => { e.stopPropagation(); playBase64Audio((v as { audioBase64: string }).audioBase64, 'audio/wav') }} style={{ width: '100%', padding: '4px 0', background: 'rgba(196,149,106,.12)', border: 'none', borderRadius: 4, fontSize: 11, color: C.pri, cursor: 'pointer', fontFamily: 'inherit' }}>▶ 试听</button>
+                        <div key={v.id} onClick={() => setDefaultVoice(v.id)} className={`p-3 bg-card border-2 rounded-lg cursor-pointer transition-all hover:shadow-card ${
+                          defaultVoice === v.id ? 'border-primary' : 'border-border'
+                        }`}>
+                          <div className="text-xs font-semibold text-card-foreground mb-1">{v.name}</div>
+                          <div className="text-[10px] text-muted-foreground mb-2">{v.desc}</div>
+                          <button onClick={(e) => { e.stopPropagation(); playBase64Audio((v as { audioBase64: string }).audioBase64, 'audio/wav') }} className="w-full py-1 bg-primary/10 border-none rounded text-[11px] text-primary cursor-pointer font-inherit transition-colors">
+                            <Play className="inline h-3 w-3 mr-1" />试听
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -606,33 +591,39 @@ export default function AudiobookProjectPage() {
 
             {/* ═══ 生成设置 ═══ */}
             {activeTab === 'settings' && (
-              <div style={{ maxWidth: 480 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="max-w-xl">
+                <div className="flex flex-col gap-4">
                   {/* 音色 */}
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>默认旁白音色</label>
-                    <select value={defaultVoice} onChange={e => setDefaultVoice(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
+                    <label className="block text-xs font-medium text-card-foreground mb-1.5">默认旁白音色</label>
+                    <select value={defaultVoice} onChange={e => setDefaultVoice(e.target.value)} className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground bg-card font-inherit">
                       {allVoices.map(v => <option key={v.id} value={v.id}>{v.name} — {v.desc}</option>)}
                     </select>
                   </div>
 
                   {/* 情绪 */}
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>默认情绪</label>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <label className="block text-xs font-medium text-card-foreground mb-1.5">默认情绪</label>
+                    <div className="flex gap-1.5 flex-wrap">
                       {EMOTIONS.map(em => (
-                        <button key={em} onClick={() => setDefaultEmotion(em)} style={{ padding: '5px 12px', borderRadius: 14, fontSize: 12, border: `1px solid ${defaultEmotion === em ? C.pri : C.line}`, background: defaultEmotion === em ? 'rgba(196,149,106,.12)' : C.card, color: defaultEmotion === em ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>{em}</button>
+                        <button key={em} onClick={() => setDefaultEmotion(em)} className={`px-3 py-[5px] rounded-full text-xs cursor-pointer font-inherit transition-colors ${
+                          defaultEmotion === em
+                            ? 'border border-primary bg-primary/10 text-primary'
+                            : 'border border-border bg-card text-muted-foreground'
+                        }`}>{em}</button>
                       ))}
                     </div>
                   </div>
 
-                  {/* ── 音频质量 ── */}
-                  <div style={{ padding: 16, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius }}>
-                    <h3 style={{ fontSize: 13, fontWeight: 600, color: C.ink, margin: '0 0 12px' }}>🎛️ 音频质量</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  {/* 音频质量 */}
+                  <div className="p-4 bg-muted/50 border border-border rounded-lg">
+                    <h3 className="text-[13px] font-semibold text-card-foreground m-0 mb-3">
+                      <Settings className="inline h-4 w-4 mr-1" />音频质量
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: C.muted, marginBottom: 4 }}>采样率</label>
-                        <select defaultValue="24000" style={{ width: '100%', padding: '6px 10px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
+                        <label className="block text-[11px] font-medium text-muted-foreground mb-1">采样率</label>
+                        <select defaultValue="24000" className="w-full px-2.5 py-1.5 border border-border rounded-md text-xs text-card-foreground bg-card font-inherit">
                           <option value="8000">8,000 Hz（电话音质）</option>
                           <option value="16000">16,000 Hz（语音识别）</option>
                           <option value="22050">22,050 Hz（FM 广播）</option>
@@ -642,8 +633,8 @@ export default function AudiobookProjectPage() {
                         </select>
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: C.muted, marginBottom: 4 }}>位深度</label>
-                        <select defaultValue="16" style={{ width: '100%', padding: '6px 10px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
+                        <label className="block text-[11px] font-medium text-muted-foreground mb-1">位深度</label>
+                        <select defaultValue="16" className="w-full px-2.5 py-1.5 border border-border rounded-md text-xs text-card-foreground bg-card font-inherit">
                           <option value="8">8-bit（低质量，文件小）</option>
                           <option value="16">16-bit（标准，推荐）</option>
                           <option value="24">24-bit（高质量）</option>
@@ -651,24 +642,32 @@ export default function AudiobookProjectPage() {
                         </select>
                       </div>
                     </div>
-                    <div style={{ marginTop: 12 }}>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: C.muted, marginBottom: 4 }}>比特率（MP3 导出时生效）</label>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <div className="mt-3">
+                      <label className="block text-[11px] font-medium text-muted-foreground mb-1">比特率（MP3 导出时生效）</label>
+                      <div className="flex gap-1.5 flex-wrap">
                         {[64, 96, 128, 160, 192, 224, 256, 320].map(br => (
-                          <button key={br} style={{ padding: '4px 10px', borderRadius: 12, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${br === 192 ? C.pri : C.line}`, background: br === 192 ? 'rgba(196,149,106,.12)' : C.card, color: br === 192 ? C.pri : C.muted, fontWeight: br === 192 ? 600 : 400 }}>{br} kbps</button>
+                          <button key={br} className={`px-2.5 py-1 rounded-full text-[11px] font-inherit cursor-pointer transition-colors ${
+                            br === 192
+                              ? 'border border-primary bg-primary/10 text-primary font-semibold'
+                              : 'border border-border bg-card text-muted-foreground font-normal'
+                          }`}>{br} kbps</button>
                         ))}
                       </div>
                     </div>
-                    <div style={{ marginTop: 12 }}>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: C.muted, marginBottom: 4 }}>导出格式</label>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                    <div className="mt-3">
+                      <label className="block text-[11px] font-medium text-muted-foreground mb-1">导出格式</label>
+                      <div className="flex gap-1.5">
                         {[
                           { key: 'wav', label: 'WAV（无损）' },
                           { key: 'mp3-128', label: 'MP3 128k' },
                           { key: 'mp3-192', label: 'MP3 192k' },
                           { key: 'mp3-320', label: 'MP3 320k' },
                         ].map(f => (
-                          <button key={f.key} style={{ padding: '4px 10px', borderRadius: 12, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${f.key === 'wav' ? C.pri : C.line}`, background: f.key === 'wav' ? 'rgba(196,149,106,.12)' : C.card, color: f.key === 'wav' ? C.pri : C.muted, fontWeight: f.key === 'wav' ? 600 : 400 }}>{f.label}</button>
+                          <button key={f.key} className={`px-2.5 py-1 rounded-full text-[11px] font-inherit cursor-pointer transition-colors ${
+                            f.key === 'wav'
+                              ? 'border border-primary bg-primary/10 text-primary font-semibold'
+                              : 'border border-border bg-card text-muted-foreground font-normal'
+                          }`}>{f.label}</button>
                         ))}
                       </div>
                     </div>
@@ -676,8 +675,8 @@ export default function AudiobookProjectPage() {
 
                   {/* 间隔 */}
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>对话间隔</label>
-                    <select defaultValue="500" style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, background: C.card, fontFamily: 'inherit' }}>
+                    <label className="block text-xs font-medium text-card-foreground mb-1.5">对话间隔</label>
+                    <select defaultValue="500" className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground bg-card font-inherit">
                       <option value="300">0.3 秒（紧凑）</option>
                       <option value="500">0.5 秒（正常）</option>
                       <option value="800">0.8 秒（舒缓）</option>
@@ -693,26 +692,26 @@ export default function AudiobookProjectPage() {
 
       {/* ── 底部播放器 ── */}
       {playingChapterId && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 64, background: C.card, borderTop: `1px solid ${C.line}`, display: 'flex', alignItems: 'center', padding: '0 28px', gap: 16, zIndex: 100, boxShadow: '0 -2px 12px rgba(0,0,0,.04)' }}>
-          <button onClick={() => handlePlay(playingChapterId)} style={{ width: 36, height: 36, borderRadius: '50%', background: C.pri, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#fff', flexShrink: 0 }}>
-            {isPlaying ? '⏸' : '▶'}
+        <div className="fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border flex items-center px-7 gap-4 z-[100] shadow-[0_-2px_12px_rgba(0,0,0,.04)]">
+          <button onClick={() => handlePlay(playingChapterId)} className="w-9 h-9 rounded-full bg-primary border-none cursor-pointer flex items-center justify-center text-base text-white shrink-0 hover:bg-primary-hover transition-colors">
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
           </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: C.ink }}>{chapters.find(c => c.id === playingChapterId)?.title || ''}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-              <span style={{ fontSize: 10, color: C.muted }}>{Math.floor(currentTime)}s / {Math.floor(duration)}s</span>
-              <div style={{ flex: 1, height: 3, background: C.line, borderRadius: 2, cursor: 'pointer' }} onClick={(e) => {
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium text-card-foreground">{chapters.find(c => c.id === playingChapterId)?.title || ''}</div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] text-muted-foreground">{Math.floor(currentTime)}s / {Math.floor(duration)}s</span>
+              <div className="flex-1 h-[3px] bg-border rounded-sm cursor-pointer" onClick={(e) => {
                 if (!audioRef.current) return
                 const rect = e.currentTarget.getBoundingClientRect()
                 const ratio = (e.clientX - rect.left) / rect.width
                 audioRef.current.currentTime = ratio * duration
               }}>
-                <div style={{ height: '100%', width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`, background: C.pri, borderRadius: 2, transition: 'width .1s' }} />
+                <div className="h-full bg-primary rounded-sm transition-[width] duration-100" style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }} />
               </div>
-              <span style={{ fontSize: 10, color: C.muted }}>{defaultVoice}</span>
+              <span className="text-[10px] text-muted-foreground">{defaultVoice}</span>
             </div>
           </div>
-          <button onClick={() => { audioRef.current?.pause(); setPlayingChapterId(null); setIsPlaying(false) }} style={{ padding: '6px 12px', background: 'none', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 11, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>关闭</button>
+          <button onClick={() => { audioRef.current?.pause(); setPlayingChapterId(null); setIsPlaying(false) }} className="px-3 py-1.5 bg-transparent border border-border rounded-md text-[11px] text-muted-foreground cursor-pointer font-inherit hover:bg-muted transition-colors">关闭</button>
         </div>
       )}
 
@@ -720,25 +719,29 @@ export default function AudiobookProjectPage() {
 
       {/* ═══ VoiceDesign 弹窗 ═══ */}
       {showDesign && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowDesign(false)}>
-          <div style={{ width: '100%', maxWidth: 460, background: C.card, borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,.12)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: 0 }}>✨ 设计新音色</h2>
-              <button onClick={() => setShowDesign(false)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.muted }}>×</button>
+        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-[1000] modal-enter" onClick={() => setShowDesign(false)}>
+          <div className="w-full max-w-[460px] bg-card rounded-xl p-6 shadow-modal" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-[15px] font-semibold text-card-foreground m-0">
+                <Sparkles className="inline h-4 w-4 mr-1" />设计新音色
+              </h2>
+              <button onClick={() => setShowDesign(false)} className="bg-transparent border-none text-lg cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="flex flex-col gap-3">
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>音色描述（1-4句）</label>
-                <textarea value={designDesc} onChange={e => setDesignDesc(e.target.value)} placeholder="例：年轻女性，声音清亮，充满活力，适合旁白" style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', minHeight: 80, resize: 'vertical', boxSizing: 'border-box' }} />
-                <button onClick={handlePolishDesc} disabled={polishDescLoading} style={{ marginTop: 6, padding: '6px 16px', background: '#8e63ce', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: polishDescLoading ? 'default' : 'pointer', fontFamily: 'inherit', opacity: polishDescLoading ? 0.6 : 1 }}>
+                <label className="block text-xs font-medium text-card-foreground mb-1">音色描述（1-4句）</label>
+                <textarea value={designDesc} onChange={e => setDesignDesc(e.target.value)} placeholder="例：年轻女性，声音清亮，充满活力，适合旁白" className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit min-h-[80px] resize-y box-border" />
+                <button onClick={handlePolishDesc} disabled={polishDescLoading} className="mt-1.5 px-4 py-1.5 bg-[#8e63ce] border-none rounded-md text-xs font-medium text-white cursor-pointer font-inherit disabled:opacity-60 disabled:cursor-default transition-opacity">
                   {polishDescLoading ? '⏳ 润色中...' : '✨ 润色描述'}
                 </button>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>预览文本</label>
-                <input value={designText} onChange={e => setDesignText(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                <label className="block text-xs font-medium text-card-foreground mb-1">预览文本</label>
+                <input value={designText} onChange={e => setDesignText(e.target.value)} className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit box-border" />
               </div>
-              <button onClick={handleDesignVoice} disabled={designLoading} style={{ padding: '10px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, color: '#fff', cursor: designLoading ? 'default' : 'pointer', fontFamily: 'inherit', opacity: designLoading ? 0.6 : 1 }}>
+              <button onClick={handleDesignVoice} disabled={designLoading} className="py-2.5 bg-primary border-none rounded-md text-[13px] font-medium text-white cursor-pointer font-inherit disabled:opacity-60 disabled:cursor-default hover:bg-primary-hover transition-all">
                 {designLoading ? '⏳ 生成中...' : '🎵 生成并试听'}
               </button>
             </div>
@@ -748,45 +751,63 @@ export default function AudiobookProjectPage() {
 
       {/* ═══ VoiceClone 弹窗 ═══ */}
       {showClone && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowClone(false)}>
-          <div style={{ width: '100%', maxWidth: 460, background: C.card, borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,.12)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: 0 }}>🎤 克隆声音</h2>
-              <button onClick={() => setShowClone(false)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.muted }}>×</button>
+        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-[1000] modal-enter" onClick={() => setShowClone(false)}>
+          <div className="w-full max-w-[460px] bg-card rounded-xl p-6 shadow-modal" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-[15px] font-semibold text-card-foreground m-0">
+                <Mic className="inline h-4 w-4 mr-1" />克隆声音
+              </h2>
+              <button onClick={() => setShowClone(false)} className="bg-transparent border-none text-lg cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', gap: 12 }}>
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
                 {/* 上传 */}
-                <div style={{ flex: 1, padding: 16, border: `2px dashed ${C.line}`, borderRadius: 8, textAlign: 'center' }}>
-                  <p style={{ fontSize: 12, color: C.muted, margin: '0 0 8px' }}>📁 上传音频文件</p>
-                  <input type="file" accept="audio/*" onChange={e => { setCloneSample(e.target.files?.[0] || null); if (isRecording) stopRecording() }} style={{ fontSize: 11 }} />
-                  {cloneSample && !isRecording && !cloneSample.name.startsWith('录音') && <p style={{ fontSize: 11, color: C.green, margin: '8px 0 0' }}>✓ {cloneSample.name}</p>}
+                <div className="flex-1 p-4 border-2 border-dashed border-border rounded-lg text-center">
+                  <p className="text-xs text-muted-foreground m-0 mb-2">
+                    <Upload className="inline h-4 w-4 mr-1" />上传音频文件
+                  </p>
+                  <input type="file" accept="audio/*" onChange={e => { setCloneSample(e.target.files?.[0] || null); if (isRecording) stopRecording() }} className="text-[11px]" />
+                  {cloneSample && !isRecording && !cloneSample.name.startsWith('录音') && <p className="text-[11px] text-mint mt-2">✓ {cloneSample.name}</p>}
                 </div>
                 {/* 录音 */}
-                <div style={{ flex: 1, padding: 16, border: `2px dashed ${isRecording ? C.crimson : C.line}`, borderRadius: 8, textAlign: 'center', background: isRecording ? 'rgba(181,69,74,.04)' : 'transparent' }}>
-                  <p style={{ fontSize: 12, color: C.muted, margin: '0 0 4px' }}>🎙️ 在线录音</p>
-                  <p style={{ fontSize: 10, color: C.muted, margin: '0 0 8px' }}>最少录制 10 秒，请照以下范本朗读</p>
+                <div className={`flex-1 p-4 border-2 border-dashed rounded-lg text-center transition-colors ${
+                  isRecording ? 'border-crimson bg-crimson/5' : 'border-border'
+                }`}>
+                  <p className="text-xs text-muted-foreground m-0 mb-1">
+                    <Mic className="inline h-4 w-4 mr-1" />在线录音
+                  </p>
+                  <p className="text-[10px] text-muted-foreground m-0 mb-2">最少录制 10 秒，请照以下范本朗读</p>
                   {isRecording && (
-                    <div style={{ padding: '8px 10px', background: 'rgba(58,82,121,.06)', borderRadius: 6, fontSize: 11, color: C.indigo, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left', fontStyle: 'italic' }}>
+                    <div className="px-2.5 py-2 bg-indigo/5 rounded-md text-[11px] text-indigo leading-relaxed m-0 mb-2.5 text-left italic">
                       「{RECORDING_TEMPLATE}」
                     </div>
                   )}
                   {isRecording ? (
                     <>
-                      <p style={{ fontSize: 20, fontWeight: 700, color: recordingTime < 10 ? C.crimson : C.green, margin: '0 0 4px' }}>🔴 {recordingTime}s{recordingTime < 10 ? ` (还需${10 - recordingTime}s)` : ' ✓'}</p>
-                      <button onClick={stopRecording} disabled={recordingTime < 3} style={{ padding: '6px 20px', background: recordingTime < 3 ? '#ccc' : C.crimson, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: recordingTime < 3 ? 'default' : 'pointer', fontFamily: 'inherit' }}>⏹ 停止录音</button>
+                      <p className={`text-xl font-bold m-0 mb-1 ${recordingTime < 10 ? 'text-crimson' : 'text-mint'}`}>
+                        🔴 {recordingTime}s{recordingTime < 10 ? ` (还需${10 - recordingTime}s)` : ' ✓'}
+                      </p>
+                      <button onClick={stopRecording} disabled={recordingTime < 3} className={`px-5 py-1.5 border-none rounded-md text-xs font-medium text-white cursor-pointer font-inherit disabled:cursor-default transition-colors ${
+                        recordingTime < 3 ? 'bg-gray-300' : 'bg-crimson hover:opacity-90'
+                      }`}>
+                        <Square className="inline h-3 w-3 mr-1" />停止录音
+                      </button>
                     </>
                   ) : (
-                    <button onClick={startRecording} style={{ padding: '6px 20px', background: C.indigo, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>🎙️ 开始录音</button>
+                    <button onClick={startRecording} className="px-5 py-1.5 bg-indigo border-none rounded-md text-xs font-medium text-white cursor-pointer font-inherit hover:opacity-90 transition-opacity">
+                      <Mic className="inline h-3 w-3 mr-1" />开始录音
+                    </button>
                   )}
-                  {cloneSample && !isRecording && cloneSample.name.startsWith('录音') && <p style={{ fontSize: 11, color: C.green, margin: '8px 0 0' }}>✓ {cloneSample.name} (已转为wav格式)</p>}
+                  {cloneSample && !isRecording && cloneSample.name.startsWith('录音') && <p className="text-[11px] text-mint mt-2">✓ {cloneSample.name} (已转为wav格式)</p>}
                 </div>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>名称</label>
-                <input value={cloneName} onChange={e => setCloneName(e.target.value)} placeholder="例：我的声音" style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                <label className="block text-xs font-medium text-card-foreground mb-1">名称</label>
+                <input value={cloneName} onChange={e => setCloneName(e.target.value)} placeholder="例：我的声音" className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit box-border" />
               </div>
-              <button onClick={handleCloneVoice} disabled={cloneLoading || !cloneSample} style={{ padding: '10px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, color: '#fff', cursor: cloneLoading ? 'default' : 'pointer', fontFamily: 'inherit', opacity: cloneLoading || !cloneSample ? 0.6 : 1 }}>
+              <button onClick={handleCloneVoice} disabled={cloneLoading || !cloneSample} className="py-2.5 bg-primary border-none rounded-md text-[13px] font-medium text-white cursor-pointer font-inherit disabled:opacity-60 disabled:cursor-default hover:bg-primary-hover transition-all">
                 {cloneLoading ? '⏳ 克隆中...' : '🎵 克隆并试听'}
               </button>
             </div>
