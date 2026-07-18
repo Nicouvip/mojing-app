@@ -90,6 +90,8 @@ export default function DeskSidebar({ activeHref, active }: DeskSidebarProps) {
   const isActive = (href: string) => current === href || current.startsWith(href + '/')
   const userName = user?.name || user?.email?.split('@')[0] || '墨友'
   const avatarChar = userName.charAt(0).toUpperCase()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   return (
     <aside
@@ -217,7 +219,7 @@ export default function DeskSidebar({ activeHref, active }: DeskSidebarProps) {
             fontWeight: 600,
           }}
         >
-          {avatarChar}
+          {mounted ? avatarChar : '墨'}
         </div>
         <span
           className="overflow-hidden text-ellipsis whitespace-nowrap"
