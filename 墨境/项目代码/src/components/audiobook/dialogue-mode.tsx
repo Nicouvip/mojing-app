@@ -703,14 +703,14 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               </select>
             </div>
             <select value={ch.recommendedVoice} onChange={e => updateCharacterVoice(ch.name, e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', marginBottom: 4 }}>
-              {/* MiMo 音色 — 普通版可用，VIP版灰色不可点 */}
-              <optgroup label={ttsEngine === 'normal' ? '🎙️ 普通版音色' : '🎙️ 普通版 (不可用)'}>
+              {/* MiMo 音色 — 标准版可用，专业版灰色不可点 */}
+              <optgroup label={ttsEngine === 'normal' ? '🎙️ 标准版音色' : '🎙️ 标准版 (不可用)'}>
                 {AVAILABLE_VOICES.map(v => {
                   const disabled = ttsEngine === 'vip'
                   return <option key={v.id} value={v.id} disabled={disabled} style={disabled ? { color: '#aaa' } : undefined}>{v.name}</option>
                 })}
               </optgroup>
-              {/* 讯飞音色 — VIP版可用，普通版灰色不可点 */}
+              {/* 讯飞音色 — 专业版可用，标准版灰色不可点 */}
               <optgroup label={ttsEngine === 'vip' ? '⚡ 高品质音色' : '⚡ 高品质 (不可用)'}>
                 {XFYUN_VOICES.map(v => {
                   const disabled = ttsEngine === 'normal'

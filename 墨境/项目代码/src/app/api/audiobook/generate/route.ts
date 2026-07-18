@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       duration = result.duration
       resultFormat = result.format
     } else {
-      // MiMo（默认普通版）
+      // MiMo（默认标准版）
       const mimoEngine = new MiMoTTSEngine()
       const result = await mimoEngine.generate({
         text, voice, emotion, style,

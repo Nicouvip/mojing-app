@@ -4,7 +4,7 @@
  * API: 讯飞大模型语音合成 HTTP 接口
  * 认证: HMAC-SHA256 签名（APIKey + APISecret + baseString）
  *
- * 前端显示为"VIP版"，不显示"讯飞"字眼
+ * 前端显示为"专业版"，不显示"讯飞"字眼
  */
 
 import crypto from 'crypto'

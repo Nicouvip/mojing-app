@@ -491,11 +491,11 @@ export default function AudiobookProjectPage() {
                         <button onClick={() => setTtsEngine('normal')}
                           className={`px-3.5 py-1.5 text-xs border-none cursor-pointer font-inherit transition-all ${
                             ttsEngine === 'normal' ? 'font-semibold bg-primary text-primary-foreground' : 'font-normal bg-card text-muted-foreground'
-                          }`}>普通版</button>
+                          }`}>标准版</button>
                         <button onClick={() => setTtsEngine('vip')}
                           className={`px-3.5 py-1.5 text-xs border-none cursor-pointer font-inherit transition-all ${
                             ttsEngine === 'vip' ? 'font-semibold bg-primary text-primary-foreground' : 'font-normal bg-card text-muted-foreground'
-                          }`}>VIP版</button>
+                          }`}>专业版</button>
                       </div>
                       <select value={dialogueChapterId} onChange={e => setDialogueChapterId(e.target.value)}
                         className="px-3 py-1.5 border border-border rounded-md text-xs text-card-foreground bg-card font-inherit flex-shrink-0">
