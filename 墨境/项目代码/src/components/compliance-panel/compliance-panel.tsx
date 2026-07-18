@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo, useEffect } from 'react'
 
@@ -48,11 +48,11 @@ export function CompliancePanel({ editorContent, open, onToggle }: CompliancePan
         </button>
       )}
 
-      <div className={`absolute right-0 top-0 h-full z-20 overflow-hidden transition-all duration-300 border-l border-border ${open ? 'w-[300px]' : 'w-0'}`}
-        style={{ background: 'var(--color-background)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', transitionTimingFunction: 'cubic-bezier(0.22,1,0.36,1)' }}>
+      <div className={`absolute right-0 top-0 h-full z-20 overflow-hidden transition-all duration-300 border-l border-border backdrop-blur-[16px] [-webkit-backdrop-filter:blur(16px)] [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${open ? 'w-[300px]' : 'w-0'}`}
+        style={{ background: 'var(--color-background)' }}>
         <div className="flex h-full w-[300px] flex-col overflow-y-auto px-4 py-5">
           <div className="mb-3 flex items-center justify-between border-b border-border pb-3">
-            <h3 className="text-[13px] font-semibold text-foreground" style={{ letterSpacing: '0.05em' }}>创作合规</h3>
+            <h3 className="text-[13px] font-semibold text-foreground tracking-[0.05em]">创作合规</h3>
             <button onClick={onToggle} className="text-muted-foreground/20 transition-colors hover:text-foreground" aria-label="关闭面板">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3L11 11" /><path d="M11 3L3 11" /></svg>
             </button>
