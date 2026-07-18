@@ -432,48 +432,19 @@ export default function AudiobookPage() {
 
           {/* ═══ 音色管理面板 ═══ */}
           {showVoicePanel && (
-            <div style={{ padding: '16px 28px', borderBottom: `1px solid ${C.line}`, background: 'rgba(196,149,106,.03)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h3 style={{ fontSize: 13, fontWeight: 600, color: C.ink, margin: 0 }}>🎛️ 音色管理</h3>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => setShowDesign(true)} style={{ padding: '5px 14px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 11, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>✨ 设计音色</button>
-                  <button onClick={() => setShowClone(true)} style={{ padding: '5px 14px', background: C.pri, border: 'none', borderRadius: 6, fontSize: 11, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>🎤 克隆声音</button>
-                </div>
-              </div>
-
-              {/* 默认音色选择 */}
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: 11, color: C.muted }}>默认音色：</span>
-                {PRESET_VOICES.slice(0, 6).map(v => (
-                  <button key={v.id} onClick={() => setDefaultVoice(v.id)} style={{ padding: '4px 10px', borderRadius: 12, fontSize: 11, border: 'none', background: defaultVoice === v.id ? C.pri : 'rgba(26,24,20,.04)', color: defaultVoice === v.id ? '#fff' : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {v.icon} {v.name}
-                  </button>
-                ))}
-              </div>
-
-              {/* 自定义音色列表 */}
-              {(designedVoices.length + clonedVoices.length) > 0 && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {[...designedVoices, ...clonedVoices.map(v => ({ id: v.id, name: v.name, desc: v.sampleName, audioBase64: v.audioBase64 }))].map(v => (
-                    <div key={v.id} style={{ padding: '6px 12px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 11, fontWeight: 500, color: C.ink }}>{v.name}</span>
-                      <span style={{ fontSize: 10, color: C.muted }}>{v.desc}</span>
-                      <button onClick={() => playBase64Audio((v as { audioBase64: string }).audioBase64, 'audio/wav')} style={{ padding: '2px 8px', borderRadius: 4, fontSize: 10, border: `1px solid ${C.line}`, background: C.card, color: C.pri, cursor: 'pointer', fontFamily: 'inherit' }}>▶ 试听</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* 生成设置 */}
-              <div style={{ marginTop: 12, padding: 12, background: C.card, border: `1px solid ${C.line}`, borderRadius: 8 }}>
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, color: C.muted }}>默认情绪：</span>
-                  {EMOTIONS.slice(0, 7).map(em => (
-                    <button key={em} onClick={() => setDefaultEmotion(em)} style={{ padding: '3px 10px', borderRadius: 12, fontSize: 11, border: 'none', background: defaultEmotion === em ? C.pri : 'rgba(26,24,20,.04)', color: defaultEmotion === em ? '#fff' : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {em}
-                    </button>
-                  ))}
-                </div>
+            <div className="px-7 py-4 border-b border-border bg-primary/[0.03]">
+              <VoiceSelector
+                defaultVoice={defaultVoice}
+                onVoiceChange={setDefaultVoice}
+                designedVoices={designedVoices}
+                clonedVoices={clonedVoices.map(v => ({ id: v.id, name: v.name, desc: v.sampleName, audioBase64: v.audioBase64 }))}
+                onPreview={handlePreviewVoice}
+                onShowDesign={() => setShowDesign(true)}
+                onShowClone={() => setShowClone(true)}
+                onPlayCustom={(b64) => playBase64Audio(b64, 'audio/wav')}
+              />
+              <div className="mt-3">
+                <EmotionPicker selected={defaultEmotion} onSelect={setDefaultEmotion} />
               </div>
             </div>
           )}
