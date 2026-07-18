@@ -1,4 +1,4 @@
-import { calcBodyDensity, checkCompliance } from '@/lib/ai/compliance'
+﻿import { calcBodyDensity, checkCompliance, detectPostActionExplanations } from '@/lib/ai/compliance'
 import type { ComplianceResult } from '@/lib/ai/compliance'
 
 /** 合规面板使用的完整数据类型 */
@@ -88,7 +88,7 @@ export function computePanelData(
   const bodyDensity = calcBodyDensity(content)
 
   // 检测动作后解释
-  const explanationCount = countPostActionExplanations(content)
+  const explanationCount = detectPostActionExplanations(content)
 
   return {
     metrics: {
@@ -116,23 +116,7 @@ export function computePanelData(
     },
   }
 }
-
-function countPostActionExplanations(text: string): number {
-  const paragraphs = text.split('\n').filter(p => p.trim().length > 0)
-  let count = 0
-  for (let i = 1; i < paragraphs.length; i++) {
-    const prev = paragraphs[i - 1].trim()
-    const curr = paragraphs[i].trim()
-    // 如果上一段有动作描写（含动词），下一段以"他""她""它"开头且包含心理/解释词
-    if (/[了着过]。$/.test(prev) && /^[他她它]/.test(curr)) {
-      const explainWords = ['因为', '所以', '觉得', '感到', '知道', '明白', '意识到', '不想', '想要', '应该', '必须']
-      if (explainWords.some(w => curr.includes(w))) {
-        count++
-      }
-    }
-  }
-  return count
-}
+
 
 function getDefaultScenes(): SceneStatus[] {
   const ids = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6']

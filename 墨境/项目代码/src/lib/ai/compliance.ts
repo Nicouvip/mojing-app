@@ -174,7 +174,7 @@ const GENRE_55_CONFIG: Record<Genre, { length: number; condition: string; checke
  * 共享检测函数：统计动作句后紧跟解释语句的次数
  * 4 处重复提取至此，各调用方按需包装返回类型
  */
-function detectPostActionExplanations(text: string): number {
+export function detectPostActionExplanations(text: string): number {
   const sentences = splitSentences(text)
   let count = 0
   for (let i = 0; i < sentences.length - 1; i++) {
