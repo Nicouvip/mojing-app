@@ -151,7 +151,7 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
               </div>
             )}
 
-            {isLoggedIn ? (
+            {mounted && isLoggedIn ? (
               <>
                 <Link
                   href="/account"
@@ -294,7 +294,7 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
             <hr className="my-3 border-border" />
 
             {/* 用户操作（移动端） */}
-            {isLoggedIn ? (
+            {mounted && isLoggedIn ? (
               <>
                 <Link
                   href="/account"
