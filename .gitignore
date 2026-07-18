@@ -89,3 +89,4 @@ logo/
 # kun editor temp files
 _editor_temp.txt
 _stash_files.txt
+*/__pycache__/
