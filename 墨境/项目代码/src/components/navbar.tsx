@@ -7,8 +7,9 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/db/auth-context'
 import { useTheme } from '@/lib/utils/theme-context'
 import { isAdminEmail } from '@/lib/admin-auth'
+import { getUserSubscription } from '@/lib/db/store'
 
-import { Menu, X, Sun, Sunrise, Moon, Snowflake } from 'lucide-react'
+import { Menu, X, Sun, Sunrise, Moon, Snowflake, Crown } from 'lucide-react'
 
 export interface NavbarProps {
   /** 覆盖默认的 h-14，首页使用 h-16 */
@@ -50,10 +51,18 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
   const { theme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [userPlan, setUserPlan] = useState<string | null>(null)
 
-  // 检测管理员身份（白名单机制，见 admin-auth.ts）
+  // 检测管理员身份和白名单
   useEffect(() => {
     setIsAdmin(isAdminEmail(user?.email))
+    // 加载会员状态
+    if (user?.email) {
+      const sub = getUserSubscription(user.email)
+      setUserPlan(sub?.plan || 'free')
+    } else {
+      setUserPlan(null)
+    }
   }, [user])
 
   // 路由变化时关闭抽屉
@@ -143,24 +152,51 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
               <>
                 <Link
                   href="/account"
-                  className="text-sm text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground/60 hover:text-muted-foreground transition-colors"
                 >
-                  个人中心
+                  {user?.email?.split('@')[0] || '个人中心'}
+                  {userPlan === 'pro' && (
+                    <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 text-[9px] font-medium">
+                      <Crown className="w-2.5 h-2.5" />Pro
+                    </span>
+                  )}
+                  {userPlan === 'admin' && (
+                    <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 text-[9px] font-medium">
+                      <Crown className="w-2.5 h-2.5" />Admin
+                    </span>
+                  )}
                 </Link>
+                <span className="text-muted-foreground/20">|</span>
                 <button
                   onClick={handleLogout}
                   className="text-sm text-muted-foreground/60 hover:text-destructive transition-colors"
                 >
                   退出
                 </button>
+                {userPlan === 'free' && (
+                  <Link
+                    href="/account?tab=member"
+                    className="text-xs text-primary border border-primary/30 rounded-full px-3 py-0.5 hover:bg-primary hover:text-white transition-all"
+                  >
+                    升级
+                  </Link>
+                )}
               </>
             ) : (
-              <Link
-                href="/register"
-                className="text-sm text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-              >
-                注册
-              </Link>
+              <div className="flex items-center gap-1">
+                <Link
+                  href="/login"
+                  className="text-sm text-muted-foreground/60 hover:text-muted-foreground px-2 py-1 rounded-lg hover:bg-secondary transition-colors"
+                >
+                  登录
+                </Link>
+                <Link
+                  href="/register"
+                  className="text-sm text-primary border border-primary/40 rounded-lg px-3 py-1 hover:bg-primary hover:text-white transition-all"
+                >
+                  注册
+                </Link>
+              </div>
             )}
 
             <Link
