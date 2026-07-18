@@ -225,7 +225,7 @@ export default function DeskSidebar({ activeHref, active }: DeskSidebarProps) {
           className="overflow-hidden text-ellipsis whitespace-nowrap"
           style={{ fontSize: 12, color: C.ink }}
         >
-          {userName}
+          {mounted ? userName : '墨友'}
         </span>
         <button
           onClick={() => signOut({ callbackUrl: '/' })}
