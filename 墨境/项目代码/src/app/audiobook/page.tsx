@@ -638,39 +638,44 @@ export default function AudiobookPage() {
               <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: 0 }}>🎤 克隆声音</h2>
               <button onClick={() => setShowClone(false)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.muted }}>×</button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div style={{ flex: 1, padding: 16, border: `2px dashed ${C.line}`, borderRadius: 8, textAlign: 'center' }}>
-                  <p style={{ fontSize: 12, color: C.muted, margin: '0 0 8px' }}>📁 上传音频文件</p>
-                  <input type="file" accept="audio/*" onChange={e => { setCloneSample(e.target.files?.[0] || null); if (isRecording) stopRecording() }} style={{ fontSize: 11 }} />
-                  {cloneSample && !isRecording && !cloneSample.name.startsWith('录音') && <p style={{ fontSize: 11, color: C.green, margin: '8px 0 0' }}>✓ {cloneSample.name}</p>}
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
+                <div className="flex-1 p-4 border-2 border-dashed border-border rounded-lg text-center">
+                  <p className="text-xs text-muted-foreground mb-2">📁 上传音频文件</p>
+                  <input type="file" accept="audio/*" onChange={e => { setCloneSample(e.target.files?.[0] || null); if (isRecording) stopRecording() }} className="text-[11px]" />
+                  {cloneSample && !isRecording && !cloneSample.name.startsWith('录音') && <p className="text-[11px] text-emerald-600 mt-2">✓ {cloneSample.name}</p>}
                 </div>
-                <div style={{ flex: 1, padding: 16, border: `2px dashed ${isRecording ? C.crimson : C.line}`, borderRadius: 8, textAlign: 'center', background: isRecording ? 'rgba(181,69,74,.04)' : 'transparent' }}>
-                  <p style={{ fontSize: 12, color: C.muted, margin: '0 0 4px' }}>🎙️ 在线录音</p>
-                  <p style={{ fontSize: 10, color: C.muted, margin: '0 0 8px' }}>最少录制 10 秒，请照以下范本朗读</p>
+                <div className={`flex-1 p-4 border-2 rounded-lg text-center transition-colors ${
+                  isRecording ? 'border-destructive bg-destructive/[0.04]' : 'border-border'
+                }`}>
+                  <p className="text-xs text-muted-foreground mb-1">🎙️ 在线录音</p>
+                  <p className="text-[10px] text-muted-foreground mb-2">最少录制 10 秒，请照以下范本朗读</p>
                   {isRecording && (
-                    <div style={{ padding: '8px 10px', background: 'rgba(58,82,121,.06)', borderRadius: 6, fontSize: 11, color: C.indigo, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left', fontStyle: 'italic' }}>
+                    <div className="py-2 px-2.5 bg-indigo/10 rounded-md text-[11px] text-indigo-700 leading-relaxed mb-2.5 text-left italic">
                       「{RECORDING_TEMPLATE}」
                     </div>
                   )}
                   {isRecording ? (
                     <>
-                      <p style={{ fontSize: 20, fontWeight: 700, color: recordingTime < 10 ? C.crimson : C.green, margin: '0 0 4px' }}>🔴 {recordingTime}s{recordingTime < 10 ? ` (还需${10 - recordingTime}s)` : ' ✓'}</p>
-                      <button onClick={stopRecording} disabled={recordingTime < 3} style={{ padding: '6px 20px', background: recordingTime < 3 ? '#ccc' : C.crimson, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: recordingTime < 3 ? 'default' : 'pointer', fontFamily: 'inherit' }}>⏹ 停止录音</button>
+                      <p className={`text-xl font-bold mb-1 ${recordingTime < 10 ? 'text-destructive' : 'text-emerald-600'}`}>🔴 {recordingTime}s{recordingTime < 10 ? ` (还需${10 - recordingTime}s)` : ' ✓'}</p>
+                      <button onClick={stopRecording} disabled={recordingTime < 3}
+                        className={`py-1.5 px-5 rounded-md text-xs font-medium cursor-pointer border-none ${recordingTime < 3 ? 'bg-gray-300 text-white' : 'bg-destructive text-white'}`}>⏹ 停止录音</button>
                     </>
                   ) : (
-                    <button onClick={startRecording} style={{ padding: '6px 20px', background: C.indigo, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>🎙️ 开始录音</button>
+                    <button onClick={startRecording} className="py-1.5 px-5 bg-indigo-700 text-white rounded-md text-xs font-medium cursor-pointer border-none">🎙️ 开始录音</button>
                   )}
-                  {cloneSample && !isRecording && cloneSample.name.startsWith('录音') && <p style={{ fontSize: 11, color: C.green, margin: '8px 0 0' }}>✓ {cloneSample.name} (已转为wav格式)</p>}
+                  {cloneSample && !isRecording && cloneSample.name.startsWith('录音') && <p className="text-[11px] text-emerald-600 mt-2">✓ {cloneSample.name} (已转为wav格式)</p>}
                 </div>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>名称</label>
-                <input value={cloneName} onChange={e => setCloneName(e.target.value)} placeholder="例：我的声音" style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                <label className="block text-xs font-medium text-foreground mb-1">名称</label>
+                <input value={cloneName} onChange={e => setCloneName(e.target.value)} placeholder="例：我的声音"
+                  className="w-full py-2 px-3 border border-border rounded-md text-[13px] text-foreground font-inherit box-border" />
               </div>
-              <button onClick={handleCloneVoice} disabled={cloneLoading || !cloneSample} style={{ padding: '10px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, color: '#fff', cursor: cloneLoading ? 'default' : 'pointer', fontFamily: 'inherit', opacity: cloneLoading || !cloneSample ? 0.6 : 1 }}>
-                {cloneLoading ? '⏳ 克隆中...' : '🎵 克隆并试听'}
-              </button>
+              <button onClick={handleCloneVoice} disabled={cloneLoading || !cloneSample}
+                className={`w-full py-2.5 border-none rounded-md text-[13px] font-medium cursor-pointer font-inherit ${
+                  cloneLoading || !cloneSample ? 'bg-gray-300 text-white' : 'bg-primary text-white hover:bg-primary/90'
+                }`}>{cloneLoading ? '⏳ 克隆中...' : '🎵 克隆并试听'}</button>
             </div>
           </div>
         </div>
