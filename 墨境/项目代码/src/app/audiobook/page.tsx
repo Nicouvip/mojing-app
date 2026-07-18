@@ -481,11 +481,11 @@ export default function AudiobookPage() {
 
       {/* ═══ 导入小说文本弹窗 ═══ */}
       {showImport && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => { setShowImport(false); setImportStep('upload'); setImportParsed(null) }}>
-          <div style={{ width: '100%', maxWidth: 580, maxHeight: '85vh', overflow: 'auto', background: C.card, borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,.12)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 600, color: C.ink, margin: 0 }}>📥 导入小说文本 → 生成有声书</h2>
-              <button onClick={() => { setShowImport(false); setImportStep('upload'); setImportParsed(null) }} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: C.muted }}>×</button>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40" onClick={() => { setShowImport(false); setImportStep('upload'); setImportParsed(null) }}>
+          <div className="w-full max-w-[580px] max-h-[85vh] overflow-auto bg-card rounded-xl p-6 shadow-modal" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-semibold text-foreground m-0">📥 导入小说文本 → 生成有声书</h2>
+              <button onClick={() => { setShowImport(false); setImportStep('upload'); setImportParsed(null) }} className="bg-transparent border-none text-xl cursor-pointer text-muted-foreground">×</button>
             </div>
 
             {/* Step 1: 上传 */}
