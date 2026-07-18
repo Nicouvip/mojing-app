@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { toast } from 'sonner'
 
 import { useState, useEffect, useRef } from 'react'
@@ -395,11 +395,11 @@ export default function AudiobookPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: C.paper }}>
+    <div className="min-h-screen bg-background">
       <Navbar />
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
+      <div className="flex min-h-[calc(100vh-56px)]">
         <DeskSidebar active="/audiobook" />
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
           {/* ── 顶栏 ── */}
           <header className="flex items-center justify-between px-7 h-14 border-b border-border shrink-0">
@@ -604,25 +604,25 @@ export default function AudiobookPage() {
 
       {/* ═══ VoiceDesign 弹窗 ═══ */}
       {showDesign && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowDesign(false)}>
-          <div style={{ width: '100%', maxWidth: 460, background: C.card, borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,.12)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: 0 }}>✨ 设计新音色</h2>
-              <button onClick={() => setShowDesign(false)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.muted }}>×</button>
+        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-[1000] modal-enter" onClick={() => setShowDesign(false)}>
+          <div className="w-full max-w-[460px] bg-card rounded-xl p-6 shadow-modal" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-[15px] font-semibold text-card-foreground m-0">✨ 设计新音色</h2>
+              <button onClick={() => setShowDesign(false)} className="bg-transparent border-none cursor-pointer text-muted-foreground hover:text-foreground">×</button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="flex flex-col gap-3">
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>音色描述（1-4句）</label>
-                <textarea value={designDesc} onChange={e => setDesignDesc(e.target.value)} placeholder="例：年轻女性，声音清亮，充满活力，适合旁白" style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', minHeight: 80, resize: 'vertical', boxSizing: 'border-box' }} />
-                <button onClick={handlePolishDesc} disabled={polishDescLoading} style={{ marginTop: 6, padding: '6px 16px', background: '#8e63ce', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: polishDescLoading ? 'default' : 'pointer', fontFamily: 'inherit', opacity: polishDescLoading ? 0.6 : 1 }}>
+                <label className="block text-xs font-medium text-card-foreground mb-1">音色描述（1-4句）</label>
+                <textarea value={designDesc} onChange={e => setDesignDesc(e.target.value)} placeholder="例：年轻女性，声音清亮，充满活力，适合旁白" className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit min-h-[80px] resize-y box-border" />
+                <button onClick={handlePolishDesc} disabled={polishDescLoading} className="mt-1.5 px-4 py-1.5 bg-[#8e63ce] border-none rounded-md text-xs font-medium text-white cursor-pointer font-inherit disabled:opacity-60 disabled:cursor-default">
                   {polishDescLoading ? '⏳ 润色中...' : '✨ 润色描述'}
                 </button>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 4 }}>预览文本</label>
-                <input value={designText} onChange={e => setDesignText(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                <label className="block text-xs font-medium text-card-foreground mb-1">预览文本</label>
+                <input value={designText} onChange={e => setDesignText(e.target.value)} className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit box-border" />
               </div>
-              <button onClick={handleDesignVoice} disabled={designLoading} style={{ padding: '10px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 500, color: '#fff', cursor: designLoading ? 'default' : 'pointer', fontFamily: 'inherit', opacity: designLoading ? 0.6 : 1 }}>
+              <button onClick={handleDesignVoice} disabled={designLoading} className="py-2.5 bg-primary border-none rounded-md text-[13px] font-medium text-white cursor-pointer font-inherit disabled:opacity-60 disabled:cursor-default hover:bg-primary-hover">
                 {designLoading ? '⏳ 生成中...' : '🎵 生成并试听'}
               </button>
             </div>
@@ -632,11 +632,11 @@ export default function AudiobookPage() {
 
       {/* ═══ VoiceClone 弹窗 ═══ */}
       {showClone && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowClone(false)}>
-          <div style={{ width: '100%', maxWidth: 460, background: C.card, borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,.12)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: 0 }}>🎤 克隆声音</h2>
-              <button onClick={() => setShowClone(false)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: C.muted }}>×</button>
+        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-[1000] modal-enter" onClick={() => setShowClone(false)}>
+          <div className="w-full max-w-[460px] bg-card rounded-xl p-6 shadow-modal" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-[15px] font-semibold text-card-foreground m-0">🎤 克隆声音</h2>
+              <button onClick={() => setShowClone(false)} className="bg-transparent border-none cursor-pointer text-muted-foreground hover:text-foreground">×</button>
             </div>
             <div className="flex flex-col gap-3">
               <div className="flex gap-3">
