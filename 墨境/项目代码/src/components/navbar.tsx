@@ -48,12 +48,16 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
   const pathname = usePathname()
   const { isLoggedIn, user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [userPlan, setUserPlan] = useState<string | null>(null)
 
+  useEffect(() => { setMounted(true) }, [])
+
   // 检测管理员身份和白名单
   useEffect(() => {
+    if (!mounted) return
     setIsAdmin(isAdminEmail(user?.email))
     // 加载会员状态
     if (user?.email) {
@@ -62,7 +66,7 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
     } else {
       setUserPlan(null)
     }
-  }, [user])
+  }, [user, mounted])
 
   // 路由变化时关闭抽屉
   useEffect(() => {
