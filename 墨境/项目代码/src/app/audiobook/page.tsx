@@ -13,6 +13,7 @@ import { loadGeneratedChapters } from '@/lib/audiobook/audio-persistence'
 import { ProjectCard } from '@/components/audiobook/project-card'
 import { VoiceSelector } from '@/components/audiobook/voice-selector'
 import { EmotionPicker } from '@/components/audiobook/emotion-picker'
+import { Headphones, Search } from 'lucide-react'
 
 const C = {
   pri: '#c4956a',
@@ -401,32 +402,33 @@ export default function AudiobookPage() {
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
 
           {/* ── 顶栏 ── */}
-          <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 56, borderBottom: `1px solid ${C.line}`, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 20 }}>🎧</span>
-              <h1 style={{ fontSize: 16, fontWeight: 600, color: C.ink, margin: 0 }}>有声书工坊</h1>
-              <span style={{ fontSize: 11, color: C.muted, padding: '2px 8px', background: 'rgba(26,24,20,.04)', borderRadius: 10 }}>{projects.length} 部作品</span>
+          <header className="flex items-center justify-between px-7 h-14 border-b border-border shrink-0">
+            <div className="flex items-center gap-2.5">
+              <Headphones className="w-5 h-5 text-muted-foreground" />
+              <h1 className="text-base font-semibold text-foreground m-0">有声书工坊</h1>
+              <span className="text-[11px] text-muted-foreground px-2 py-0.5 bg-foreground/[0.04] rounded-full">{projects.length} 部作品</span>
             </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.card, border: `1px solid ${C.line}`, borderRadius: 20, padding: '0 14px', height: 34 }}>
-                <span style={{ color: C.muted, fontSize: 13 }}>🔍</span>
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索作品..." style={{ border: 'none', background: 'none', outline: 'none', fontSize: 12, color: C.ink, width: 180, fontFamily: 'inherit' }} />
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-card border border-border rounded-full px-3.5 h-[34px]">
+                <Search className="w-3.5 h-3.5 text-muted-foreground" />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索作品..." className="border-none bg-transparent outline-none text-xs text-foreground w-[180px]" />
               </div>
-              <button onClick={() => setShowVoicePanel(v => !v)} style={{ padding: '7px 16px', background: showVoicePanel ? C.pri : C.card, border: `1px solid ${showVoicePanel ? C.pri : C.line}`, borderRadius: 20, fontSize: 12, color: showVoicePanel ? '#fff' : C.ink, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
-                🎛️ 音色管理
-              </button>
-              <button onClick={() => { setShowImport(true); setImportStep('upload'); setImportParsed(null); setImportText(''); setImportFileName('') }} style={{ padding: '7px 16px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 20, fontSize: 12, color: C.ink, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
-                📥 导入小说文本
-              </button>
+              <button onClick={() => setShowVoicePanel(v => !v)}
+                className={`flex items-center gap-1.5 px-4 py-[7px] rounded-full text-xs cursor-pointer font-inherit transition-colors ${
+                  showVoicePanel ? 'bg-primary text-white border border-primary' : 'bg-card border border-border text-foreground'
+                }`}>🎛️ 音色管理</button>
+              <button onClick={() => { setShowImport(true); setImportStep('upload'); setImportParsed(null); setImportText(''); setImportFileName('') }}
+                className="flex items-center gap-1.5 px-4 py-[7px] bg-card border border-border rounded-full text-xs text-foreground cursor-pointer font-inherit">📥 导入小说文本</button>
             </div>
           </header>
 
           {/* ── 题材筛选 ── */}
-          <div style={{ display: 'flex', gap: 6, padding: '12px 28px', borderBottom: `1px solid ${C.line}`, flexShrink: 0, overflowX: 'auto' }}>
+          <div className="flex gap-1.5 px-7 py-3 border-b border-border shrink-0 overflow-x-auto">
             {GENRES.map(g => (
-              <button key={g} onClick={() => setGenreFilter(g)} style={{ padding: '5px 14px', borderRadius: 14, fontSize: 12, border: 'none', background: genreFilter === g ? C.pri : 'rgba(26,24,20,.04)', color: genreFilter === g ? '#fff' : C.muted, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-                {g}
-              </button>
+              <button key={g} onClick={() => setGenreFilter(g)}
+                className={`px-3.5 py-1 rounded-[14px] text-xs border-none cursor-pointer font-inherit whitespace-nowrap ${
+                  genreFilter === g ? 'bg-primary text-white' : 'bg-foreground/[0.04] text-muted-foreground'
+                }`}>{g}</button>
             ))}
           </div>
 
