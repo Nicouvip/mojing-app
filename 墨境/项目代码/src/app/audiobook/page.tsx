@@ -490,91 +490,99 @@ export default function AudiobookPage() {
 
             {/* Step 1: 上传 */}
             {importStep === 'upload' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="flex flex-col gap-4">
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>选择目标作品</label>
-                  <select value={importTarget} onChange={e => setImportTarget(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.ink, background: C.card, fontFamily: 'inherit', boxSizing: 'border-box' }}>
+                  <label className="block text-xs font-medium text-foreground mb-1.5">选择目标作品</label>
+                  <select value={importTarget} onChange={e => setImportTarget(e.target.value)} className="w-full px-3 py-2.5 border border-border rounded-lg text-[13px] text-foreground bg-card font-inherit box-border">
                     <option value="">请选择作品...</option>
                     <option value="__new__">✨ 新建作品（直接导入）</option>
                     {projects.map(p => <option key={p.id} value={p.id}>{p.name} ({p.genre})</option>)}
                   </select>
                   {importTarget === '__new__' && (
-                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                      <input value={importNewName} onChange={e => setImportNewName(e.target.value)} placeholder="作品名称" style={{ flex: 1, padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                      <select value={importNewGenre} onChange={e => setImportNewGenre(e.target.value)} style={{ width: 100, padding: '8px 12px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 13, color: C.ink, fontFamily: 'inherit', boxSizing: 'border-box' }}>
+                    <div className="flex gap-2 mt-2">
+                      <input value={importNewName} onChange={e => setImportNewName(e.target.value)} placeholder="作品名称" className="flex-1 py-2 px-3 border border-border rounded-md text-[13px] text-foreground font-inherit box-border" />
+                      <select value={importNewGenre} onChange={e => setImportNewGenre(e.target.value)} className="w-[100px] py-2 px-3 border border-border rounded-md text-[13px] text-foreground font-inherit box-border">
                         <option>都市</option><option>玄幻</option><option>悬疑</option><option>科幻</option><option>历史</option><option>灵异</option><option>言情</option><option>竞技</option>
                       </select>
                     </div>
                   )}
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>分章模式</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {[
+                  <label className="block text-xs font-medium text-foreground mb-1.5">分章模式</label>
+                  <div className="flex gap-2">
+                    {([
                       { key: 'auto' as const, label: '🔍 智能分章', desc: '按"第X章"等标题自动分割' },
                       { key: 'manual' as const, label: '📐 按段落分', desc: '按空行分割成段落' },
                       { key: 'none' as const, label: '📄 不分章', desc: '整体作为一个章节' },
-                    ].map(mode => (
-                      <div key={mode.key} onClick={() => setImportSplitMode(mode.key)} style={{ flex: 1, padding: 10, border: `2px solid ${importSplitMode === mode.key ? C.pri : C.line}`, borderRadius: 8, cursor: 'pointer', textAlign: 'center', background: importSplitMode === mode.key ? 'rgba(196,149,106,.06)' : 'transparent' }}>
-                        <div style={{ fontSize: 12, fontWeight: importSplitMode === mode.key ? 600 : 400, color: importSplitMode === mode.key ? C.pri : C.ink }}>{mode.label}</div>
-                        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{mode.desc}</div>
+                    ]).map(mode => (
+                      <div key={mode.key} onClick={() => setImportSplitMode(mode.key)}
+                        className={`flex-1 p-2.5 rounded-lg cursor-pointer text-center border-2 transition-colors ${
+                          importSplitMode === mode.key ? 'border-primary bg-primary/[0.06]' : 'border-border'
+                        }`}>
+                        <div className={`text-xs font-medium ${importSplitMode === mode.key ? 'text-primary' : 'text-foreground'}`}>{mode.label}</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">{mode.desc}</div>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 6 }}>上传小说文本文件</label>
-                  <div onClick={() => fileInputRef.current?.click()} style={{ padding: 36, border: `2px dashed ${importText ? C.pri : C.line}`, borderRadius: 8, textAlign: 'center', cursor: 'pointer', background: importText ? 'rgba(196,149,106,.04)' : 'transparent' }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
+                  <label className="block text-xs font-medium text-foreground mb-1.5">上传小说文本文件</label>
+                  <div onClick={() => fileInputRef.current?.click()}
+                    className={`p-9 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
+                      importText ? 'border-primary bg-primary/[0.04]' : 'border-border'
+                    }`}>
+                    <div className="text-3xl mb-2">📄</div>
                     {importText ? (
-                      <p style={{ fontSize: 12, color: C.ink, margin: 0 }}>✓ {importFileName} — {(importText.length / 1000).toFixed(1)} 千字</p>
+                      <p className="text-xs text-foreground m-0">✓ {importFileName} — {(importText.length / 1000).toFixed(1)} 千字</p>
                     ) : (
                       <>
-                        <p style={{ fontSize: 12, color: C.ink, margin: '0 0 4px' }}>点击上传 TXT 文件</p>
-                        <p style={{ fontSize: 11, color: C.muted, margin: 0 }}>支持 .txt / .text / .md 格式</p>
+                        <p className="text-xs text-foreground mb-1 m-0">点击上传 TXT 文件</p>
+                        <p className="text-[11px] text-muted-foreground m-0">支持 .txt / .text / .md 格式</p>
                       </>
                     )}
-                    <input ref={fileInputRef} type="file" accept=".txt,.text,.md,text/plain" onChange={handleFileSelect} style={{ display: 'none' }} />
+                    <input ref={fileInputRef} type="file" accept=".txt,.text,.md,text/plain" onChange={handleFileSelect} className="hidden" />
                   </div>
                 </div>
-                <div style={{ padding: 12, background: 'rgba(58,82,121,.06)', borderRadius: 8, fontSize: 11, color: C.indigo, lineHeight: 1.6 }}>
+                <div className="p-3 bg-indigo/10 rounded-lg text-[11px] text-indigo-700 leading-relaxed">
                   <strong>导入说明：</strong>
-                  <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
+                  <ul className="mt-1 ml-4">
                     <li>上传小说 TXT 文件，系统自动按章节标题分割</li>
                     <li>分割后的文本会存入作品的章节中</li>
                     <li>然后在作品详情页点击「生成」即可用 MiMo TTS 转为有声书</li>
                     <li>支持"第X章""Chapter X"等常见章节标题格式</li>
                   </ul>
                 </div>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button onClick={() => { setShowImport(false); setImportStep('upload'); setImportParsed(null) }} style={{ padding: '9px 20px', background: 'none', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>取消</button>
-                  <button onClick={() => { if (!importText) { toast.error('请先上传文本文件'); return }; if (!importTarget) { toast.error('请选择目标作品'); return }; handleConfirmImport() }} disabled={!importText || !importTarget || importLoading} style={{ padding: '9px 20px', background: !importText || !importTarget ? '#ccc' : C.pri, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#fff', cursor: !importText || !importTarget ? 'default' : 'pointer', fontFamily: 'inherit' }}>
-                    {importLoading ? '⏳ 导入中...' : '📥 确认导入'}
-                  </button>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => { setShowImport(false); setImportStep('upload'); setImportParsed(null) }} className="px-5 py-2.5 bg-transparent border border-border rounded-lg text-[13px] text-muted-foreground cursor-pointer font-inherit">取消</button>
+                  <button onClick={() => { if (!importText) { toast.error('请先上传文本文件'); return }; if (!importTarget) { toast.error('请选择目标作品'); return }; handleConfirmImport() }} disabled={!importText || !importTarget || importLoading}
+                    className={`px-5 py-2.5 border-none rounded-lg text-[13px] font-medium cursor-pointer font-inherit ${
+                      !importText || !importTarget ? 'bg-gray-300 text-white' : 'bg-primary text-white hover:bg-primary/90'
+                    }`}>{importLoading ? '⏳ 导入中...' : '📥 确认导入'}</button>
                 </div>
               </div>
             )}
 
             {/* Step 2: 预览分章结果 */}
             {importStep === 'preview' && importParsed && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ padding: 12, background: 'rgba(122,158,122,.08)', borderRadius: 8, fontSize: 12, color: C.green }}>
+              <div className="flex flex-col gap-4">
+                <div className="p-3 bg-emerald-500/[0.08] rounded-lg text-xs text-emerald-700">
                   ✓ 已解析出 <strong>{importParsed.length}</strong> 个章节，共 <strong>{importParsed.reduce((s, c) => s + (c.wordCount || 0), 0).toLocaleString()}</strong> 字
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflow: 'auto' }}>
+                <div className="flex flex-col gap-1.5 max-h-[300px] overflow-auto">
                   {importParsed.map((ch, i) => (
-                    <div key={i} style={{ padding: '8px 12px', background: 'rgba(26,24,20,.02)', borderRadius: 6, borderLeft: `3px solid ${C.pri}` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 500, color: C.ink }}>
+                    <div key={i} className="py-2 px-3 bg-foreground/[0.02] rounded-md border-l-[3px] border-primary">
+                      <div className="flex justify-between text-xs font-medium text-foreground">
                         <span>{ch.title}</span>
-                        <span style={{ color: C.muted, fontWeight: 400 }}>{(ch.wordCount || 0).toLocaleString()} 字</span>
+                        <span className="text-muted-foreground font-normal">{(ch.wordCount || 0).toLocaleString()} 字</span>
                       </div>
-                      <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{ch.content.slice(0, 120)}...</div>
+                      <div className="text-[11px] text-muted-foreground mt-1 leading-relaxed line-clamp-2">{ch.content.slice(0, 120)}...</div>
                     </div>
                   ))}
                 </div>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button onClick={() => setImportStep('upload')} style={{ padding: '9px 20px', background: 'none', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>← 返回修改</button>
-                  <button onClick={handleConfirmImport} disabled={importLoading} style={{ padding: '9px 20px', background: C.pri, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, color: '#fff', cursor: importLoading ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setImportStep('upload')} className="px-5 py-2.5 bg-transparent border border-border rounded-lg text-[13px] text-muted-foreground cursor-pointer font-inherit">← 返回修改</button>
+                  <button onClick={handleConfirmImport} disabled={importLoading}
+                    className="px-5 py-2.5 bg-primary text-white border-none rounded-lg text-[13px] font-medium cursor-pointer font-inherit disabled:opacity-50">
                     {importLoading ? '⏳ 导入中...' : '✓ 确认导入'}
                   </button>
                 </div>
@@ -583,11 +591,11 @@ export default function AudiobookPage() {
 
             {/* Step 3: 完成 */}
             {importStep === 'done' && (
-              <div style={{ textAlign: 'center', padding: '30px 0' }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
-                <p style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: '0 0 8px' }}>导入成功！</p>
-                <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>已将 {importParsed?.length || 0} 个章节写入作品</p>
-                <p style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>接下来：进入作品 → 勾选章节 → 生成有声书</p>
+              <div className="text-center py-8">
+                <div className="text-5xl mb-3">✅</div>
+                <p className="text-[15px] font-semibold text-foreground mb-2">导入成功！</p>
+                <p className="text-xs text-muted-foreground m-0">已将 {importParsed?.length || 0} 个章节写入作品</p>
+                <p className="text-xs text-muted-foreground mt-2">接下来：进入作品 → 勾选章节 → 生成有声书</p>
               </div>
             )}
           </div>
