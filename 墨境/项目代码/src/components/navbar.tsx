@@ -75,7 +75,7 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
-  const navItems = isLoggedIn ? NAV_ITEMS_LOGGED_IN : NAV_ITEMS_LOGGED_OUT
+  const navItems = !mounted ? NAV_ITEMS_LOGGED_OUT : (isLoggedIn ? NAV_ITEMS_LOGGED_IN : NAV_ITEMS_LOGGED_OUT)
 
   const handleLogout = () => {
     logout()
@@ -87,7 +87,7 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
       <nav className={`sticky top-0 z-50 ${tall ? 'h-16' : 'h-14'} px-6 flex items-center justify-between glass-panel border-b border-border`}>
         {/* 左侧：Logo + 导航项（桌面） */}
         <div className="flex items-center gap-6 min-w-0">
-          <Link href={isLoggedIn ? '/dashboard' : '/'} className="shrink-0">
+          <Link href={mounted && isLoggedIn ? '/dashboard' : '/'} className="shrink-0">
             <Image
               src="/assets/brand/mojing-logo-nav.png"
               alt="墨境"
