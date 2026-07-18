@@ -40,6 +40,17 @@ function LoginForm() {
         setError(result.error === 'CredentialsSignin' ? '邮箱或密码错误' : result.error)
         return
       }
+      // 同步用户信息到 localStorage（供 auth-context / 导航栏使用）
+      try {
+        const sessionRes = await fetch('/api/auth/session')
+        const session = await sessionRes.json()
+        if (session?.user?.email) {
+          localStorage.setItem('mojing_auth', JSON.stringify({
+            user: { id: session.user.id || session.user.email, name: session.user.name || session.user.email.split('@')[0], email: session.user.email },
+            token: 'nextauth-session',
+          }))
+        }
+      } catch {}
       router.push('/desk')
     } catch {
       setError('网络错误')

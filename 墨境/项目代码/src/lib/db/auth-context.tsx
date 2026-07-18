@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 
 interface User {
   id: string
@@ -40,6 +40,20 @@ function readStored(): { user: User | null; token: string | null } {
   return { user: null, token: null }
 }
 
+/** 从 NextAuth session API 同步用户（Google登录/callback 回来自动同步） */
+async function syncFromNextAuth(): Promise<{ user: User | null; token: string | null }> {
+  try {
+    const res = await fetch('/api/auth/session')
+    const session = await res.json()
+    if (session?.user?.email) {
+      const user = { id: session.user.id || session.user.email, name: session.user.name || session.user.email.split('@')[0], email: session.user.email }
+      localStorage.setItem(AUTH_KEY, JSON.stringify({ user, token: 'nextauth-session' }))
+      return { user, token: 'nextauth-session' }
+    }
+  } catch {}
+  return { user: null, token: null }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const stored = readStored()
   const [user, setUser] = useState<User | null>(stored.user)
@@ -50,6 +64,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!id) { id = 'guest_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); localStorage.setItem(GUEST_KEY, id) }
     return id
   })
+
+  // 如果 localStorage 无用户但 NextAuth session 有，自动同步
+  useEffect(() => {
+    if (!stored.user) {
+      syncFromNextAuth().then(result => {
+        if (result.user) { setUser(result.user); setToken(result.token) }
+      })
+    }
+  }, [])
 
   const isLoggedIn = !!user && !!token
 
