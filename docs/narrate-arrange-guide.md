@@ -17,9 +17,26 @@
 
 脚本依赖以下 Python 库：
 ```bash
-pip install pydub  # 音频拼接
-pip install pedalboard  # 后处理（可选，不安装也能用）
+pip install numpy           # 音频处理（必选）
+pip install soundfile       # 音频读写
+pip install pedalboard      # 后处理效果（可选，不安装也能用）
 ```
+
+## 配置文件
+
+全局参数在 `scripts/config.toml` 中集中管理：
+
+```toml
+[audio]
+sample_rate = 24000
+
+[arrange]
+silence_ms = 800
+fade_ms = 80
+max_chars_per_segment = 2000
+```
+
+可直接修改此文件调整参数，无需改代码。
 
 ## 快速开始
 
@@ -114,9 +131,22 @@ python narrate-arrange.py 画本.txt --book 枕边人的毒计 --episode 01 --cv
 | `--episode` | 集数 | 01 |
 | `--cv` | CV名 | 空 |
 | `--dry-run` | 只输出编排清单，不合成 | 否 |
-| `--silence-ms` | 标记位静音毫秒数 | 800 |
+| `--silence-ms` | 标记位静音毫秒数 | 800（或 config.toml 值） |
 | `--output-dir` | 输出目录 | audio-outputs/arranged |
 | `--no-effects` | 跳过 pedalboard 询问 | 否 |
+
+## 后处理预设
+
+脚本内置了 4 种后处理效果预设，拼接完成后会询问选择：
+
+| 预设 | 效果 | 适用场景 |
+|:---|:---|:---|
+| **润色**（默认） | 压缩器 + 轻微混响 | 旁白通用润色 |
+| **电台** | 高通+低通滤波 + 压缩 | 回忆/闪回段落 |
+| **空旷** | 大混响 + 延迟 | 内心独白/梦境 |
+| **低沉** | 降调 + 低通滤波 | 沉重气氛段落 |
+
+所有预设不覆盖原始文件，生成 `_预设名.wav` 独立文件。
 
 ## 工作原理
 

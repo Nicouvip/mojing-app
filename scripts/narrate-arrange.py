@@ -34,12 +34,14 @@ from narrate_arrange_lib.arranger import (
     arrange, segments_to_json, count_narration_chars, count_dialog_markers,
 )
 from narrate_arrange_lib.synthesizer import (
-    generate_tasks, save_tasks, load_tasks, import_results,
+    generate_tasks, load_tasks, import_results,
     print_task_summary, OUTPUT_DIR,
 )
 from narrate_arrange_lib.concatenator import concatenate
 from narrate_arrange_lib.marker import add_markers_to_wav
-from narrate_arrange_lib.effects import apply_effects, ask_effects
+from narrate_arrange_lib.effects import (
+    apply_effects_chain, ask_effects, BUILTIN_PRESETS,
+)
 
 
 def main():
@@ -123,13 +125,11 @@ def main():
         print(f"\n  ⚡ --dry-run：未合成，以上为编排清单")
         
         # 同时输出合成任务预览
-        tasks = generate_tasks(arranged, args.book, args.episode, args.cv, args.output_dir)
+        generate_tasks(arranged, args.book, args.episode, args.cv, args.output_dir)
         print()
-        print_task_summary(tasks)
+        print_task_summary()
         
-        # 保存任务文件
-        save_tasks(tasks, args.output_dir)
-        print(f"\n  合成任务已保存至: {Path(args.output_dir) / 'synthesize_tasks.json'}")
+        print(f"\n  合成任务已保存至 SQLite: synthesis.db")
         print(f"  可查看后使用合成工具批量合成")
         return
     
@@ -139,38 +139,45 @@ def main():
     print("Step 3/5: 生成合成任务")
     print("=" * 50)
     
-    tasks = generate_tasks(arranged, args.book, args.episode, args.cv, args.output_dir)
-    save_tasks(tasks, args.output_dir)
-    print_task_summary(tasks)
+    generate_tasks(arranged, args.book, args.episode, args.cv, args.output_dir)
+    print_task_summary()
     
     # 检查已有任务状态
-    prev_tasks = load_tasks(args.output_dir)
-    if prev_tasks and any(t["done"] for t in prev_tasks):
-        print(f"\n  📌 检测到已有 {sum(1 for t in prev_tasks if t['done'])} 段已合成")
+    tasks = load_tasks()
+    if tasks and any(t["done"] == 1 for t in tasks):
+        print(f"\n  📌 检测到已有 {sum(1 for t in tasks if t['done']==1)} 段已合成")
         answer = input("  是否跳过已合成的段继续？(Y/n): ").strip().lower()
         if answer not in ('n', 'no'):
-            tasks = prev_tasks
+            pass  # 保持当前状态
+        else:
+            # 重置所有任务为待合成
+            from narrate_arrange_lib.database import get_conn
+            conn = get_conn()
+            conn.execute("UPDATE synthesis_tasks SET done=0")
+            conn.commit()
+            conn.close()
+            tasks = load_tasks()
     
-    pending = [t for t in tasks if not t["done"]]
+    pending = [t for t in tasks if t["done"] == 0]
     if pending:
         print(f"\n  ⚠ 还有 {len(pending)} 段待合成")
-        print(f"  📋 任务文件: {Path(args.output_dir) / 'synthesize_tasks.json'}")
+        print(f"  📋 任务数据库: synthesis.db")
         print(f"  🔧 请用合成工具（调用豆包 API）合成后，输入 y 继续")
         input("  准备好后按回车继续...")
         
         # 重新加载任务状态
-        tasks = load_tasks(args.output_dir)
+        tasks = load_tasks()
     
-    all_done = all(t["done"] for t in tasks)
+    all_done = all(t["done"] == 1 for t in tasks)
     if not all_done:
-        print(f"\n  ❌ 还有 {sum(1 for t in tasks if not t['done'])} 段尚未合成")
+        print(f"\n  ❌ 还有 {sum(1 for t in tasks if t['done']!=1)} 段尚未合成")
         print(f"  请先完成所有合成，然后重新运行此脚本")
         sys.exit(1)
     
     print(f"  ✅ 所有旁白段已合成")
     
     # 导入合成结果
-    arranged = import_results(arranged, args.output_dir)
+    arranged = import_results(arranged)
     
     # ── Step 4: 拼接 + 打标 ─────────────────────────
     print()
@@ -197,9 +204,14 @@ def main():
     print("Step 5/5: 可选后处理")
     print("=" * 50)
     
-    if not args.no_effects and ask_effects():
-        final_path = output_path.replace(".wav", "_润色.wav")
-        apply_effects(output_path, final_path)
+    if not args.no_effects:
+        preset_name = ask_effects()
+        if preset_name:
+            preset = BUILTIN_PRESETS[preset_name]
+            final_path = output_path.replace(".wav", f"_{preset_name}.wav")
+            apply_effects_chain(output_path, final_path, preset["effects"])
+        else:
+            print("  跳过")
     else:
         print("  跳过")
     

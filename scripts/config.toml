@@ -1,0 +1,26 @@
+# narrate-arrange 全局配置
+# 修改后无需重启，下次运行生效
+
+[audio]
+# 采样率（Hz）
+sample_rate = 24000
+# 位深
+bits_per_sample = 16
+# 声道数
+num_channels = 1
+
+[arrange]
+# 夹角色音处静音毫秒数
+silence_ms = 800
+# 段间淡入淡出毫秒数
+fade_ms = 80
+# 每段旁白最大字符数（豆包单段上限预留余量）
+max_chars_per_segment = 2000
+
+[paths]
+# 输出目录
+output_dir = "D:/codexvip/audio-outputs/arranged"
+# 合成任务文件
+task_file = "synthesize_tasks.json"
+# 合成状态文件
+status_file = "synthesis_status.json"
