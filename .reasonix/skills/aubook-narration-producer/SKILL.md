@@ -104,6 +104,28 @@ description: 有声书口播制作全流程：文本分析->语气方案->引擎
 
 ---
 
+## 工具索引（aubook 专用）
+
+aubook 制作有声书所需的全部工具、路径和配置：
+
+| 资源 | 路径/说明 | 用途 |
+|:---|:---|:---|
+| **豆包语音 MCP** | `mcp-servers/doubao-voice/server.py` | 语音合成（主力引擎） |
+| **豆包图片 MCP** | `mcp-servers/doubao-img/server.py` | 文生图/视频（备选） |
+| **编排脚本** | `scripts/narrate-arrange.py` | 多轨编排、拼接、打标 |
+| **编排库模块** | `scripts/narrate_arrange_lib/` | 8个模块，详见 docs |
+| **全局配置** | `scripts/config.toml` | 音频参数集中管理 |
+| **合成数据库** | `audio-outputs/arranged/synthesis.db` | SQLite 任务持久化 |
+| **豆包参数文档** | `docs/doubao-voice-params-reference.md` | Expressive 版全部参数 |
+| **使用说明** | `docs/narrate-arrange-guide.md` | 编排脚本操作指南 |
+| **画本解析规则** | `.reasonix/skills/aubook-narration-producer/references/narration-extraction.md` | 正则分离规则 |
+| **语音指令规范** | `.reasonix/skills/aubook-narration-producer/references/voice-prompt-guide.md` | cot 标签四维度模型 |
+| **上下文设计法** | `.reasonix/skills/aubook-narration-producer/references/context-design.md` | 三层写作方法 |
+| **引擎参数** | `.reasonix/skills/aubook-narration-producer/references/engine-config.md` | 参数配置踩坑总结 |
+| **风险评估** | `.reasonix/skills/aubook-narration-producer/references/risk-assessment.md` | 应急预案 |
+| **AU 打标** | `scripts/narrate_arrange_lib/marker.py` | WAV cue 标记写入 |
+| **效果链** | `scripts/narrate_arrange_lib/effects.py` | 8种效果、4种预设 |
+
 ## 工具优先级
 - 语音合成：豆包Expressive → MiMo → 讯飞
 - 识图：PaddleOCR-VL → HunyuanOCR
