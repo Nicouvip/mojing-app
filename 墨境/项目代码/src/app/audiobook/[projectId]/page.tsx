@@ -77,6 +77,7 @@ export default function AudiobookProjectPage() {
   const [cloneSample, setCloneSample] = useState<File | null>(null)
   const [cloneName, setCloneName] = useState('')
   const [cloneLoading, setCloneLoading] = useState(false)
+  const [sampleQuality, setSampleQuality] = useState<{ format: string; duration: number; sizeMB: number; sampleRate: number; valid: boolean } | null>(null)
   const [clonedVoices, setClonedVoices] = useState<Array<{ id: string; name: string; sampleName: string; audioBase64: string }>>([])
 
   /* ── TTS 引擎选择 ── */
@@ -90,6 +91,27 @@ export default function AudiobookProjectPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
 
+  /* ── 样本质量检测 ── */
+  useEffect(() => {
+    if (!cloneSample) { setSampleQuality(null); return }
+    const analyze = async () => {
+      try {
+        const sizeMB = cloneSample.size / (1024 * 1024)
+        const format = cloneSample.name.split('.').pop()?.toUpperCase() || '未知'
+        const arrayBuf = await cloneSample.arrayBuffer()
+        const audioCtx = new AudioContext()
+        const audioBuf = await audioCtx.decodeAudioData(arrayBuf)
+        const duration = audioBuf.duration
+        const sampleRate = audioBuf.sampleRate
+        audioCtx.close()
+        const valid = duration >= 10 && sizeMB <= 7.5
+        setSampleQuality({ format, duration: Math.round(duration), sizeMB: Math.round(sizeMB * 10) / 10, sampleRate, valid })
+      } catch {
+        setSampleQuality({ format: cloneSample.name.split('.').pop()?.toUpperCase() || '未知', duration: 0, sizeMB: Math.round(cloneSample.size / (1024 * 1024) * 10) / 10, sampleRate: 0, valid: false })
+      }
+    }
+    analyze()
+  }, [cloneSample])
   /* ── 录音计时器 ── */
   useEffect(() => {
     if (!isRecording) { setRecordingTime(0); return }
@@ -792,6 +814,22 @@ export default function AudiobookProjectPage() {
                   {cloneSample && !isRecording && cloneSample.name.startsWith('录音') && <p className="text-[11px] text-success mt-2">✓ {cloneSample.name} (已转为wav格式)</p>}
                 </div>
               </div>
+              {/* 样本质量检测 */}
+              {sampleQuality && (
+                <div className="p-3 bg-muted/50 rounded-lg text-[11px] space-y-1">
+                  <p className="font-medium text-card-foreground mb-1">📊 样本质量</p>
+                  <div className="flex gap-4">
+                    <span>格式：{sampleQuality.format}</span>
+                    <span>时长：{sampleQuality.duration}s {sampleQuality.duration >= 10 ? '✅' : '⚠️ 建议≥10s'}</span>
+                    <span>大小：{sampleQuality.sizeMB}MB {sampleQuality.sizeMB <= 7.5 ? '✅' : '❌ 超限'}</span>
+                    <span>采样率：{sampleQuality.sampleRate > 0 ? `${sampleQuality.sampleRate}Hz ${sampleQuality.sampleRate >= 16000 ? '✅' : '⚠️ 建议≥16kHz'}` : '未知'}</span>
+                  </div>
+                  <p className={sampleQuality.valid ? 'text-success' : 'text-destructive'}>
+                    {sampleQuality.valid ? '✅ 样本质量合格，可以克隆' : '⚠️ 样本质量不理想，克隆效果可能受影响'}
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-medium text-card-foreground mb-1">名称</label>
                 <input value={cloneName} onChange={e => setCloneName(e.target.value)} placeholder="例：我的声音" className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit box-border" />
