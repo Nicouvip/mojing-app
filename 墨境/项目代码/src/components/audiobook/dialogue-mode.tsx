@@ -13,6 +13,7 @@ import {
   AVAILABLE_VOICES,
   EMOTION_PRESETS,
 } from '@/lib/audiobook/prompts'
+import { parseBracketDialogue, parseTextToSegments, extractCharacters } from '@/lib/audiobook/text-parser'
 
 /* ── 颜色系统 ── */
 const C = {
@@ -58,6 +59,12 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
   /* ── 筛选 + 多选 ── */
   const [filterTab, setFilterTab] = useState<string>('all')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+
+  /* ── 双模式导入 ── */
+  const [importMode, setImportMode] = useState<'standard' | 'free'>('free')
+  const [outputMode, setOutputMode] = useState<'full' | 'narration' | 'dialogue'>('full')
+  const [manualText, setManualText] = useState('')
+  const [dragOver, setDragOver] = useState(false)
 
   /* ── 撤回/重做栈 ── */
   const [undoStack, setUndoStack] = useState<SegSnapshot[]>([])
@@ -534,94 +541,174 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
   }
 
   /* ═══════════════════════════════════════════════════════════
-     UI：三选一入口（空状态）
+     UI：双模式导入入口（空状态）
      ═══════════════════════════════════════════════════════════ */
   if (!analysisResult) {
     return (
-      <div style={{ textAlign: 'center', padding: '60px 0' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>📖</div>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: C.ink, margin: '0 0 8px' }}>选择配音方式</h3>
-        <p style={{ fontSize: 13, color: C.muted, margin: '0 0 32px' }}>
-          为「{chapter.title}」选择一种开始方式
-        </p>
+      <div style={{ padding: '32px 20px', maxWidth: 680, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>📖</div>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: C.ink, margin: '0 0 4px' }}>选择配音方式</h3>
+          <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>为「{chapter.title}」选择一种开始方式</p>
+        </div>
 
-        {/* 三选一卡片 */}
-        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap', maxWidth: 700, margin: '0 auto' }}>
-          {/* AI 分析 */}
-          <button onClick={handleAnalyze} disabled={analyzing}
+        {/* ── 模式切换 Tab ── */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          <button onClick={() => setImportMode('standard')}
             style={{
-              width: 200, padding: '32px 20px', background: C.card,
-              border: `1px solid ${C.line}`, borderRadius: 12,
-              cursor: analyzing ? 'default' : 'pointer', fontFamily: 'inherit', textAlign: 'center',
-              transition: 'all .15s', boxShadow: '0 2px 8px rgba(0,0,0,.04)',
-            }}
-          >
-            <div style={{ fontSize: 36, marginBottom: 12 }}>🤖</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 6 }}>
-              {analyzing ? `AI 分析中… ${analyzingElapsed}s` : 'AI 分析'}
-            </div>
-            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
-              自动识别角色<br />推荐音色和情绪
-            </div>
+              flex: 1, padding: '10px 16px', fontSize: 13, fontWeight: importMode === 'standard' ? 600 : 400,
+              border: importMode === 'standard' ? `2px solid ${C.pri}` : `1px solid ${C.line}`,
+              borderRadius: 8, background: importMode === 'standard' ? `${C.pri}10` : C.card,
+              color: importMode === 'standard' ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
+            }}>
+            📑 标准画本
           </button>
-
-          {/* 手动设置 */}
-          <button onClick={handleManualSetup}
+          <button onClick={() => setImportMode('free')}
             style={{
-              width: 200, padding: '32px 20px', background: C.card,
-              border: `1px solid ${C.line}`, borderRadius: 12,
-              cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
-              transition: 'all .15s', boxShadow: '0 2px 8px rgba(0,0,0,.04)',
-            }}
-          >
-            <div style={{ fontSize: 36, marginBottom: 12 }}>✏️</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 6 }}>手动设置</div>
-            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
-              按行拆段<br />默认全部旁白
-            </div>
-          </button>
-
-          {/* 导入画本 */}
-          <button onClick={() => importBookRef.current?.click()} disabled={importBookLoading}
-            style={{
-              width: 200, padding: '32px 20px', background: C.card,
-              border: `1px solid ${C.line}`, borderRadius: 12,
-              cursor: importBookLoading ? 'default' : 'pointer', fontFamily: 'inherit', textAlign: 'center',
-              transition: 'all .15s', boxShadow: '0 2px 8px rgba(0,0,0,.04)',
-              opacity: importBookLoading ? 0.6 : 1,
-            }}
-          >
-            <div style={{ fontSize: 36, marginBottom: 12 }}>📄</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 6 }}>
-              {importBookLoading ? '导入中...' : '导入画本'}
-            </div>
-            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
-              TXT / JSON / DOCX<br />跳过 AI 分析
-            </div>
+              flex: 1, padding: '10px 16px', fontSize: 13, fontWeight: importMode === 'free' ? 600 : 400,
+              border: importMode === 'free' ? `2px solid ${C.pri}` : `1px solid ${C.line}`,
+              borderRadius: 8, background: importMode === 'free' ? `${C.pri}10` : C.card,
+              color: importMode === 'free' ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
+            }}>
+            ✏️ 自由文本
           </button>
         </div>
 
+        {/* ── 模式A：标准画本 ── */}
+        {importMode === 'standard' && (
+          <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 20, marginBottom: 16, background: C.card }}>
+            <p style={{ fontSize: 13, color: C.ink, margin: '0 0 4px', fontWeight: 500 }}>
+              上传含 <code style={{ background: '#f0f0f0', padding: '1px 4px', borderRadius: 3, fontSize: 12 }}>{'【角色-音色】"对话"'}</code> 格式的画本文件
+            </p>
+            <p style={{ fontSize: 11, color: C.muted, margin: '0 0 12px' }}>自动解析旁白与角色音，按角色分配音色</p>
+            <div
+              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={e => {
+                e.preventDefault(); setDragOver(false)
+                const file = e.dataTransfer.files[0]
+                if (file) handleImportBook({ target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>)
+              }}
+              style={{
+                border: `2px dashed ${dragOver ? C.pri : C.line}`, borderRadius: 8, padding: 24,
+                textAlign: 'center', marginBottom: 12, transition: 'all .15s',
+                background: dragOver ? `${C.pri}08` : 'transparent',
+              }}>
+              <p style={{ fontSize: 13, color: C.muted, margin: '0 0 8px' }}>📁 拖拽上传 TXT / JSON / DOCX</p>
+              <button onClick={() => importBookRef.current?.click()} disabled={importBookLoading}
+                style={{ padding: '6px 16px', fontSize: 12, border: `1px solid ${C.line}`, borderRadius: 6, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {importBookLoading ? '导入中...' : '选择文件'}
+              </button>
+            </div>
+            <textarea
+              value={manualText}
+              onChange={e => setManualText(e.target.value)}
+              placeholder="或直接粘贴/输入画本内容..."
+              rows={4}
+              style={{ width: '100%', padding: '8px 10px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', resize: 'vertical', color: C.ink, background: C.card, boxSizing: 'border-box' }}
+            />
+            {manualText.trim() && (
+              <button onClick={() => {
+                const segs = parseBracketDialogue(manualText)
+                if (segs.length === 0) { toast.error('未检测到【角色】格式内容，请检查文本格式'); return }
+                const chars = extractCharacters(segs)
+                setAnalysisResult({ segments: segs as unknown as SegmentAnalysis[], characters: chars as unknown as CharacterAnalysis[], narrationStyle: { overallTone: '平静', suggestedNarratorVoice: defaultVoice, pacing: 'normal' } })
+                setEditedCharacters(chars as unknown as CharacterAnalysis[])
+                setEditedSegments(segs as unknown as SegmentAnalysis[])
+              }}
+                style={{ marginTop: 8, padding: '8px 20px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+                📑 解析画本
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── 模式B：自由文本 ── */}
+        {importMode === 'free' && (
+          <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: 20, marginBottom: 16, background: C.card }}>
+            <p style={{ fontSize: 13, color: C.ink, margin: '0 0 12px', fontWeight: 500 }}>上传或输入文本，选择出音模式</p>
+            <div
+              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={e => {
+                e.preventDefault(); setDragOver(false)
+                const file = e.dataTransfer.files[0]
+                if (file) handleImportBook({ target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>)
+              }}
+              style={{
+                border: `2px dashed ${dragOver ? C.pri : C.line}`, borderRadius: 8, padding: 24,
+                textAlign: 'center', marginBottom: 12, transition: 'all .15s',
+                background: dragOver ? `${C.pri}08` : 'transparent',
+              }}>
+              <p style={{ fontSize: 13, color: C.muted, margin: '0 0 8px' }}>📁 拖拽上传文件</p>
+              <button onClick={() => importBookRef.current?.click()} disabled={importBookLoading}
+                style={{ padding: '6px 16px', fontSize: 12, border: `1px solid ${C.line}`, borderRadius: 6, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {importBookLoading ? '导入中...' : '选择文件'}
+              </button>
+            </div>
+            <textarea
+              value={manualText}
+              onChange={e => setManualText(e.target.value)}
+              placeholder="或直接粘贴/输入文本..."
+              rows={4}
+              style={{ width: '100%', padding: '8px 10px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', resize: 'vertical', color: C.ink, background: C.card, boxSizing: 'border-box', marginBottom: 12 }}
+            />
+            <p style={{ fontSize: 12, color: C.muted, margin: '0 0 8px' }}>出音模式（三选一，互斥）：</p>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              {[{ key: 'full', label: '全本配音', desc: '旁白+角色音混合' }, { key: 'narration', label: '纯旁白', desc: '只出旁白音' }, { key: 'dialogue', label: '纯角色音', desc: '只出角色音' }].map(m => (
+                <button key={m.key} onClick={() => setOutputMode(m.key as typeof outputMode)}
+                  style={{
+                    flex: 1, padding: '8px 8px', fontSize: 11, textAlign: 'center',
+                    border: outputMode === m.key ? `2px solid ${C.pri}` : `1px solid ${C.line}`,
+                    borderRadius: 6, background: outputMode === m.key ? `${C.pri}10` : C.card,
+                    color: outputMode === m.key ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit',
+                    fontWeight: outputMode === m.key ? 600 : 400,
+                  }}>
+                  {m.label}<br /><span style={{ fontSize: 10, opacity: 0.7 }}>{m.desc}</span>
+                </button>
+              ))}
+            </div>
+            {manualText.trim() && (
+              <button onClick={() => {
+                const segs = parseTextToSegments(manualText)
+                if (segs.length === 0) { toast.error('未检测到有效段落'); return }
+                const chars = extractCharacters(segs)
+                setAnalysisResult({ segments: segs as unknown as SegmentAnalysis[], characters: chars as unknown as CharacterAnalysis[], narrationStyle: { overallTone: '平静', suggestedNarratorVoice: defaultVoice, pacing: 'normal' } })
+                setEditedCharacters(chars as unknown as CharacterAnalysis[])
+                setEditedSegments(segs as unknown as SegmentAnalysis[])
+              }}
+                style={{ padding: '8px 20px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+                📑 解析文本
+              </button>
+            )}
+          </div>
+        )}
+
         <input ref={importBookRef} type="file" accept=".txt,.json,.docx" onChange={handleImportBook} style={{ display: 'none' }} />
+
+        {/* ── 快捷入口 ── */}
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 8 }}>
+          <button onClick={handleAnalyze} disabled={analyzing}
+            style={{ padding: '12px 24px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, cursor: analyzing ? 'default' : 'pointer', fontFamily: 'inherit', textAlign: 'center', fontSize: 13 }}>
+            🤖 {analyzing ? `AI 分析中… ${analyzingElapsed}s` : 'AI 分析章节'}
+          </button>
+          <button onClick={handleManualSetup}
+            style={{ padding: '12px 24px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center', fontSize: 13 }}>
+            ✏️ 按行拆段
+          </button>
+        </div>
 
         {/* 分析错误 */}
         {analyzing && (
-          <p style={{ fontSize: 11, color: C.muted, margin: '16px 0 0', textAlign: 'center' }}>
+          <p style={{ fontSize: 11, color: C.muted, marginTop: 12, textAlign: 'center' }}>
             DeepSeek V4 Flash 正在分析章节文本，预计 30-60 秒，请耐心等待…
           </p>
         )}
         {analyzeError && (
-          <div style={{ marginTop: 16, padding: 12, background: 'rgba(181,69,74,.08)', borderRadius: 8, fontSize: 12, color: C.crimson, maxWidth: 400, margin: '16px auto 0' }}>
+          <div style={{ marginTop: 12, padding: 12, background: 'rgba(181,69,74,.08)', borderRadius: 8, fontSize: 12, color: C.crimson, maxWidth: 400, margin: '12px auto 0' }}>
             ❌ {analyzeError}
           </div>
         )}
-
-        <div style={{ marginTop: 32, fontSize: 11, color: C.muted, maxWidth: 400, margin: '32px auto 0', lineHeight: 1.8 }}>
-          <p style={{ margin: '0 0 4px' }}>💡 完成后，你可以：</p>
-          <p style={{ margin: 0 }}>• 修改每个段落的文本、角色、情绪</p>
-          <p style={{ margin: 0 }}>• 调整情绪强度（1-10滑动条）</p>
-          <p style={{ margin: 0 }}>• 撤回/重做操作（Ctrl+Z / Ctrl+Y）</p>
-          <p style={{ margin: 0 }}>• 单段生成、试听、导出</p>
-        </div>
       </div>
     )
   }
