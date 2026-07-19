@@ -17,6 +17,59 @@ export interface WaveformPlayerProps {
 }
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
+const BAR_COUNT = 60
+
+/**
+ * 从 AudioBuffer 提取峰值数据用于波形绘制
+ */
+function extractPeaks(buffer: AudioBuffer, count: number): Float32Array {
+  const channel = buffer.getChannelData(0)
+  const samplesPerBar = Math.floor(channel.length / count)
+  const peaks = new Float32Array(count)
+
+  for (let i = 0; i < count; i++) {
+    let max = 0
+    const start = i * samplesPerBar
+    const end = Math.min(start + samplesPerBar, channel.length)
+    for (let j = start; j < end; j++) {
+      const abs = Math.abs(channel[j])
+      if (abs > max) max = abs
+    }
+    peaks[i] = Math.sqrt(max) // sqrt for better visual distribution
+  }
+  return peaks
+}
+
+/**
+ * 绘制波形到 Canvas
+ */
+function drawWaveform(
+  ctx: CanvasRenderingContext2D,
+  peaks: Float32Array,
+  width: number,
+  height: number,
+  progress: number,
+  color = '#c4956a',
+) {
+  ctx.clearRect(0, 0, width, height)
+
+  const barWidth = width / peaks.length - 1.5
+  const progressIdx = Math.floor(progress * peaks.length)
+
+  for (let i = 0; i < peaks.length; i++) {
+    const barHeight = Math.max(2, peaks[i] * height * 0.9)
+    const x = i * (barWidth + 1.5)
+    const y = (height - barHeight) / 2
+
+    ctx.fillStyle = i <= progressIdx
+      ? `${color}cc`
+      : `${color}30`
+
+    ctx.beginPath()
+    ctx.roundRect(x, y, barWidth, barHeight, 1.5)
+    ctx.fill()
+  }
+}
 
 export function WaveformPlayer({
   audioUrl, audioBase64, mime = 'audio/wav',
@@ -28,6 +81,7 @@ export function WaveformPlayer({
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [loop, setLoop] = useState(false)
+  const [peaks, setPeaks] = useState<Float32Array | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const animRef = useRef<number>(0)
@@ -39,6 +93,41 @@ export function WaveformPlayer({
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
     return URL.createObjectURL(new Blob([bytes], { type: mime }))
   })() : undefined)
+
+  // 分析真实波形峰值
+  useEffect(() => {
+    if (!resolvedUrl) return
+
+    let cancelled = false
+
+    const analyze = async () => {
+      try {
+        const res = await fetch(resolvedUrl)
+        const arrayBuffer = await res.arrayBuffer()
+        if (cancelled) return
+
+        const audioCtx = new AudioContext()
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
+        if (cancelled) { audioCtx.close(); return }
+
+        const extracted = extractPeaks(audioBuffer, BAR_COUNT)
+        if (!cancelled) setPeaks(extracted)
+        audioCtx.close()
+      } catch {
+        // 降级：生成模拟波形
+        if (!cancelled) {
+          const fallback = new Float32Array(BAR_COUNT)
+          for (let i = 0; i < BAR_COUNT; i++) {
+            fallback[i] = 0.3 + Math.sin(i * 0.3) * 0.25 + Math.cos(i * 0.7) * 0.15
+          }
+          setPeaks(fallback)
+        }
+      }
+    }
+
+    analyze()
+    return () => { cancelled = true }
+  }, [resolvedUrl])
 
   // Update playback speed
   useEffect(() => {
@@ -57,7 +146,7 @@ export function WaveformPlayer({
     }
   }, [isPlaying, resolvedUrl])
 
-  // Draw waveform visualization
+  // 绘制波形
   useEffect(() => {
     if (!canvasRef.current) return
     const canvas = canvasRef.current
@@ -67,24 +156,8 @@ export function WaveformPlayer({
     const draw = () => {
       const w = canvas.width
       const h = canvas.height
-      ctx.clearRect(0, 0, w, h)
-
-      // Draw bars
-      const barCount = 40
-      const barWidth = w / barCount - 2
-      const progressIdx = Math.floor(progress * barCount)
-
-      for (let i = 0; i < barCount; i++) {
-        const barHeight = 8 + Math.sin(i * 0.3) * 12 + Math.cos(i * 0.7) * 6
-        const x = i * (barWidth + 2)
-        const y = h / 2 - barHeight / 2
-
-        ctx.fillStyle = i <= progressIdx
-          ? 'rgba(196, 149, 106, 0.8)'
-          : 'rgba(196, 149, 106, 0.2)'
-        ctx.beginPath()
-        ctx.roundRect(x, y, barWidth, barHeight, 2)
-        ctx.fill()
+      if (peaks) {
+        drawWaveform(ctx, peaks, w, h, progress)
       }
     }
 
@@ -98,7 +171,7 @@ export function WaveformPlayer({
     }
 
     return () => cancelAnimationFrame(animRef.current)
-  }, [progress, isPlaying])
+  }, [progress, isPlaying, peaks])
 
   const handleTimeUpdate = useCallback(() => {
     if (!audioRef.current) return
