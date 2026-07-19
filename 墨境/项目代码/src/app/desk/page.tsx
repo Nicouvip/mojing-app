@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -182,52 +182,52 @@ export default function DeskPage() {
   // checkinDays is now useState above (P2-1)
 
   return (
-    <div style={{ minHeight: '100vh', background: C.paper }}>
+    <div className="min-h-screen bg-background">
       <Navbar />
 
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
+      <div className="flex min-h-[calc(100vh-56px)]">
         <DeskSidebar active="/desk" />
 
         {/* ── Main ── */}
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Top bar */}
-          <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', height: 56, borderBottom: `1px solid ${C.line}`, flexShrink: 0, gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.sb, borderRadius: 20, padding: '0 16px', height: 36, maxWidth: 360, flex: 1 }}>
-              <span style={{ color: C.muted, fontSize: 14 }}>⌕</span>
-              <input type="search" placeholder="搜作品、模板或写作心得…" style={{ border: 'none', background: 'none', outline: 'none', fontSize: 13, color: C.ink, fontFamily: 'inherit', width: '100%' }} />
+          <header className="flex items-center justify-between px-7 h-14 border-b border-border shrink-0 gap-4">
+            <div className="flex items-center gap-2 bg-background rounded-[20px] px-4 h-9 max-w-360 flex-1">
+              <span className="text-muted-foreground text-sm">⌕</span>
+              <input type="search" placeholder="搜作品、模板或写作心得…" className="border-none bg-transparent outline-none text-sm text-foreground font-inherit w-full" />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button onClick={() => setDlgOpen(true)} style={{ fontSize: 12, padding: '7px 18px', borderRadius: 20, background: C.pri, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, boxShadow: '0 2px 8px rgba(196,149,106,.15)', minHeight: 34, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setDlgOpen(true)} className="text-xs px-[18px] py-[7px] rounded-[20px] bg-primary text-white border-none cursor-pointer font-inherit font-medium shadow-[0_2px_8px_rgba(196,149,106,.15)] min-h-[34px] inline-flex items-center gap-1">
                 ＋ 开始创作
               </button>
             </div>
           </header>
 
           {/* Content */}
-          <div style={{ padding: '32px 28px', flex: 1, overflowY: 'auto' }}>
+          <div className="px-7 py-8 flex-1 overflow-y-auto">
             {/* Desk header */}
-            <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, gap: 20, flexWrap: 'wrap' }}>
+            <header className="flex items-start justify-between mb-7 gap-5 flex-wrap">
               <div>
-                <h1 style={{ fontFamily: "'Noto Serif SC',Georgia,serif", fontSize: 28, color: C.ink, fontWeight: 700, marginBottom: 4 }}>我的书桌</h1>
-                <p style={{ fontSize: 14, color: C.muted }}>案上的每一本书，都是你正在编织的世界。</p>
+                <h1 className="font-serif text-3xl text-foreground font-bold mb-1" style={{ fontFamily: "'Noto Serif SC',Georgia,serif" }}>我的书桌</h1>
+                <p className="text-sm text-muted-foreground">案上的每一本书，都是你正在编织的世界。</p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 18px', borderRadius: 12, background: 'rgba(196,149,106,.06)', border: '1px solid rgba(196,149,106,.12)', flexShrink: 0 }}>
-                <span style={{ fontSize: 18 }}>✎</span>
+              <div className="flex items-center gap-2.5 px-[18px] py-[10px] rounded-xl shrink-0" style={{ background: 'rgba(196,149,106,.06)', border: '1px solid rgba(196,149,106,.12)' }}>
+                <span className="text-lg">✎</span>
                 <div>
-                  <div style={{ fontSize: 11, color: C.muted }}>今日进度</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: C.pri, fontFamily: "'Noto Serif SC',Georgia,serif" }}>{todayDone.toLocaleString()} / {todayTarget.toLocaleString()} 字</div>
+                  <div className="text-xs text-muted-foreground">今日进度</div>
+                  <div className="text-base font-bold text-primary font-serif" style={{ fontFamily: "'Noto Serif SC',Georgia,serif" }}>{todayDone.toLocaleString()} / {todayTarget.toLocaleString()} 字</div>
                 </div>
               </div>
             </header>
 
             {/* 一句话创作 */}
-            <section style={{ marginBottom: 36 }}>
-              <div style={{ border: `1px solid ${C.line}`, borderRadius: 20, padding: 24, background: C.card }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 20, marginBottom: 16 }}>
+            <section className="mb-9">
+              <div className="border border-border rounded-[20px] p-6 bg-card">
+                <div className="flex items-start flex-wrap gap-5 mb-4">
                   {/* 小说题材 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>小说题材</span>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs text-muted-foreground font-medium">小说题材</span>
+                    <div className="flex gap-1 flex-wrap">
                       {GENRES.map(g => (
                         <button key={g} onClick={() => setQuickGenre(g)} style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${quickGenre === g ? C.pri : C.line}`, fontSize: 12, cursor: 'pointer', background: quickGenre === g ? C.pri : C.card, color: quickGenre === g ? '#fff' : C.muted, fontFamily: 'inherit', transition: 'all .12s', minHeight: 34, fontWeight: quickGenre === g ? 600 : 400 }}>
                           {g}
@@ -236,9 +236,9 @@ export default function DeskPage() {
                     </div>
                   </div>
                   {/* 目标读者 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>目标读者</span>
-                    <div style={{ display: 'flex', gap: 4 }}>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs text-muted-foreground font-medium">目标读者</span>
+                    <div className="flex gap-1">
                       {AUDIENCES.map(a => (
                         <button key={a} onClick={() => setQuickAudience(a)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickAudience === a ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickAudience === a ? 'rgba(196,149,106,.08)' : C.card, color: quickAudience === a ? C.pri : C.ink, fontFamily: 'inherit', fontWeight: quickAudience === a ? 600 : 400, minHeight: 32 }}>
                           {a}
@@ -247,9 +247,9 @@ export default function DeskPage() {
                     </div>
                   </div>
                   {/* 作品视角 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>作品视角</span>
-                    <div style={{ display: 'flex', gap: 4 }}>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs text-muted-foreground font-medium">作品视角</span>
+                    <div className="flex gap-1">
                       {PERSPECTIVES.map(p => (
                         <button key={p} onClick={() => setQuickPerspective(p)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickPerspective === p ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickPerspective === p ? 'rgba(196,149,106,.08)' : C.card, color: quickPerspective === p ? C.pri : C.ink, fontFamily: 'inherit', fontWeight: quickPerspective === p ? 600 : 400, minHeight: 32 }}>
                           {p}
@@ -258,9 +258,9 @@ export default function DeskPage() {
                     </div>
                   </div>
                   {/* 篇幅长短 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>篇幅长短</span>
-                    <div style={{ display: 'flex', gap: 4 }}>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs text-muted-foreground font-medium">篇幅长短</span>
+                    <div className="flex gap-1">
                       {LENGTHS.map(l => (
                         <button key={l} onClick={() => setQuickLength(l)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickLength === l ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickLength === l ? 'rgba(196,149,106,.08)' : C.card, color: quickLength === l ? C.pri : C.ink, fontFamily: 'inherit', fontWeight: quickLength === l ? 600 : 400, minHeight: 32 }}>
                           {l}
@@ -269,15 +269,15 @@ export default function DeskPage() {
                     </div>
                   </div>
                 </div>
-                <div style={{ border: `2px solid ${C.line}`, borderRadius: 12, padding: '14px 16px', transition: 'all .15s', marginBottom: 16 }}>
-                  <textarea value={quickIdea} onChange={e => setQuickIdea(e.target.value)} maxLength={500} placeholder="一个普通外卖员发现自己拥有超能力，从此卷入一场外太空阴谋..." style={{ border: 'none', width: '100%', minHeight: 80, fontSize: 14, fontFamily: 'inherit', color: C.ink, resize: 'vertical', outline: 'none', padding: 0, lineHeight: 1.8, background: 'transparent' }} />
+                <div className="border-2 border-border rounded-xl px-4 py-3.5 transition-all mb-4">
+                  <textarea value={quickIdea} onChange={e => setQuickIdea(e.target.value)} maxLength={500} placeholder="一个普通外卖员发现自己拥有超能力，从此卷入一场外太空阴谋..." className="border-none w-full min-h-20 text-sm font-inherit text-foreground resize-y outline-none p-0 leading-relaxed bg-transparent" />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, background: `linear-gradient(135deg,${C.pri},${C.priDim})`, color: '#fff' }}>墨</span>
-                    <span style={{ fontSize: 11, color: C.muted }}>{quickIdea.length} / 500</span>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 text-white" style={{ background: `linear-gradient(135deg,${C.pri},${C.priDim})` }}>墨</span>
+                    <span className="text-xs text-muted-foreground">{quickIdea.length} / 500</span>
                   </div>
-                  <button onClick={handleQuickCreate} style={{ fontSize: 13, padding: '10px 24px', borderRadius: 8, background: `linear-gradient(135deg,${C.pri},${C.priDim})`, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', minHeight: 42, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button onClick={handleQuickCreate} className="text-sm px-6 py-2.5 rounded-lg text-white border-none cursor-pointer font-semibold font-inherit min-h-[42px] flex items-center gap-1.5" style={{ background: `linear-gradient(135deg,${C.pri},${C.priDim})` }}>
                     开始创作
                   </button>
                 </div>
@@ -286,29 +286,29 @@ export default function DeskPage() {
 
             {/* 继续创作 */}
             {recentProjects.length > 0 && (
-              <section style={{ marginBottom: 36 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ width: 3, height: 16, borderRadius: 2, background: C.pri }} />
+              <section className="mb-9">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                    <span className="w-[3px] h-4 rounded-sm bg-primary" />
                     继续创作
                   </h2>
-                  <Link href="/works" style={{ fontSize: 12, color: C.muted, textDecoration: 'none' }}>全部作品 ›</Link>
+                  <Link href="/works" className="text-xs text-muted-foreground no-underline">全部作品 ›</Link>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
                   {recentProjects.map((p, i) => (
-                    <article key={p.id} onClick={() => router.push(`/editor/${p.id}`)} style={{ border: `1px solid ${C.line}`, borderRadius: 12, overflow: 'hidden', background: C.card, cursor: 'pointer', transition: 'all .15s' }}>
-                      <div style={{ height: 100, background: COVERS[i % COVERS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                        <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 9, padding: '2px 8px', borderRadius: 8, background: 'rgba(26,24,20,.55)', color: '#fff', letterSpacing: '.06em' }}>{p.genre || '未分类'}</span>
+                    <article key={p.id} onClick={() => router.push(`/editor/${p.id}`)} className="border border-border rounded-xl overflow-hidden bg-card cursor-pointer transition-all">
+                      <div className="h-25 flex items-center justify-center relative" style={{ background: COVERS[i % COVERS.length] }}>
+                        <span className="absolute top-2 left-2 text-[9px] px-2 py-0.5 rounded-lg tracking-wide" style={{ background: 'rgba(26,24,20,.55)', color: '#fff' }}>{p.genre || '未分类'}</span>
                       </div>
-                      <div style={{ padding: '14px 16px 10px' }}>
-                        <h3 style={{ fontSize: 13, fontWeight: 600, color: C.ink, fontFamily: "'Noto Serif SC',Georgia,serif", marginBottom: 4 }}>《{p.name}》</h3>
-                        <div style={{ fontSize: 11, color: C.muted, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className="px-4 py-[10px]">
+                        <h3 className="text-sm font-semibold text-foreground font-serif mb-1" style={{ fontFamily: "'Noto Serif SC',Georgia,serif" }}>《{p.name}》</h3>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
                           <span>{p.genre || '未分类'}</span>
                           <span>{(p.totalWords || 0).toLocaleString()}字</span>
-                          <span style={{ marginLeft: 'auto' }}>✎ {new Date(p.updatedAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}</span>
+                          <span className="ml-auto">✎ {new Date(p.updatedAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}</span>
                         </div>
-                        <div style={{ height: 3, borderRadius: 2, background: C.line, marginTop: 8, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', borderRadius: 2, background: C.pri, width: `${Math.min(100, Math.round(((p.totalWords || 0) / 50000) * 100))}%` }} />
+                        <div className="h-[3px] rounded-sm bg-border mt-2 overflow-hidden">
+                          <div className="h-full rounded-sm bg-primary" style={{ width: `${Math.min(100, Math.round(((p.totalWords || 0) / 50000) * 100))}%` }} />
                         </div>
                       </div>
                     </article>
@@ -318,10 +318,10 @@ export default function DeskPage() {
             )}
 
             {/* 创作工坊 4宫格 */}
-            <section style={{ marginBottom: 36 }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-                <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 3, height: 16, borderRadius: 2, background: C.pri }} />
+            <section className="mb-9">
+              <div className="flex items-center mb-4">
+                <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                    <span className="w-[3px] h-4 rounded-sm bg-primary" />
                   创作工坊
                 </h2>
               </div>
@@ -330,13 +330,13 @@ export default function DeskPage() {
                   const Wrapper = gw.href ? 'a' : 'button'
                   return (
                     <Wrapper key={i} href={gw.href ?? undefined}
-                      style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 16px', border: `1px solid ${C.line}`, borderRadius: 12, background: C.card, cursor: 'pointer', transition: 'all .2s', textDecoration: 'none' }}
+                      className="flex items-center gap-3.5 px-4 py-[18px] border border-border rounded-xl bg-card cursor-pointer transition-all no-underline"
                       onMouseEnter={e => { e.currentTarget.style.borderColor = C.pri; e.currentTarget.style.boxShadow = '0 2px 12px rgba(26,24,20,.04)' }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = C.line; e.currentTarget.style.boxShadow = 'none' }}>
-                      <span style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0, background: gw.bg, color: gw.color }}>{gw.icon}</span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{gw.title}</span>
-                        <span style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>{gw.desc}</span>
+                      <span className="w-10 h-10 rounded-[10px] flex items-center justify-center text-lg shrink-0" style={{ background: gw.bg, color: gw.color }}>{gw.icon}</span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-semibold text-foreground">{gw.title}</span>
+                        <span className="text-xs text-muted-foreground leading-relaxed">{gw.desc}</span>
                       </div>
                     </Wrapper>
                   )
@@ -345,7 +345,7 @@ export default function DeskPage() {
             </section>
 
             {/* 创作数据 + 每日打卡 */}
-            <section style={{ marginBottom: 36 }}>
+            <section className="mb-9">
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {[
@@ -354,27 +354,27 @@ export default function DeskPage() {
                     { val: weekWords.toLocaleString(), label: '本周字数 · 日均 ' + Math.round(weekWords / 7).toLocaleString() },
                     { val: `${progress}%`, label: '今日目标完成度', accent: true, delta: progress >= 100 ? '🎉 今日目标已达成！' : '还需写' + (todayTarget - todayDone).toLocaleString() + '字达标', deltaColor: C.crimson },
                   ].map((s, i) => (
-                    <div key={i} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ fontFamily: "'Noto Serif SC',Georgia,serif", fontSize: 22, fontWeight: 700, color: s.accent ? C.pri : C.ink }}>{s.val}</span>
-                      <span style={{ fontSize: 10, color: C.muted, letterSpacing: '.04em' }}>{s.label}</span>
-                      {s.delta && <span style={{ fontSize: 10, color: s.deltaColor, display: 'flex', alignItems: 'center', gap: 3 }}>{s.delta}</span>}
+                    <div key={i} className="bg-card border border-border rounded-xl px-3.5 py-4 flex flex-col gap-1">
+                      <span className="font-serif text-2xl font-bold" style={{ fontFamily: "'Noto Serif SC',Georgia,serif", color: s.accent ? C.pri : C.ink }}>{s.val}</span>
+                      <span className="text-[10px] text-muted-foreground tracking-wide">{s.label}</span>
+                      {s.delta && <span className="text-[10px] flex items-center gap-[3px]" style={{ color: s.deltaColor }}>{s.delta}</span>}
                     </div>
                   ))}
                 </div>
-                <div style={{ border: `1px solid ${C.line}`, borderRadius: 12, padding: '18px 16px', background: C.card, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="border border-border rounded-xl px-4 py-[18px] bg-card flex flex-col justify-between">
+                  <div className="text-xs text-muted-foreground mb-2.5 flex items-center justify-between">
                     <span>每日打卡</span>
-                    <span style={{ fontSize: 10 }}>本周 {checkinDone ? 5 : 4}/7</span>
+                    <span className="text-[10px]">本周 {checkinDone ? 5 : 4}/7</span>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                  <div className="flex gap-2 mb-3.5">
                     {days.map((d, i) => {
                       const done = checkinDays[i] || (i === 3 && checkinDone)
                       const today = i === 3 && !checkinDone
                       return (
-                        <span key={d} style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, border: `1px solid ${done ? C.pri : today ? C.pri : C.line}`, background: done ? C.pri : C.card, color: done ? '#fff' : today ? C.pri : C.muted, borderWidth: today ? 2 : 1 }}>
+                        <span key={d} className="w-9 h-9 rounded-full flex flex-col items-center justify-center text-xs font-semibold" style={{ border: `1px solid ${done ? C.pri : today ? C.pri : C.line}`, background: done ? C.pri : C.card, color: done ? '#fff' : today ? C.pri : C.muted, borderWidth: today ? 2 : 1 }}>
                           {d}
-                          {done && <span style={{ fontSize: 8, lineHeight: 1 }}>+10</span>}
-                          {today && <span style={{ fontSize: 8, lineHeight: 1 }}>+20</span>}
+                          {done && <span className="text-[8px] leading-none">+10</span>}
+                          {today && <span className="text-[8px] leading-none">+20</span>}
                         </span>
                       )
                     })}
@@ -385,7 +385,7 @@ export default function DeskPage() {
                     newDays[3] = true // Wednesday = index 3
                     setCheckinDays(newDays)
                     localStorage.setItem('mojing_checkin', JSON.stringify({ weekStart: getWeekStart(), days: newDays }))
-                  }} disabled={checkinDone} style={{ fontSize: 12, padding: '8px 0', borderRadius: C.radius, textAlign: 'center', cursor: checkinDone ? 'default' : 'pointer', fontWeight: 600, fontFamily: 'inherit', border: `1px solid ${checkinDone ? C.line : C.pri}`, background: checkinDone ? C.line : C.pri, color: checkinDone ? C.muted : '#fff', minHeight: 36 }}>
+                  }} disabled={checkinDone} className="text-xs py-2 text-center cursor-pointer font-semibold font-inherit rounded-lg min-h-9" style={{ borderRadius: C.radius, cursor: checkinDone ? 'default' : 'pointer', border: `1px solid ${checkinDone ? C.line : C.pri}`, background: checkinDone ? C.line : C.pri, color: checkinDone ? C.muted : '#fff' }}>
                     {checkinDone ? '✔ 已打卡！' : '✔ 今日打卡 · 得20墨点'}
                   </button>
                 </div>
@@ -393,32 +393,32 @@ export default function DeskPage() {
             </section>
 
             {/* 写作模板 */}
-            <section style={{ marginBottom: 36 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 3, height: 16, borderRadius: 2, background: C.pri }} />
+            <section className="mb-9">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <span className="w-[3px] h-4 rounded-sm bg-primary" />
                   写作模板
                 </h2>
-                <Link href="/templates" style={{ fontSize: 12, color: C.muted, textDecoration: 'none' }}>全部模板 ›</Link>
+                <Link href="/templates" className="text-xs text-muted-foreground no-underline">全部模板 ›</Link>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
                 {TEMPLATES.map((t, i) => (
-                  <article key={i} style={{ border: `1px solid ${C.line}`, borderRadius: 12, overflow: 'hidden', background: C.card, cursor: 'pointer', transition: 'all .12s' }}>
-                    <div style={{ padding: '14px 16px 10px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                      <span style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, background: t.bg, color: t.color || C.pri }}>{t.icon}</span>
+                  <article key={i} className="border border-border rounded-xl overflow-hidden bg-card cursor-pointer transition-all">
+                    <div className="px-4 pt-3.5 pb-2.5 flex items-start gap-2.5">
+                      <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0" style={{ background: t.bg, color: t.color || C.pri }}>{t.icon}</span>
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, lineHeight: 1.3, marginBottom: 2 }}>{t.title}</div>
-                        <div style={{ fontSize: 10, color: C.muted }}>{t.meta}</div>
+                        <div className="text-sm font-semibold text-foreground leading-tight mb-0.5">{t.title}</div>
+                        <div className="text-[10px] text-muted-foreground">{t.meta}</div>
                       </div>
                     </div>
-                    <div style={{ padding: '0 16px 12px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {t.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: C.sb, color: C.muted }}>{tag}</span>)}
+                    <div className="px-4 pb-3 flex gap-1.5 flex-wrap">
+                      {t.tags.map(tag => <span key={tag} className="text-[10px] px-2 py-0.5 rounded-[10px] bg-background text-muted-foreground">{tag}</span>)}
                     </div>
-                    <div style={{ padding: '10px 16px', borderTop: `1px solid ${C.line}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: C.muted }}>
+                    <div className="px-4 py-2.5 border-t border-border flex items-center justify-between text-[10px] text-muted-foreground">
                       <span>● {t.author}</span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span>{t.uses} 使用</span>
-                        <button style={{ fontSize: 10, padding: '4px 12px', border: `1px solid ${C.pri}`, borderRadius: 12, color: C.pri, background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>使用</button>
+                        <button className="text-[10px] px-3 py-1 border border-border rounded-xl text-primary bg-transparent cursor-pointer font-inherit" style={{ borderColor: C.pri, color: C.pri }}>使用</button>
                       </span>
                     </div>
                   </article>
@@ -427,41 +427,41 @@ export default function DeskPage() {
             </section>
 
             {/* 风云榜 + 创作心得 */}
-            <section style={{ marginBottom: 36 }}>
+            <section className="mb-9">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                    <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 3, height: 16, borderRadius: 2, background: C.pri }} />
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                      <span className="w-[3px] h-4 rounded-sm bg-primary" />
                       创作风云榜
                     </h2>
-                    <button style={{ fontSize: 12, color: C.muted, background: 'none', border: 'none', cursor: 'pointer' }}>本月 ›</button>
+                    <button className="text-xs text-muted-foreground bg-transparent border-none cursor-pointer">本月 ›</button>
                   </div>
-                  <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                  <table className="w-full text-xs border-collapse">
                     <tbody>
                       {RANKERS.map((r, i) => (
                         <tr key={i}>
-                          <td style={{ width: 32, fontWeight: 700, color: r.top ? C.pri : C.muted, padding: '8px 12px', borderBottom: `1px solid ${C.line}` }}>{i + 1}</td>
-                          <td style={{ fontWeight: 500, color: C.ink, padding: '8px 12px', borderBottom: `1px solid ${C.line}` }}>{r.name}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 600, color: C.ink, fontFamily: "'Noto Serif SC',Georgia,serif", padding: '8px 12px', borderBottom: `1px solid ${C.line}` }}>{r.words} 字</td>
+                          <td className="w-8 font-bold px-3 py-2 border-b border-border" style={{ color: r.top ? C.pri : C.muted, borderColor: C.line }}>{i + 1}</td>
+                          <td className="font-medium text-foreground px-3 py-2 border-b border-border">{r.name}</td>
+                          <td className="text-right font-semibold px-3 py-2 border-b border-border font-serif" style={{ color: C.ink, fontFamily: "'Noto Serif SC',Georgia,serif", borderColor: C.line }}>{r.words} 字</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                    <h2 style={{ fontSize: 15, fontWeight: 600, color: C.ink, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 3, height: 16, borderRadius: 2, background: C.pri }} />
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                      <span className="w-[3px] h-4 rounded-sm bg-primary" />
                       创作心得
                     </h2>
-                    <button style={{ fontSize: 12, color: C.muted, background: 'none', border: 'none', cursor: 'pointer' }}>更多 ›</button>
+                    <button className="text-xs text-muted-foreground bg-transparent border-none cursor-pointer">更多 ›</button>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div className="flex flex-col gap-2">
                     {TIPS.map((t, i) => (
-                      <article key={i} style={{ padding: '12px 16px', border: `1px solid ${C.line}`, borderRadius: 8, background: C.card, cursor: 'pointer', transition: 'all .12s', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                        <span style={{ fontSize: 13, fontWeight: 500, color: C.ink, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
-                        <span style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>{t.date}</span>
+                      <article key={i} className="px-4 py-3 border border-border rounded-lg bg-card cursor-pointer transition-all flex items-center justify-between gap-3">
+                        <span className="text-sm font-medium text-foreground flex-1 overflow-hidden whitespace-nowrap" style={{ textOverflow: 'ellipsis' }}>{t.title}</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{t.date}</span>
                       </article>
                     ))}
                   </div>
@@ -474,14 +474,14 @@ export default function DeskPage() {
 
       {/* 创建对话框 */}
       {dlgOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,24,20,.3)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={e => e.target === e.currentTarget && setDlgOpen(false)}>
-          <div style={{ background: C.card, borderRadius: 16, padding: 32, maxWidth: 560, width: 'calc(100% - 32px)', boxShadow: '0 16px 48px rgba(26,24,20,.12)', display: 'flex', flexDirection: 'column', gap: 20, position: 'relative' }}>
-            <button onClick={() => setDlgOpen(false)} aria-label="关闭" style={{ position: 'absolute', top: 16, right: 16, width: 32, height: 32, borderRadius: '50%', border: 'none', background: C.sb, cursor: 'pointer', fontSize: 16, color: C.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
-            <h3 style={{ fontSize: 18, fontFamily: "'Noto Serif SC',Georgia,serif", fontWeight: 700, color: C.ink }}>一句话生成故事</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>一句话描述你想写的故事</label>
-              <textarea value={dlgIdea} onChange={e => setDlgIdea(e.target.value)} maxLength={500} placeholder="一个退隐杀手回到故乡，却发现整座小镇的人都在等他…" style={{ width: '100%', padding: '10px 14px', border: `1px solid ${C.line}`, borderRadius: C.radius, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: C.sb, resize: 'vertical', minHeight: 80, lineHeight: 1.6 }} />
-              <span style={{ fontSize: 10, color: C.muted, textAlign: 'right' }}>{dlgIdea.length} / 500</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(26,24,20,.3)' }} onClick={e => e.target === e.currentTarget && setDlgOpen(false)}>
+          <div className="bg-card rounded-2xl p-8 max-w-560 w-[calc(100%-32px)] flex flex-col gap-5 relative" style={{ boxShadow: '0 16px 48px rgba(26,24,20,.12)' }}>
+            <button onClick={() => setDlgOpen(false)} aria-label="关闭" className="absolute top-4 right-4 w-8 h-8 rounded-full border-none bg-background cursor-pointer text-base text-muted-foreground flex items-center justify-center">×</button>
+            <h3 className="text-lg font-bold text-foreground font-serif" style={{ fontFamily: "'Noto Serif SC',Georgia,serif" }}>一句话生成故事</h3>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">一句话描述你想写的故事</label>
+              <textarea value={dlgIdea} onChange={e => setDlgIdea(e.target.value)} maxLength={500} placeholder="一个退隐杀手回到故乡，却发现整座小镇的人都在等他…" className="w-full px-3.5 py-2.5 text-sm font-inherit outline-none bg-background resize-y min-h-20 leading-relaxed rounded-lg" style={{ border: `1px solid ${C.line}`, borderRadius: C.radius }} />
+              <span className="text-[10px] text-muted-foreground text-right">{dlgIdea.length} / 500</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {[
@@ -490,21 +490,21 @@ export default function DeskPage() {
                 { label: '篇幅', value: dlgLength, set: setDlgLength, opts: ['短篇（<2万字）', '中篇（2-8万字）', '长篇连载（>8万字）'] },
                 { label: '目标读者', value: dlgAudience, set: setDlgAudience, opts: ['不限', '男性向', '女性向'] },
               ].map(field => (
-                <div key={field.label} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>{field.label}</label>
-                  <select value={field.value} onChange={e => field.set(e.target.value)} style={{ width: '100%', padding: '10px 14px', border: `1px solid ${C.line}`, borderRadius: C.radius, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: C.sb }}>
+                <div key={field.label} className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">{field.label}</label>
+                  <select value={field.value} onChange={e => field.set(e.target.value)} className="w-full px-3.5 py-2.5 text-sm font-inherit outline-none bg-background rounded-lg" style={{ border: `1px solid ${C.line}`, borderRadius: C.radius }}>
                     {field.opts.map(o => <option key={o}>{o}</option>)}
                   </select>
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: C.radius, background: 'rgba(196,149,106,.04)', border: '1px dashed rgba(196,149,106,.15)' }}>
-              <span style={{ width: 40, height: 40, borderRadius: '50%', background: `linear-gradient(135deg,${C.pri},${C.priDim})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0, color: '#fff' }}>墨</span>
-              <span style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>「墨灵」将根据你的设定，自动生成大纲、人物关系和开篇第一章。</span>
+            <div className="flex items-center gap-3 px-4 py-3 rounded-lg" style={{ background: 'rgba(196,149,106,.04)', border: '1px dashed rgba(196,149,106,.15)', borderRadius: C.radius }}>
+              <span className="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0 text-white" style={{ background: `linear-gradient(135deg,${C.pri},${C.priDim})` }}>墨</span>
+              <span className="text-xs text-muted-foreground leading-relaxed">「墨灵」将根据你的设定，自动生成大纲、人物关系和开篇第一章。</span>
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-              <button onClick={() => setDlgOpen(false)} style={{ fontSize: 12, padding: '7px 18px', borderRadius: 20, border: `1px solid ${C.line}`, background: C.card, cursor: 'pointer', color: C.ink, fontFamily: 'inherit', minHeight: 34 }}>取消</button>
-              <button onClick={handleDlgCreate} style={{ fontSize: 12, padding: '7px 18px', borderRadius: 20, background: C.pri, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 500, boxShadow: '0 2px 8px rgba(196,149,106,.15)', fontFamily: 'inherit', minHeight: 34 }}>☙ 开始生成</button>
+            <div className="flex gap-2.5 justify-end mt-1">
+              <button onClick={() => setDlgOpen(false)} className="text-xs px-[18px] py-[7px] rounded-[20px] bg-card cursor-pointer text-foreground font-inherit min-h-[34px]" style={{ border: `1px solid ${C.line}` }}>取消</button>
+              <button onClick={handleDlgCreate} className="text-xs px-[18px] py-[7px] rounded-[20px] bg-primary text-white border-none cursor-pointer font-medium font-inherit min-h-[34px]" style={{ boxShadow: '0 2px 8px rgba(196,149,106,.15)' }}>☙ 开始生成</button>
             </div>
           </div>
         </div>
