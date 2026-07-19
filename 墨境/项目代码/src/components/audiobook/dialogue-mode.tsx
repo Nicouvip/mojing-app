@@ -54,6 +54,10 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
   const [analyzingElapsed, setAnalyzingElapsed] = useState(0)
   const [analyzeError, setAnalyzeError] = useState('')
   const [editedSegments, setEditedSegments] = useState<SegmentAnalysis[]>([])
+
+  /* ── 题材识别 ── */
+  const [genre, setGenre] = useState<{ genre: string; confidence: string; suggestedStyle: string; suggestedPacing: string } | null>(null)
+  const [genreLoading, setGenreLoading] = useState(false)
   const [editedCharacters, setEditedCharacters] = useState<CharacterAnalysis[]>([])
 
   /* ── 筛选 + 多选 ── */
@@ -240,6 +244,15 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
         setEditedCharacters(loadVoiceBindings(processed.characters || []))
         setEditedSegments(processed.segments || [])
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch { /* quota exceeded */ }
+        // 题材自动识别（异步，不阻塞主流程）
+        setGenreLoading(true)
+        fetch('/api/audiobook/genre-detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: chapter.content }),
+        }).then(r => r.json()).then(g => {
+          if (g.success) setGenre({ genre: g.genre, confidence: g.confidence, suggestedStyle: g.suggestedStyle, suggestedPacing: g.suggestedPacing })
+        }).catch(() => {}).finally(() => setGenreLoading(false))
       } else {
         setAnalyzeError(data.error || '分析失败')
       }
