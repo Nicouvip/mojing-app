@@ -754,6 +754,21 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           </div>
         </div>
 
+        {/* 题材标签 */}
+        {(genre || genreLoading) && (
+          <div style={{ padding: '6px 10px', marginBottom: 10, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius, fontSize: 11, color: C.muted, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {genreLoading ? (
+              <span>🔍 题材识别中...</span>
+            ) : genre && (
+              <>
+                <span style={{ padding: '1px 8px', background: `${C.pri}18`, borderRadius: 10, color: C.pri, fontWeight: 600 }}>{genre.genre}</span>
+                <span>{genre.suggestedStyle}</span>
+                <span style={{ opacity: 0.6 }}>({genre.suggestedPacing === 'slow' ? '慢速' : genre.suggestedPacing === 'fast' ? '快速' : '中速'})</span>
+              </>
+            )}
+          </div>
+        )}
+
         {/* 旁白 */}
         <div style={{ padding: 10, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius, marginBottom: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: C.ink, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
