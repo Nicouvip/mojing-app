@@ -123,6 +123,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
   const [concatenatedAudio, setConcatenatedAudio] = useState<string | null>(null)
   const [concatenatedDuration, setConcatenatedDuration] = useState(0)
   const [concatenatedFilename, setConcatenatedFilename] = useState('')
+  const [markers, setMarkers] = useState<Array<{ label: string; positionMs: number }>>([])
 
   /* Step 5: 润色状态 */
   const [effectsPreset, setEffectsPreset] = useState<EffectsPreset>('none')
@@ -232,7 +233,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
     setConcatenating(true)
     try {
       const audioSegments: Array<{ audioBase64: string; duration: number }> = []
-      const markers: Array<{ label: string; positionMs: number }> = []
+      const markerList: Array<{ label: string; positionMs: number }> = []
       let currentPosMs = 0
 
       for (const seg of parseResult!.segments) {
@@ -244,7 +245,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
             currentPosMs += audio.duration
           }
         } else if (seg.type === 'dialog_marker') {
-          markers.push({ label: seg.label || `对话_${seg.note || ''}`, positionMs: currentPosMs })
+          markerList.push({ label: seg.label || `对话_${seg.note || ''}`, positionMs: currentPosMs })
           currentPosMs += silenceMs
         } else if (seg.type === 'silence') {
           currentPosMs += seg.ms || silenceMs
@@ -258,7 +259,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
           segments: audioSegments,
           silenceMs,
           fadeMs: 80,
-          markers,
+          markers: markerList,
           book: chapterTitle || '有声书',
           episode: chapterTitle || '章节',
         }),
@@ -268,6 +269,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
         setConcatenatedAudio(data.audio)
         setConcatenatedDuration(data.duration)
         setConcatenatedFilename(data.filename)
+        setMarkers(markerList)
         setEffectedAudio(data.audio)
         setEffectsApplied(false)
         toast.success(`拼接完成：${data.segments}段 + ${data.markers}个标记，共${Math.round(data.duration)}秒`)
@@ -628,6 +630,63 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
           {concatenating && (
             <div style={{ marginTop: 8, fontSize: 10, color: C.muted, textAlign: 'center' }}>
               正在拼接 {synthesizedData.size} 段音频...
+            </div>
+          )}
+
+          {concatenatedAudio && markers.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: C.muted, marginBottom: 4 }}>
+                AU Cue 标记位（{markers.length} 个）
+              </div>
+              <div style={{
+                position: 'relative', height: 36,
+                background: 'rgba(26,24,20,.03)', borderRadius: 6,
+                border: `1px solid ${C.line}`, overflow: 'hidden',
+              }}>
+                {/* 进度条轨 */}
+                <div style={{
+                  position: 'absolute', top: '50%', left: 8, right: 8,
+                  height: 2, background: C.line, transform: 'translateY(-50%)',
+                  borderRadius: 1,
+                }} />
+                {/* 标记位 */}
+                {markers.map((m, i) => {
+                  const pct = concatenatedDuration > 0
+                    ? Math.min(100, (m.positionMs / 1000 / concatenatedDuration) * 100)
+                    : 0
+                  return (
+                    <div key={i} style={{
+                      position: 'absolute', left: `${pct}%`, top: 0,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center',
+                      transform: 'translateX(-50%)',
+                    }}>
+                      <div style={{
+                        width: 2, height: 24, background: C.pri,
+                        borderRadius: 1,
+                      }} />
+                      <span style={{
+                        fontSize: 8, color: C.pri, whiteSpace: 'nowrap',
+                        marginTop: 2, maxWidth: 60, overflow: 'hidden',
+                        textOverflow: 'ellipsis', textAlign: 'center',
+                      }}>
+                        {m.label.replace('对话_', '')}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={{
+                marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 2,
+              }}>
+                {markers.map((m, i) => (
+                  <span key={i} style={{
+                    padding: '1px 4px', fontSize: 8, borderRadius: 3,
+                    background: `${C.pri}12`, color: C.pri,
+                  }}>
+                    {m.label.replace('对话_', '')} @{Math.round(m.positionMs / 100) / 10}s
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
