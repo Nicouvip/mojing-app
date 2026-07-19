@@ -71,6 +71,7 @@ export default function AudiobookProjectPage() {
   const [designLoading, setDesignLoading] = useState(false)
   const [designedVoices, setDesignedVoices] = useState<Array<{ id: string; name: string; desc: string; audioBase64: string }>>([])
   const [polishDescLoading, setPolishDescLoading] = useState(false)
+  const [originalDesc, setOriginalDesc] = useState('')
 
   /* ── VoiceClone 弹窗 ── */
   const [showClone, setShowClone] = useState(false)
@@ -322,6 +323,7 @@ export default function AudiobookProjectPage() {
   /* ── 润色音色描述 ── */
   const handlePolishDesc = async () => {
     if (!designDesc.trim()) { toast.error('请先输入音色描述'); return }
+    setOriginalDesc(designDesc)
     setPolishDescLoading(true)
     try {
       const res = await fetch('/api/audiobook/voices/polish', {
@@ -742,7 +744,7 @@ export default function AudiobookProjectPage() {
       {/* ═══ VoiceDesign 弹窗 ═══ */}
       {showDesign && (
         <div className="fixed inset-0 bg-overlay flex items-center justify-center z-[1000] modal-enter" onClick={() => setShowDesign(false)}>
-          <div className="w-full max-w-[460px] bg-card rounded-xl p-6 shadow-modal" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-[560px] bg-card rounded-xl p-6 shadow-modal max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-[15px] font-semibold text-card-foreground m-0">
                 <Sparkles className="inline h-4 w-4 mr-1" />设计新音色
@@ -752,13 +754,55 @@ export default function AudiobookProjectPage() {
               </button>
             </div>
             <div className="flex flex-col gap-3">
+              {/* 快速模板 */}
+              <div>
+                <label className="block text-xs font-medium text-card-foreground mb-1.5">快速模板（点击填入）</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { icon: '👨', label: '青年男性', desc: '年轻男性，声音清亮，充满活力' },
+                    { icon: '👨', label: '中年男性', desc: '中年男性，声音低沉稳重，适合长辈' },
+                    { icon: '👨', label: '老年男性', desc: '老年男性，声音苍老但有力量，适合智者' },
+                    { icon: '👧', label: '青年女性', desc: '年轻女性，声音甜美，充满活力' },
+                    { icon: '👩', label: '中年女性', desc: '中年女性，声音温暖，有母性的光辉' },
+                    { icon: '👵', label: '老年女性', desc: '老年女性，声音慈祥，像是在讲睡前故事' },
+                    { icon: '👶', label: '儿童', desc: '八岁的小男孩，声音稚嫩，充满好奇心' },
+                    { icon: '🎙️', label: '旁白', desc: '专业旁白，声音沉稳，语速适中，适合有声书' },
+                  ].map(t => (
+                    <button key={t.label} onClick={() => setDesignDesc(t.desc)}
+                      className="p-2 border border-border rounded-md text-center cursor-pointer bg-card hover:bg-muted transition-colors">
+                      <div className="text-sm">{t.icon}</div>
+                      <div className="text-[10px] font-medium text-card-foreground">{t.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-medium text-card-foreground mb-1">音色描述（1-4句）</label>
-                <textarea value={designDesc} onChange={e => setDesignDesc(e.target.value)} placeholder="例：年轻女性，声音清亮，充满活力，适合旁白" className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit min-h-[80px] resize-y box-border" />
+                <textarea value={designDesc} onChange={e => setDesignDesc(e.target.value)} placeholder="例：年轻女性，声音清亮，充满活力，适合旁白" className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit min-h-[70px] resize-y box-border" />
                 <button onClick={handlePolishDesc} disabled={polishDescLoading} className="mt-1.5 px-4 py-1.5 bg-[#8e63ce] border-none rounded-md text-xs font-medium text-white cursor-pointer font-inherit disabled:opacity-60 disabled:cursor-default transition-opacity">
                   {polishDescLoading ? '⏳ 润色中...' : '✨ 润色描述'}
                 </button>
               </div>
+
+              {/* 润色前后对比 */}
+              {originalDesc && originalDesc !== designDesc && (
+                <div className="p-3 bg-muted/50 rounded-lg text-[11px]">
+                  <p className="font-medium text-card-foreground mb-1.5">✨ 润色对比</p>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <p className="text-muted-foreground mb-0.5">原文：</p>
+                      <p className="text-foreground leading-relaxed">{originalDesc}</p>
+                    </div>
+                    <div className="w-px bg-border" />
+                    <div className="flex-1">
+                      <p className="text-primary mb-0.5">润色后：</p>
+                      <p className="text-foreground leading-relaxed">{designDesc}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-medium text-card-foreground mb-1">预览文本</label>
                 <input value={designText} onChange={e => setDesignText(e.target.value)} className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit box-border" />
@@ -766,77 +810,33 @@ export default function AudiobookProjectPage() {
               <button onClick={handleDesignVoice} disabled={designLoading} className="py-2.5 bg-primary border-none rounded-md text-[13px] font-medium text-white cursor-pointer font-inherit disabled:opacity-60 disabled:cursor-default hover:bg-primary-hover transition-all">
                 {designLoading ? '⏳ 生成中...' : '🎵 生成并试听'}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* ═══ VoiceClone 弹窗 ═══ */}
-      {showClone && (
-        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-[1000] modal-enter" onClick={() => setShowClone(false)}>
-          <div className="w-full max-w-[460px] bg-card rounded-xl p-6 shadow-modal" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-[15px] font-semibold text-card-foreground m-0">
-                <Mic className="inline h-4 w-4 mr-1" />克隆声音
-              </h2>
-              <button onClick={() => setShowClone(false)} className="bg-transparent border-none cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="flex flex-col gap-3">
-              <div className="flex gap-3">
-                <div className="flex-1 p-4 border-2 border-dashed border-border rounded-lg text-center">
-                  <p className="text-xs text-muted-foreground mb-2">📁 上传音频文件</p>
-                  <input type="file" accept="audio/*" onChange={e => { setCloneSample(e.target.files?.[0] || null); if (isRecording) stopRecording() }} className="text-[11px]" />
-                  {cloneSample && !isRecording && !cloneSample.name.startsWith('录音') && <p className="text-[11px] text-success mt-2">✓ {cloneSample.name}</p>}
-                </div>
-                <div className={`flex-1 p-4 border-2 rounded-lg text-center transition-colors ${
-                  isRecording ? 'border-destructive bg-destructive/[0.04]' : 'border-border'
-                }`}>
-                  <p className="text-xs text-muted-foreground mb-1">🎙️ 在线录音</p>
-                  <p className="text-[10px] text-muted-foreground mb-2">最少录制 10 秒，请照以下范本朗读</p>
-                  {isRecording && (
-                    <div className="py-2 px-2.5 bg-indigo/10 rounded-md text-[11px] text-indigo leading-relaxed mb-2.5 text-left italic">
-                      「{RECORDING_TEMPLATE}」
-                    </div>
-                  )}
-                  {isRecording ? (
-                    <>
-                      <p className={`text-xl font-bold mb-1 ${recordingTime < 10 ? 'text-destructive' : 'text-success'}`}>
-                        {recordingTime}s{recordingTime < 10 ? ` (还需${10 - recordingTime}s)` : ' ✓'}
-                      </p>
-                      <button onClick={stopRecording} disabled={recordingTime < 3}
-                        className={`py-1.5 px-5 rounded-md text-xs font-medium cursor-pointer border-none ${recordingTime < 3 ? 'bg-gray-300 text-white' : 'bg-destructive text-white'}`}>⏹ 停止录音</button>
-                    </>
-                  ) : (
-                    <button onClick={startRecording} className="py-1.5 px-5 bg-indigo text-white rounded-md text-xs font-medium cursor-pointer border-none">🎙️ 开始录音</button>
-                  )}
-                  {cloneSample && !isRecording && cloneSample.name.startsWith('录音') && <p className="text-[11px] text-success mt-2">✓ {cloneSample.name} (已转为wav格式)</p>}
-                </div>
-              </div>
-              {/* 样本质量检测 */}
-              {sampleQuality && (
-                <div className="p-3 bg-muted/50 rounded-lg text-[11px] space-y-1">
-                  <p className="font-medium text-card-foreground mb-1">📊 样本质量</p>
-                  <div className="flex gap-4">
-                    <span>格式：{sampleQuality.format}</span>
-                    <span>时长：{sampleQuality.duration}s {sampleQuality.duration >= 10 ? '✅' : '⚠️ 建议≥10s'}</span>
-                    <span>大小：{sampleQuality.sizeMB}MB {sampleQuality.sizeMB <= 7.5 ? '✅' : '❌ 超限'}</span>
-                    <span>采样率：{sampleQuality.sampleRate > 0 ? `${sampleQuality.sampleRate}Hz ${sampleQuality.sampleRate >= 16000 ? '✅' : '⚠️ 建议≥16kHz'}` : '未知'}</span>
+              {/* 已设计音色列表 */}
+              {designedVoices.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-card-foreground mb-1.5">已设计音色（{designedVoices.length}）</label>
+                  <div className="space-y-1.5">
+                    {designedVoices.map(v => (
+                      <div key={v.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-card-foreground truncate">{v.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{v.desc}</p>
+                        </div>
+                        <div className="flex gap-1 ml-2 shrink-0">
+                          <button onClick={() => playBase64Audio(v.audioBase64, 'audio/wav')}
+                            className="w-6 h-6 flex items-center justify-center rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer border-none">
+                            <Play className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => setDefaultVoice(v.id)}
+                            className="px-2 py-0.5 text-[10px] rounded bg-primary text-white hover:bg-primary-hover transition-colors cursor-pointer border-none font-inherit">
+                            选用
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <p className={sampleQuality.valid ? 'text-success' : 'text-destructive'}>
-                    {sampleQuality.valid ? '✅ 样本质量合格，可以克隆' : '⚠️ 样本质量不理想，克隆效果可能受影响'}
-                  </p>
                 </div>
               )}
-
-              <div>
-                <label className="block text-xs font-medium text-card-foreground mb-1">名称</label>
-                <input value={cloneName} onChange={e => setCloneName(e.target.value)} placeholder="例：我的声音" className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit box-border" />
-              </div>
-              <button onClick={handleCloneVoice} disabled={cloneLoading || !cloneSample} className="py-2.5 bg-primary border-none rounded-md text-[13px] font-medium text-white cursor-pointer font-inherit disabled:opacity-60 disabled:cursor-default hover:bg-primary-hover transition-all">
-                {cloneLoading ? '⏳ 克隆中...' : '🎵 克隆并试听'}
-              </button>
             </div>
           </div>
         </div>
