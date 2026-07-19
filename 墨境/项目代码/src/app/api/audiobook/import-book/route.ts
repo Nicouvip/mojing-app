@@ -359,6 +359,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { format, content, chapterId } = body
 
+    // 文件大小校验
+    const contentStr = typeof content === 'string' ? content : JSON.stringify(content || '')
+    if (contentStr.length > 5 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: '文件内容过大，最大支持 5MB' },
+        { status: 413 },
+      )
+    }
+
     if (!format || !['txt', 'json'].includes(format)) {
       return NextResponse.json(
         { error: 'format 参数必填，支持 "txt" 或 "json"' },

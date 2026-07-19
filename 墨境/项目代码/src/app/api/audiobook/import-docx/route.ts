@@ -26,6 +26,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '文件格式必须为 .docx' }, { status: 400 })
     }
 
+    // 文件大小校验
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: '文件过大，最大支持 10MB' }, { status: 413 })
+    }
+
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
