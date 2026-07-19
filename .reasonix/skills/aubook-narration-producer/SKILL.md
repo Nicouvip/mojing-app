@@ -104,29 +104,47 @@ description: 有声书口播制作全流程：文本分析->语气方案->引擎
 
 ---
 
-## 工具索引（aubook 专用）
+## 工具索引（完整版）
 
-aubook 制作有声书所需的全部工具、路径和配置：
+aubook 制作有声书所需的全部工具、路径和配置（已合并原 voice-toolkit）：
 
 | 资源 | 路径/说明 | 用途 |
 |:---|:---|:---|
-| **豆包语音 MCP** | `mcp-servers/doubao-voice/server.py` | 语音合成（主力引擎） |
+| **豆包语音 MCP** | `mcp-servers/doubao-voice/server.py` | **主力引擎**：语音合成 |
 | **豆包图片 MCP** | `mcp-servers/doubao-img/server.py` | 文生图/视频（备选） |
+| **PaddleOCR-VL** | `mcp-servers/paddleocr-vl/server.py` | 图片/文档识别（画本是图片时用） |
 | **编排脚本** | `scripts/narrate-arrange.py` | 多轨编排、拼接、打标 |
-| **编排库模块** | `scripts/narrate_arrange_lib/` | 8个模块，详见 docs |
+| **编排库模块** | `scripts/narrate_arrange_lib/` | 8个模块 |
 | **全局配置** | `scripts/config.toml` | 音频参数集中管理 |
 | **合成数据库** | `audio-outputs/arranged/synthesis.db` | SQLite 任务持久化 |
 | **豆包参数文档** | `docs/doubao-voice-params-reference.md` | Expressive 版全部参数 |
 | **使用说明** | `docs/narrate-arrange-guide.md` | 编排脚本操作指南 |
-| **画本解析规则** | `.reasonix/skills/aubook-narration-producer/references/narration-extraction.md` | 正则分离规则 |
-| **语音指令规范** | `.reasonix/skills/aubook-narration-producer/references/voice-prompt-guide.md` | cot 标签四维度模型 |
-| **上下文设计法** | `.reasonix/skills/aubook-narration-producer/references/context-design.md` | 三层写作方法 |
-| **引擎参数** | `.reasonix/skills/aubook-narration-producer/references/engine-config.md` | 参数配置踩坑总结 |
-| **风险评估** | `.reasonix/skills/aubook-narration-producer/references/risk-assessment.md` | 应急预案 |
+| **画本解析规则** | `references/narration-extraction.md` | 正则分离规则 |
+| **语音指令规范** | `references/voice-prompt-guide.md` | cot 标签四维度模型 |
+| **上下文设计法** | `references/context-design.md` | 三层写作方法 |
+| **引擎参数** | `references/engine-config.md` | 参数配置踩坑总结 |
+| **风险评估** | `references/risk-assessment.md` | 应急预案 |
 | **AU 打标** | `scripts/narrate_arrange_lib/marker.py` | WAV cue 标记写入 |
 | **效果链** | `scripts/narrate_arrange_lib/effects.py` | 8种效果、4种预设 |
 
+### 备选语音工具
+
+| 工具 | 路径 | 调用方式 | 适用场景 |
+|:---|:---|:---|:---|
+| **MiMo 声音克隆** | `mcp-servers/mimo-voiceclone/server.py` | `mimo_voice_clone(audio_file, text)` | 备用 TTS/声音克隆 |
+| **讯飞声音复刻** | `mcp-servers/xfyun-voiceclone/server.py` | 先 `xfyun_voice_train` 训练，再 `xfyun_voice_synth` 合成 | 备用 TTS |
+| **讯飞 TTS** | `mcp-servers/xfyun-tts/server.py` | `xfyun_tts(text, vcn)` | 简单 TTS（无精细控制） |
+
+### 配置信息
+
+| 服务 | 地址 |
+|:---|:---|
+| 豆包语音 | 讯飞星辰 MaaS（后付费） |
+| 讯飞 MaaS | `https://maas-api.cn-huabei-1.xf-yun.com/v2` |
+| MiMo | MiMo 官方 API（按量付费） |
+
 ## 工具优先级
-- 语音合成：豆包Expressive → MiMo → 讯飞
-- 识图：PaddleOCR-VL → HunyuanOCR
-- 生图：Z-Image-Turbo（免费）→ 豆包 seedream（付费）
+- 语音合成：**豆包Expressive** → MiMo → 讯飞
+- 识图：**PaddleOCR-VL**（免费）→ HunyuanOCR（免费）→ 付费
+- 生图：**Z-Image-Turbo**（免费，steps≤5）→ 豆包 seedream（付费）
+- 声音克隆：**MiMo** → 讯飞 → 豆包
