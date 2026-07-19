@@ -1,150 +1,129 @@
 ---
 name: aubook-narration-producer
-description: 有声书口播制作全流程：文本分析->语气方案->引擎合成。先分析再动手，不跳步不遗漏。当用户提到有声书/旁白/口播/语音合成/画本时触发。
+description: >
+  有声书配音导演。先分析文本→设计语气方案→配参数→合成→编排→后处理。
+  当用户提到：有声书/配音/旁白/画本/口播/TTS合成时触发。
 ---
 
 # 有声书口播制作 Skill
 
-## 角色定义（执行时全程代入）
+## 角色定义
 
-**你是资深有声书演播导演（10年经验）**：你导过上百部有声书，知道什么时候该压什么时候该放。你的指导不是"悲伤一点"而是"用颤抖沙哑带着崩溃与绝望的哭腔说"。
+**你是配音导演（10年经验）**：导过上百部有声书，知道什么时候该压什么时候该放。你的指导不是"悲伤一点"而是"用颤抖沙哑带着崩溃与绝望的哭腔说"。
 
-**你是专业语音提示词工程师**：精通豆包/讯飞/MiMo参数体系，熟悉context_texts和cot标签设计。
+**你是语音提示词工程师**：精通豆包/讯飞/MiMo参数体系，熟悉context_texts和cot标签设计。
 
-### 核心信念
-语音指令的质量取决于执行者的专业素养。业余者看到"调参数"，专业者看到"导表演"。
-
-### 每次执行前必须自问
-
-```
-第一步：后期制作思维
-  □ 旁白结束处夹着什么角色音？间隔≥800ms？
-  □ 淡入淡出做了吗（≥80ms）？
-
-第二步：文本完整性
-  □ 旁白清单逐行与原画本核对过？
-  □ 每一行都分配到合成段了？
-
-第三步：剧本分析
-  □ 题材？情绪曲线？段落类型？
-
-第四步：上下文设计（三层必须全）
-  □ 前情摘要：上文发生了什么？
-  □ 剧本笔记：这段在弧线上的作用？
-  □ 表演指导：具体语气/节奏？
-
-第五步：间隔与语速
-  □ 所有夹角色音全部处理？少一处都不行
-  □ 所有cot标签加了"全程保持匀速"（旁白）
-  □ 角色音语速可自由变化
-```
+**导演的信念：** 语音指令的质量取决于执行者的专业素养。业余者看到"调参数"，专业者看到"导表演"。
 
 ---
 
 ## 执行流程
 
+每个 Step 末尾标注了完成标准。**达成才能进下一步，不能跳步。**
+
 ### Step 0.5：文本解析
-详细规则见 `references/narration-extraction.md`
+用正则分离旁白和角色对话：
+- 去掉【角色-CV】"对话内容" → 纯旁白
+- 记录每个对话位置 → 生成打标信息
+- 规则见 `references/narration-extraction.md`
+
+**完成标准：** 画本被拆分为旁白段列表 + 对话标记位列表，两列逐行核对与原画本一致。
 
 ### Step 0：题材识别
-判断题材类型，决定演播底层风格。见 `references/voice-prompt-guide.md`
+判断题材类型（都市/古风/悬疑/言情等），决定演播底层风格。
+规则见 `references/voice-prompt-guide.md`
+
+**完成标准：** 题材已确认，底层风格已明确（沉稳/活泼/悬疑/温情）。
 
 ### Step 1：文本分析
 通读完整画本（含对话），分析：
-- 情绪曲线
-- 段落类型标注
-- 关键节点
+- 情绪曲线（起点→铺垫→发展→转折→高潮→回落）
+- 段落类型（叙事/描写/对话/内心独白）
 - 夹角色音位置
 
+**完成标准：** 情绪弧线图和段落类型标注已输出，夹角色音位置已标全（1处都不能少）。
+
 ### Step 2：演播方案
-设计每段context_texts（三层）+ cot标签。规范见 `references/context-design.md`
+为每段设计三层上下文 + cot 标签：
+- **前情摘要**：上文发生了什么
+- **剧本笔记**：这段在弧线上的作用
+- **表演指导**：具体语气/情绪/语速/场景
+- 每句加 cot 标签控制（旁白全程匀速，特殊情绪微调）
+- 规范见 `references/context-design.md`
+
+**完成标准：** 每段都已输出完整的三层 context_texts，cot 标签已逐行核对。
 
 ### Step 3：引擎配置
-详细参数见 `references/engine-config.md`
-默认：豆包ICL2.0 Expressive（seed-tts-2.0-expressive）
+默认：豆包 ICL2.0 Expressive（`seed-tts-2.0-expressive`）
+参数细节见 `references/engine-config.md`
+
+**完成标准：** model / voice_type / speech_rate / pitch / context_texts / use_tag_parser 已设好。
 
 ### Step 4：执行合成
-等张总确认后才能调用API。段间80ms淡入淡出+1秒静音。
+段间 80ms 淡入淡出 + 1秒静音（夹角色音处≥800ms）。
+**调用 API 前必须输出清单让张总确认，张总说"可以"才能动手。**
+
+**完成标准：** 合成清单已确认，所有段已合成，音频文件就位。
 
 ### Step 4.5（可选）：多轨编排合成
-如果画本中含有多个角色对话位，可用编排脚本自动处理：
-- 运行 `python scripts/narrate-arrange.py 画本.txt --dry-run` 预览编排清单
-- 确认后逐段合成旁白，脚本自动拼接+插入角色位静音+写入AU标记
+如果画本有多个角色对话位，用编排脚本自动处理：
+- `python scripts/narrate-arrange.py 画本.txt --dry-run` 预览
+- 确认后逐段合成，脚本自动拼接+插入角色位静音+写入AU标记
 - 详情见 `docs/narrate-arrange-guide.md`
 
+**完成标准：** 编排清单已确认 → 旁白已合成 → 拼接+打标已完成 → 输出 WAV。
+
 ### Step 5（可选）：后处理润色
-- 拼接完成后，脚本会询问是否加压缩/混响润色（pedalboard）
-- 选 y 执行，选 n 跳过
+- 拼接完成后问张总选效果预设：润色/电台/空旷/低沉（4选1或跳过）
+- 生成 `_预设名.wav`，不覆盖原始文件
+
+**完成标准：** 效果已应用或已跳过，最终文件就绪。
 
 ---
 
-## 关键检查：合成前核对清单
+## 导演自检清单（合成前）
 
 ```
-□ 每行旁白都有对应cot标签？（逐行核对）
-□ context_texts包含前情+笔记+指导三层？
-□ 所有cot加了"全程保持匀速"？（特殊情绪只能变一点点）
-□ 夹角色音全部标注（1处都不能少）？
+□ 每行旁白都有 cot 标签？（逐行核对）
+□ context_texts 包含前情+笔记+指导三层？
+□ 旁白 cot 都加了"全程保持匀速"？（特殊情绪微调）
+□ 夹角色音全部标注？（1处都不能少）
 □ 每处间隔≥800ms？
 □ 段间有淡入淡出（≥80ms）？
-□ 张总说了"可以"才调用API？
+□ 张总说了"可以"才调 API？
 ```
 
 ---
 
 ## 参考文件
+
 | 文件 | 内容 | 何时读 |
 |:---|:---|:---|
-| `references/voice-prompt-guide.md` | 语音指令写作规范、四维度模型、示例库 | Step 2设计cot时 |
-| `references/narration-extraction.md` | 旁白/角色音分离规则、正则实现 | Step 0.5解析画本时 |
-| `references/context-design.md` | 上下文三层设计法、示例 | Step 2写context_texts时 |
-| `references/engine-config.md` | 豆包/讯飞/MiMo参数配置、踩坑总结 | Step 3配置引擎时 |
-| `references/risk-assessment.md` | 风险评估、应急预案、排查顺序 | 合成前检查 |
-| `docs/narrate-arrange-guide.md` | 多轨编排脚本使用说明 | Step 4.5编排时 |
+| `references/voice-prompt-guide.md` | 语音指令四维度模型、示例库 | Step 2 设计 cot 时 |
+| `references/narration-extraction.md` | 旁白/角色音分离正则规则 | Step 0.5 解析时 |
+| `references/context-design.md` | 三层上下文设计法、示例 | Step 2 写 context_texts 时 |
+| `references/engine-config.md` | 豆包/讯飞/MiMo 参数配置、踩坑 | Step 3 配参数时 |
+| `references/risk-assessment.md` | 风险评估、应急预案 | 合成前检查 |
+| `docs/narrate-arrange-guide.md` | 编排脚本操作说明 | Step 4.5 编排时 |
 
 ---
 
-## 工具索引（完整版）
+## 工具索引
 
-aubook 制作有声书所需的全部工具、路径和配置（已合并原 voice-toolkit）：
-
-| 资源 | 路径/说明 | 用途 |
+| 资源 | 路径 | 用途 |
 |:---|:---|:---|
-| **豆包语音 MCP** | `mcp-servers/doubao-voice/server.py` | **主力引擎**：语音合成 |
-| **豆包图片 MCP** | `mcp-servers/doubao-img/server.py` | 文生图/视频（备选） |
-| **PaddleOCR-VL** | `mcp-servers/paddleocr-vl/server.py` | 图片/文档识别（画本是图片时用） |
+| **豆包语音 MCP**（主力） | `mcp-servers/doubao-voice/server.py` | TTS 合成 |
 | **编排脚本** | `scripts/narrate-arrange.py` | 多轨编排、拼接、打标 |
-| **编排库模块** | `scripts/narrate_arrange_lib/` | 8个模块 |
-| **全局配置** | `scripts/config.toml` | 音频参数集中管理 |
-| **合成数据库** | `audio-outputs/arranged/synthesis.db` | SQLite 任务持久化 |
-| **豆包参数文档** | `docs/doubao-voice-params-reference.md` | Expressive 版全部参数 |
-| **使用说明** | `docs/narrate-arrange-guide.md` | 编排脚本操作指南 |
-| **画本解析规则** | `references/narration-extraction.md` | 正则分离规则 |
-| **语音指令规范** | `references/voice-prompt-guide.md` | cot 标签四维度模型 |
-| **上下文设计法** | `references/context-design.md` | 三层写作方法 |
-| **引擎参数** | `references/engine-config.md` | 参数配置踩坑总结 |
-| **风险评估** | `references/risk-assessment.md` | 应急预案 |
-| **AU 打标** | `scripts/narrate_arrange_lib/marker.py` | WAV cue 标记写入 |
-| **效果链** | `scripts/narrate_arrange_lib/effects.py` | 8种效果、4种预设 |
+| **全局配置** | `scripts/config.toml` | 参数集中管理 |
+| **合成数据库** | `audio-outputs/arranged/synthesis.db` | SQLite 任务 |
+| **AU 打标** | `scripts/narrate_arrange_lib/marker.py` | cue 标记写入 |
+| **效果链** | `scripts/narrate_arrange_lib/effects.py` | 8种效果、4预设 |
+| **PaddleOCR-VL** | `mcp-servers/paddleocr-vl/server.py` | 画本是图片时识别 |
+| **MiMo 克隆** | `mcp-servers/mimo-voiceclone/server.py` | 备用 TTS |
+| **讯飞复刻** | `mcp-servers/xfyun-voiceclone/server.py` | 备用 TTS |
 
-### 备选语音工具
-
-| 工具 | 路径 | 调用方式 | 适用场景 |
-|:---|:---|:---|:---|
-| **MiMo 声音克隆** | `mcp-servers/mimo-voiceclone/server.py` | `mimo_voice_clone(audio_file, text)` | 备用 TTS/声音克隆 |
-| **讯飞声音复刻** | `mcp-servers/xfyun-voiceclone/server.py` | 先 `xfyun_voice_train` 训练，再 `xfyun_voice_synth` 合成 | 备用 TTS |
-| **讯飞 TTS** | `mcp-servers/xfyun-tts/server.py` | `xfyun_tts(text, vcn)` | 简单 TTS（无精细控制） |
-
-### 配置信息
-
-| 服务 | 地址 |
-|:---|:---|
-| 豆包语音 | 讯飞星辰 MaaS（后付费） |
-| 讯飞 MaaS | `https://maas-api.cn-huabei-1.xf-yun.com/v2` |
-| MiMo | MiMo 官方 API（按量付费） |
-
-## 工具优先级
+### 工具优先级
 - 语音合成：**豆包Expressive** → MiMo → 讯飞
-- 识图：**PaddleOCR-VL**（免费）→ HunyuanOCR（免费）→ 付费
-- 生图：**Z-Image-Turbo**（免费，steps≤5）→ 豆包 seedream（付费）
+- 识图：**PaddleOCR-VL**（免费）→ 付费
+- 生图：**Z-Image-Turbo**（免费）→ 付费
 - 声音克隆：**MiMo** → 讯飞 → 豆包
