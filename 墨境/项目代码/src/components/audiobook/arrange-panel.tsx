@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
+import { applyEffectsToBase64 } from '@/lib/audiobook/audio-utils'
 
 /**
  * 多轨编排面板
@@ -283,7 +284,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
     }
   }
 
-  /* ── Step 5: 后处理润色 ── */
+  /* ── Step 5: 后处理润色（Web Audio API 前端渲染） ── */
   const handleApplyEffects = async () => {
     if (!concatenatedAudio && !effectedAudio) {
       toast.error('请先完成拼接')
@@ -295,30 +296,27 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
       return
     }
 
+    const sourceAudio = concatenatedAudio || effectedAudio
+    if (!sourceAudio) return
+
     setApplyingEffects(true)
     try {
-      const res = await fetch('/api/audiobook/arrange/effects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          audioBase64: concatenatedAudio || effectedAudio,
-          compression: { threshold: -16, ratio: 2.5 },
-          reverb: effectsPreset === 'radio' ? { roomSize: 0.3, dryWet: 0.3 }
-            : effectsPreset === 'spacious' ? { roomSize: 0.8, dryWet: 0.5 }
-            : effectsPreset === 'deep' ? { roomSize: 0.4, dryWet: 0.2 }
-            : undefined,
-        }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setEffectedAudio(data.audio)
+      const presetKey = effectsPreset === 'polish' ? 'polish'
+        : effectsPreset === 'radio' ? 'radio'
+        : effectsPreset === 'spacious' ? 'spacious'
+        : 'deep'
+
+      const processed = await applyEffectsToBase64(sourceAudio, presetKey)
+      if (processed) {
+        setEffectedAudio(processed)
         setEffectsApplied(true)
         toast.success(`已应用「${EFFECTS_PRESETS.find(p => p.id === effectsPreset)?.label}」效果`)
       } else {
-        toast.error('效果应用失败')
+        toast.error('效果处理失败')
       }
     } catch (err) {
-      toast.error('效果应用网络错误')
+      console.error('Effects error:', err)
+      toast.error('效果处理失败：' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setApplyingEffects(false)
     }
