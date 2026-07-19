@@ -15,6 +15,7 @@ import {
 } from '@/lib/audiobook/prompts'
 import { parseBracketDialogue, parseTextToSegments, extractCharacters } from '@/lib/audiobook/text-parser'
 import { EmotionChart } from '@/components/audiobook/emotion-chart'
+import { CharacterGraph } from '@/components/audiobook/character-graph'
 
 /* ── 颜色系统 ── */
 const C = {
