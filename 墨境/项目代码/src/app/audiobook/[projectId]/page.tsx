@@ -11,6 +11,7 @@ import type { Project, Chapter } from '@/lib/db/types'
 import { DialogueMode } from '@/components/audiobook/dialogue-mode'
 import { VoiceSelector } from '@/components/audiobook/voice-selector'
 import { EngineSelector, type EngineType } from '@/components/audiobook/engine-selector'
+import { ArrangePanel } from '@/components/audiobook/arrange-panel'
 import { EmotionPicker } from '@/components/audiobook/emotion-picker'
 import { generateSRT } from '@/lib/audiobook/srt-generator'
 import { loadGeneratedChapters, saveGeneratedChapter, clearGeneratedChapters } from '@/lib/audiobook/audio-persistence'
@@ -48,7 +49,7 @@ export default function AudiobookProjectPage() {
   /* ── 选择 & 设置 ── */
   const [defaultVoice, setDefaultVoice] = useState('冰糖')
   const [defaultEmotion, setDefaultEmotion] = useState('平静')
-  const [activeTab, setActiveTab] = useState<'dialogue' | 'voices' | 'settings'>('dialogue')
+  const [activeTab, setActiveTab] = useState<'dialogue' | 'voices' | 'settings' | 'arrange'>('dialogue')
   const [dialogueChapterId, setDialogueChapterId] = useState<string>('')
 
   /* ── 生成状态 ── */
@@ -493,6 +494,7 @@ export default function AudiobookProjectPage() {
                   { key: 'dialogue' as const, label: '对话模式', icon: MessageCircle },
                   { key: 'voices' as const, label: '音色管理', icon: Mic },
                   { key: 'settings' as const, label: '生成设置', icon: Settings },
+                  { key: 'arrange' as const, label: '多轨编排', icon: Music },
                 ]).map(tab => (
                   <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                     className={`flex items-center gap-1.5 px-4 py-2.5 text-xs border-none bg-transparent cursor-pointer transition-colors ${
@@ -667,6 +669,11 @@ export default function AudiobookProjectPage() {
                       </div>
                     </div>
                   </div>
+                )}
+
+                {/* ═══ 多轨编排 ═══ */}
+                {activeTab === 'arrange' && (
+                  <ArrangePanel chapterTitle={project.name} chapterContent={chapters.find(c => c.id === dialogueChapterId)?.content || ''} />
                 )}
               </div>
             </div>
