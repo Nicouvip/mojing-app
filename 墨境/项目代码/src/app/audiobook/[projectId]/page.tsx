@@ -10,6 +10,7 @@ import { getProject, getChapters } from '@/lib/db/store'
 import type { Project, Chapter } from '@/lib/db/types'
 import { DialogueMode } from '@/components/audiobook/dialogue-mode'
 import { VoiceSelector } from '@/components/audiobook/voice-selector'
+import { EngineSelector, type EngineType } from '@/components/audiobook/engine-selector'
 import { EmotionPicker } from '@/components/audiobook/emotion-picker'
 import { generateSRT } from '@/lib/audiobook/srt-generator'
 import { loadGeneratedChapters, saveGeneratedChapter, clearGeneratedChapters } from '@/lib/audiobook/audio-persistence'
@@ -79,7 +80,7 @@ export default function AudiobookProjectPage() {
   const [clonedVoices, setClonedVoices] = useState<Array<{ id: string; name: string; sampleName: string; audioBase64: string }>>([])
 
   /* ── TTS 引擎选择 ── */
-  const [ttsEngine, setTtsEngine] = useState<'normal' | 'vip'>('normal')
+  const [ttsEngine, setTtsEngine] = useState<EngineType>('normal')
   /* ── 录音范本 ── */
   const RECORDING_TEMPLATE = '春天的花开，秋天的月，夏天的风，冬天的雪。我在微风中轻轻吟唱，那是一首关于时光和记忆的歌。窗外的雨滴落在玻璃上，像是大自然写给大地的情书。'
 
@@ -487,16 +488,7 @@ export default function AudiobookProjectPage() {
                 {activeTab === 'dialogue' && (
                   <div>
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="flex border border-border rounded-md overflow-hidden">
-                        <button onClick={() => setTtsEngine('normal')}
-                          className={`px-3.5 py-1.5 text-xs border-none cursor-pointer font-inherit transition-all ${
-                            ttsEngine === 'normal' ? 'font-semibold bg-primary text-primary-foreground' : 'font-normal bg-card text-muted-foreground'
-                          }`}>标准版</button>
-                        <button onClick={() => setTtsEngine('vip')}
-                          className={`px-3.5 py-1.5 text-xs border-none cursor-pointer font-inherit transition-all ${
-                            ttsEngine === 'vip' ? 'font-semibold bg-primary text-primary-foreground' : 'font-normal bg-card text-muted-foreground'
-                          }`}>专业版</button>
-                      </div>
+                      <EngineSelector value={ttsEngine} onChange={setTtsEngine} />
                       <select value={dialogueChapterId} onChange={e => setDialogueChapterId(e.target.value)}
                         className="px-3 py-1.5 border border-border rounded-md text-xs text-card-foreground bg-card font-inherit flex-shrink-0">
                         <option value="">选择章节...</option>

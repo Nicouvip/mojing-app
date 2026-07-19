@@ -17,6 +17,7 @@ import { parseBracketDialogue, parseTextToSegments, extractCharacters } from '@/
 import { EmotionChart } from '@/components/audiobook/emotion-chart'
 import { CharacterGraph } from '@/components/audiobook/character-graph'
 import { ContextEditor } from '@/components/audiobook/context-editor'
+import { EngineSelector, type EngineType } from '@/components/audiobook/engine-selector'
 
 /* ── 颜色系统 ── */
 const C = {
@@ -47,7 +48,7 @@ interface Props {
   defaultVoice: string
   defaultEmotion: string
   extraVoices?: Array<{ id: string; name: string; type?: string }>
-  ttsEngine?: 'normal' | 'vip'
+  ttsEngine?: EngineType
 }
 
 export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoices = [], ttsEngine = 'normal' }: Props) {
