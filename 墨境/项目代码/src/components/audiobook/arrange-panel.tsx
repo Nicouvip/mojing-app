@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
@@ -368,7 +368,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
               border: mode === 'auto' ? `2px solid ${C.pri}` : `1px solid ${C.line}`,
               background: mode === 'auto' ? `${C.pri}10` : C.card,
               color: mode === 'auto' ? C.pri : C.muted,
-              cursor: 'pointer', fontFamily: 'inherit', fontWeight: mode === 'auto' ? 600 : 400,
+              cursor: 'pointer', fontWeight: mode === 'auto' ? 600 : 400,
             }}
           >
             自动解析（【角色-CV】格式）
@@ -380,7 +380,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
               border: mode === 'annotated' ? `2px solid ${C.pri}` : `1px solid ${C.line}`,
               background: mode === 'annotated' ? `${C.pri}10` : C.card,
               color: mode === 'annotated' ? C.pri : C.muted,
-              cursor: 'pointer', fontFamily: 'inherit', fontWeight: mode === 'annotated' ? 600 : 400,
+              cursor: 'pointer', fontWeight: mode === 'annotated' ? 600 : 400,
             }}
           >
             手动标注（|旁白_START|格式）
@@ -399,8 +399,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
             }
             rows={5}
             style={{
-              width: '100%', padding: '8px 10px', fontSize: 12, fontFamily: 'inherit',
-              border: `1px solid ${C.line}`, borderRadius: 6, resize: 'vertical',
+              width: '100%', padding: '8px 10px', fontSize: 12, border: `1px solid ${C.line}`, borderRadius: 6, resize: 'vertical',
               color: C.ink, background: C.card, boxSizing: 'border-box',
             }}
           />
@@ -428,8 +427,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
           style={{
             width: '100%', padding: '8px 0', fontSize: 12, fontWeight: 600,
             border: 'none', borderRadius: 6, background: C.pri, color: '#fff',
-            cursor: parsing ? 'default' : 'pointer', fontFamily: 'inherit',
-            opacity: parsing || !inputText.trim() ? 0.6 : 1,
+            cursor: parsing ? 'default' : 'pointer', opacity: parsing || !inputText.trim() ? 0.6 : 1,
           }}
         >
           {parsing ? '⏳ 解析中...' : '📑 解析画本'}
@@ -511,7 +509,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
               <select
                 value={engine}
                 onChange={e => setEngine(e.target.value as 'normal' | 'vip' | 'doubao')}
-                style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit' }}
+                style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, }}
               >
                 <option value="normal">🎙️ 标准版（MiMo）</option>
                 <option value="vip">⚡ 专业版（讯飞）</option>
@@ -523,7 +521,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
               <select
                 value={voice}
                 onChange={e => setVoice(e.target.value)}
-                style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit' }}
+                style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, }}
               >
                 <option value="冰糖">🍬 冰糖（甜美女声·旁白）</option>
                 <option value="茉莉">🌸 茉莉（温柔女声·对话）</option>
@@ -545,8 +543,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
               style={{
                 flex: 1, padding: '8px 0', fontSize: 12, fontWeight: 600,
                 border: 'none', borderRadius: 6, background: C.pri, color: '#fff',
-                cursor: synthesizing ? 'default' : 'pointer', fontFamily: 'inherit',
-                opacity: synthesizing ? 0.6 : 1,
+                cursor: synthesizing ? 'default' : 'pointer', opacity: synthesizing ? 0.6 : 1,
               }}
             >
               {synthesizing
@@ -616,8 +613,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
             style={{
               width: '100%', padding: '8px 0', fontSize: 12, fontWeight: 600,
               border: 'none', borderRadius: 6, background: C.indigo, color: '#fff',
-              cursor: concatenating ? 'default' : 'pointer', fontFamily: 'inherit',
-              opacity: concatenating ? 0.6 : 1,
+              cursor: concatenating ? 'default' : 'pointer', opacity: concatenating ? 0.6 : 1,
             }}
           >
             {concatenating
@@ -698,8 +694,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
                 style={{
                   marginLeft: 8, padding: '2px 8px', fontSize: 10, borderRadius: 4,
                   border: `1px solid ${C.pri}`, background: `${C.pri}10`,
-                  color: C.pri, cursor: 'pointer', fontFamily: 'inherit',
-                }}
+                  color: C.pri, cursor: 'pointer', }}
               >
                 ▶ 试听
               </button>
@@ -725,7 +720,6 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
                   padding: '8px 6px', borderRadius: 8, textAlign: 'center', cursor: 'pointer',
                   border: effectsPreset === p.id ? `2px solid ${C.pri}` : `1px solid ${C.line}`,
                   background: effectsPreset === p.id ? `${C.pri}10` : C.card,
-                  fontFamily: 'inherit',
                   transition: 'all 0.15s',
                 }}
               >
@@ -746,7 +740,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
                 background: effectsApplied ? '#7a9e7a' : C.pri,
                 color: '#fff',
                 cursor: applyingEffects || effectsApplied ? 'default' : 'pointer',
-                fontFamily: 'inherit', opacity: applyingEffects ? 0.6 : 1,
+                opacity: applyingEffects ? 0.6 : 1,
               }}
             >
               {applyingEffects
@@ -764,7 +758,7 @@ export function ArrangePanel({ chapterTitle, chapterContent }: Props) {
                 padding: '8px 16px', fontSize: 12, fontWeight: 600,
                 border: 'none', borderRadius: 6, background: C.ink, color: '#fff',
                 cursor: concatenatedAudio ? 'pointer' : 'default',
-                fontFamily: 'inherit', opacity: concatenatedAudio ? 1 : 0.4,
+                opacity: concatenatedAudio ? 1 : 0.4,
               }}
             >
               📥 下载

@@ -229,7 +229,7 @@ export default function DeskPage() {
                     <span className="text-xs text-muted-foreground font-medium">小说题材</span>
                     <div className="flex gap-1 flex-wrap">
                       {GENRES.map(g => (
-                        <button key={g} onClick={() => setQuickGenre(g)} style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${quickGenre === g ? C.pri : C.line}`, fontSize: 12, cursor: 'pointer', background: quickGenre === g ? C.pri : C.card, color: quickGenre === g ? '#fff' : C.muted, fontFamily: 'inherit', transition: 'all .12s', minHeight: 34, fontWeight: quickGenre === g ? 600 : 400 }}>
+                        <button key={g} onClick={() => setQuickGenre(g)} style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${quickGenre === g ? C.pri : C.line}`, fontSize: 12, cursor: 'pointer', background: quickGenre === g ? C.pri : C.card, color: quickGenre === g ? '#fff' : C.muted, transition: 'all .12s', minHeight: 34, fontWeight: quickGenre === g ? 600 : 400 }}>
                           {g}
                         </button>
                       ))}
@@ -240,7 +240,7 @@ export default function DeskPage() {
                     <span className="text-xs text-muted-foreground font-medium">目标读者</span>
                     <div className="flex gap-1">
                       {AUDIENCES.map(a => (
-                        <button key={a} onClick={() => setQuickAudience(a)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickAudience === a ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickAudience === a ? 'rgba(196,149,106,.08)' : C.card, color: quickAudience === a ? C.pri : C.ink, fontFamily: 'inherit', fontWeight: quickAudience === a ? 600 : 400, minHeight: 32 }}>
+                        <button key={a} onClick={() => setQuickAudience(a)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickAudience === a ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickAudience === a ? 'rgba(196,149,106,.08)' : C.card, color: quickAudience === a ? C.pri : C.ink, fontWeight: quickAudience === a ? 600 : 400, minHeight: 32 }}>
                           {a}
                         </button>
                       ))}
@@ -251,7 +251,7 @@ export default function DeskPage() {
                     <span className="text-xs text-muted-foreground font-medium">作品视角</span>
                     <div className="flex gap-1">
                       {PERSPECTIVES.map(p => (
-                        <button key={p} onClick={() => setQuickPerspective(p)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickPerspective === p ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickPerspective === p ? 'rgba(196,149,106,.08)' : C.card, color: quickPerspective === p ? C.pri : C.ink, fontFamily: 'inherit', fontWeight: quickPerspective === p ? 600 : 400, minHeight: 32 }}>
+                        <button key={p} onClick={() => setQuickPerspective(p)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickPerspective === p ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickPerspective === p ? 'rgba(196,149,106,.08)' : C.card, color: quickPerspective === p ? C.pri : C.ink, fontWeight: quickPerspective === p ? 600 : 400, minHeight: 32 }}>
                           {p}
                         </button>
                       ))}
@@ -262,7 +262,7 @@ export default function DeskPage() {
                     <span className="text-xs text-muted-foreground font-medium">篇幅长短</span>
                     <div className="flex gap-1">
                       {LENGTHS.map(l => (
-                        <button key={l} onClick={() => setQuickLength(l)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickLength === l ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickLength === l ? 'rgba(196,149,106,.08)' : C.card, color: quickLength === l ? C.pri : C.ink, fontFamily: 'inherit', fontWeight: quickLength === l ? 600 : 400, minHeight: 32 }}>
+                        <button key={l} onClick={() => setQuickLength(l)} style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${quickLength === l ? C.pri : C.line}`, fontSize: 11, cursor: 'pointer', background: quickLength === l ? 'rgba(196,149,106,.08)' : C.card, color: quickLength === l ? C.pri : C.ink, fontWeight: quickLength === l ? 600 : 400, minHeight: 32 }}>
                           {l}
                         </button>
                       ))}

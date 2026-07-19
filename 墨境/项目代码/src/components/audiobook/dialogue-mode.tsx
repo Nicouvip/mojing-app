@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { toast } from 'sonner'
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
@@ -579,7 +579,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               flex: 1, padding: '10px 16px', fontSize: 13, fontWeight: importMode === 'standard' ? 600 : 400,
               border: importMode === 'standard' ? `2px solid ${C.pri}` : `1px solid ${C.line}`,
               borderRadius: 8, background: importMode === 'standard' ? `${C.pri}10` : C.card,
-              color: importMode === 'standard' ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
+              color: importMode === 'standard' ? C.pri : C.muted, cursor: 'pointer', textAlign: 'center',
             }}>
             📑 标准画本
           </button>
@@ -588,7 +588,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               flex: 1, padding: '10px 16px', fontSize: 13, fontWeight: importMode === 'free' ? 600 : 400,
               border: importMode === 'free' ? `2px solid ${C.pri}` : `1px solid ${C.line}`,
               borderRadius: 8, background: importMode === 'free' ? `${C.pri}10` : C.card,
-              color: importMode === 'free' ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
+              color: importMode === 'free' ? C.pri : C.muted, cursor: 'pointer', textAlign: 'center',
             }}>
             ✏️ 自由文本
           </button>
@@ -616,7 +616,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               }}>
               <p style={{ fontSize: 13, color: C.muted, margin: '0 0 8px' }}>📁 拖拽上传 TXT / JSON / DOCX</p>
               <button onClick={() => importBookRef.current?.click()} disabled={importBookLoading}
-                style={{ padding: '6px 16px', fontSize: 12, border: `1px solid ${C.line}`, borderRadius: 6, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ padding: '6px 16px', fontSize: 12, border: `1px solid ${C.line}`, borderRadius: 6, background: C.card, color: C.ink, cursor: 'pointer', }}>
                 {importBookLoading ? '导入中...' : '选择文件'}
               </button>
             </div>
@@ -625,7 +625,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               onChange={e => setManualText(e.target.value)}
               placeholder="或直接粘贴/输入画本内容..."
               rows={4}
-              style={{ width: '100%', padding: '8px 10px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', resize: 'vertical', color: C.ink, background: C.card, boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '8px 10px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, resize: 'vertical', color: C.ink, background: C.card, boxSizing: 'border-box' }}
             />
             {manualText.trim() && (
               <button onClick={() => {
@@ -636,7 +636,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                 setEditedCharacters(chars as unknown as CharacterAnalysis[])
                 setEditedSegments(segs as unknown as SegmentAnalysis[])
               }}
-                style={{ marginTop: 8, padding: '8px 20px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ marginTop: 8, padding: '8px 20px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: 'pointer', }}>
                 📑 解析画本
               </button>
             )}
@@ -662,7 +662,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               }}>
               <p style={{ fontSize: 13, color: C.muted, margin: '0 0 8px' }}>📁 拖拽上传文件</p>
               <button onClick={() => importBookRef.current?.click()} disabled={importBookLoading}
-                style={{ padding: '6px 16px', fontSize: 12, border: `1px solid ${C.line}`, borderRadius: 6, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ padding: '6px 16px', fontSize: 12, border: `1px solid ${C.line}`, borderRadius: 6, background: C.card, color: C.ink, cursor: 'pointer', }}>
                 {importBookLoading ? '导入中...' : '选择文件'}
               </button>
             </div>
@@ -671,7 +671,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               onChange={e => setManualText(e.target.value)}
               placeholder="或直接粘贴/输入文本..."
               rows={4}
-              style={{ width: '100%', padding: '8px 10px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, fontFamily: 'inherit', resize: 'vertical', color: C.ink, background: C.card, boxSizing: 'border-box', marginBottom: 12 }}
+              style={{ width: '100%', padding: '8px 10px', border: `1px solid ${C.line}`, borderRadius: 6, fontSize: 12, resize: 'vertical', color: C.ink, background: C.card, boxSizing: 'border-box', marginBottom: 12 }}
             />
             <p style={{ fontSize: 12, color: C.muted, margin: '0 0 8px' }}>出音模式（三选一，互斥）：</p>
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
@@ -681,8 +681,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                     flex: 1, padding: '8px 8px', fontSize: 11, textAlign: 'center',
                     border: outputMode === m.key ? `2px solid ${C.pri}` : `1px solid ${C.line}`,
                     borderRadius: 6, background: outputMode === m.key ? `${C.pri}10` : C.card,
-                    color: outputMode === m.key ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit',
-                    fontWeight: outputMode === m.key ? 600 : 400,
+                    color: outputMode === m.key ? C.pri : C.muted, cursor: 'pointer', fontWeight: outputMode === m.key ? 600 : 400,
                   }}>
                   {m.label}<br /><span style={{ fontSize: 10, opacity: 0.7 }}>{m.desc}</span>
                 </button>
@@ -697,7 +696,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                 setEditedCharacters(chars as unknown as CharacterAnalysis[])
                 setEditedSegments(segs as unknown as SegmentAnalysis[])
               }}
-                style={{ padding: '8px 20px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ padding: '8px 20px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: 'pointer', }}>
                 📑 解析文本
               </button>
             )}
@@ -709,11 +708,11 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
         {/* ── 快捷入口 ── */}
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 8 }}>
           <button onClick={handleAnalyze} disabled={analyzing}
-            style={{ padding: '12px 24px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, cursor: analyzing ? 'default' : 'pointer', fontFamily: 'inherit', textAlign: 'center', fontSize: 13 }}>
+            style={{ padding: '12px 24px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, cursor: analyzing ? 'default' : 'pointer', textAlign: 'center', fontSize: 13 }}>
             🤖 {analyzing ? `AI 分析中… ${analyzingElapsed}s` : 'AI 分析章节'}
           </button>
           <button onClick={handleManualSetup}
-            style={{ padding: '12px 24px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center', fontSize: 13 }}>
+            style={{ padding: '12px 24px', background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, cursor: 'pointer', textAlign: 'center', fontSize: 13 }}>
             ✏️ 按行拆段
           </button>
         </div>
@@ -749,13 +748,13 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           <h3 style={{ fontSize: 13, fontWeight: 600, color: C.ink, margin: 0 }}>🎭 角色音色</h3>
           <div style={{ display: 'flex', gap: 4 }}>
             <button onClick={handleUndo} disabled={undoStack.length === 0}
-              style={{ padding: '4px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: undoStack.length > 0 ? C.ink : C.muted, cursor: undoStack.length > 0 ? 'pointer' : 'default', fontFamily: 'inherit' }}
+              style={{ padding: '4px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: undoStack.length > 0 ? C.ink : C.muted, cursor: undoStack.length > 0 ? 'pointer' : 'default', }}
               title="撤回 (Ctrl+Z)">↩️</button>
             <button onClick={handleRedo} disabled={redoStack.length === 0}
-              style={{ padding: '4px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: redoStack.length > 0 ? C.ink : C.muted, cursor: redoStack.length > 0 ? 'pointer' : 'default', fontFamily: 'inherit' }}
+              style={{ padding: '4px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: redoStack.length > 0 ? C.ink : C.muted, cursor: redoStack.length > 0 ? 'pointer' : 'default', }}
               title="重做 (Ctrl+Y)">↪️</button>
             <button onClick={() => { setAnalysisResult(null); setEditedCharacters([]); setEditedSegments([]); setAudioCache({}); clearDialogueAudioCache(chapter.projectId, chapter.id); setUndoStack([]); setRedoStack([]); try { localStorage.removeItem(CACHE_KEY); localStorage.removeItem(BINDINGS_KEY) } catch {} }}
-              style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', }}>
               重新选择
             </button>
           </div>
@@ -809,7 +808,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           <select
             value={characters.find(c => c.name === '旁白')?.recommendedVoice || defaultVoice}
             onChange={e => updateCharacterVoice('旁白', e.target.value)}
-            style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', marginBottom: 4 }}
+            style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, marginBottom: 4 }}
           >
             {AVAILABLE_VOICES.map(v => <option key={v.id} value={v.id}>{v.name} — {v.style.split('，')[0]}</option>)}
             {extraVoices.length > 0 && <optgroup label="🎨 自定义音色">
@@ -832,23 +831,23 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               onChange={e => updateCharacterField(ch.name, 'personality', e.target.value)}
               placeholder="性格描述..."
               rows={2}
-              style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit', resize: 'vertical', marginBottom: 4, color: C.ink, background: C.card, boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, resize: 'vertical', marginBottom: 4, color: C.ink, background: C.card, boxSizing: 'border-box' }}
             />
             <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
               <select value={ch.gender} onChange={e => updateCharacterField(ch.name, 'gender', e.target.value)}
-                style={{ flex: 1, padding: '3px 4px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit' }}>
+                style={{ flex: 1, padding: '3px 4px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, }}>
                 <option value="male">男</option>
                 <option value="female">女</option>
               </select>
               <select value={ch.age} onChange={e => updateCharacterField(ch.name, 'age', e.target.value)}
-                style={{ flex: 1, padding: '3px 4px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit' }}>
+                style={{ flex: 1, padding: '3px 4px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, }}>
                 <option value="child">少年</option>
                 <option value="young">青年</option>
                 <option value="adult">中年</option>
                 <option value="elderly">老年</option>
               </select>
             </div>
-            <select value={ch.recommendedVoice} onChange={e => updateCharacterVoice(ch.name, e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', marginBottom: 4 }}>
+            <select value={ch.recommendedVoice} onChange={e => updateCharacterVoice(ch.name, e.target.value)} style={{ width: '100%', padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, marginBottom: 4 }}>
               {/* MiMo 音色 — 标准版可用，专业版灰色不可点 */}
               <optgroup label={ttsEngine === 'normal' ? '🎙️ 标准版音色' : '🎙️ 标准版 (不可用)'}>
                 {AVAILABLE_VOICES.map(v => {
@@ -870,7 +869,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
             </select>
             <div style={{ display: 'flex', gap: 4 }}>
               <select value={EMOTION_PRESETS.some(em => em.id === ch.recommendedEmotion) ? ch.recommendedEmotion : '__custom__'} onChange={e => { if (e.target.value !== '__custom__') updateCharacterEmotion(ch.name, e.target.value) }}
-                style={{ flex: 1, padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit' }}>
+                style={{ flex: 1, padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, }}>
                 {EMOTION_PRESETS.map(em => <option key={em.id} value={em.id}>{em.label}</option>)}
                 <option value="__custom__">自定义...</option>
               </select>
@@ -879,7 +878,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                   value={ch.recommendedEmotion}
                   onChange={e => updateCharacterEmotion(ch.name, e.target.value)}
                   placeholder="自定义情绪"
-                  style={{ flex: 1, padding: '4px 6px', border: `1px solid ${C.pri}`, borderRadius: 4, fontSize: 11, fontFamily: 'inherit', color: C.pri, background: C.card }}
+                  style={{ flex: 1, padding: '4px 6px', border: `1px solid ${C.pri}`, borderRadius: 4, fontSize: 11, color: C.pri, background: C.card }}
                 />
               )}
             </div>
@@ -898,29 +897,29 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
             recommendedVoice: defaultVoice,
             recommendedEmotion: defaultEmotion || '平静',
           }])
-        }} style={{ width: '100%', padding: '8px 0', fontSize: 12, border: `1px dashed ${C.line}`, borderRadius: C.radius, background: 'transparent', color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+        }} style={{ width: '100%', padding: '8px 0', fontSize: 12, border: `1px dashed ${C.line}`, borderRadius: C.radius, background: 'transparent', color: C.muted, cursor: 'pointer', }}>
           + 新增角色
         </button>
 
         {/* 操作按钮 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
           <button onClick={handleGeneratePersonas} disabled={generatingPersonas || characters.length === 0}
-            style={{ padding: '8px 0', background: '#8e63ce', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: generatingPersonas || characters.length === 0 ? 'default' : 'pointer', fontFamily: 'inherit', opacity: generatingPersonas || characters.length === 0 ? 0.6 : 1 }}>
+            style={{ padding: '8px 0', background: '#8e63ce', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: generatingPersonas || characters.length === 0 ? 'default' : 'pointer', opacity: generatingPersonas || characters.length === 0 ? 0.6 : 1 }}>
             {generatingPersonas ? `🎭 ${personaProgress.current}/${personaProgress.total} ${personaProgress.currentName}` : '🎭 生成角色音色'}
           </button>
-          <button onClick={handleGenerateAll} disabled={batchGenerating || segments.length === 0} style={{ padding: '8px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: batchGenerating ? 'default' : 'pointer', fontFamily: 'inherit', opacity: batchGenerating || segments.length === 0 ? 0.6 : 1 }}>
+          <button onClick={handleGenerateAll} disabled={batchGenerating || segments.length === 0} style={{ padding: '8px 0', background: C.pri, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, color: '#fff', cursor: batchGenerating ? 'default' : 'pointer', opacity: batchGenerating || segments.length === 0 ? 0.6 : 1 }}>
             {batchGenerating ? `⏳ ${batchProgress.current}/${batchProgress.total}` : '🎵 一键生成全部'}
           </button>
           {/* 合并导出 */}
           <div style={{ display: 'flex', gap: 4 }}>
             <select value={exportFormat} onChange={e => setExportFormat(e.target.value as 'wav' | 'mp3')}
-              style={{ padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card, flex: 1 }}>
+              style={{ padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 10, color: C.ink, background: C.card, flex: 1 }}>
               <option value="wav">WAV 无损</option>
               <option value="mp3">MP3 压缩</option>
               <option value="m4b">M4B 有声书</option>
             </select>
             <button onClick={handleMergeExport} disabled={merging || Object.keys(audioCache).length === 0}
-              style={{ padding: '8px 12px', background: C.indigo, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 500, color: '#fff', cursor: merging || Object.keys(audioCache).length === 0 ? 'default' : 'pointer', fontFamily: 'inherit', opacity: merging || Object.keys(audioCache).length === 0 ? 0.6 : 1, flex: 2 }}>
+              style={{ padding: '8px 12px', background: C.indigo, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 500, color: '#fff', cursor: merging || Object.keys(audioCache).length === 0 ? 'default' : 'pointer', opacity: merging || Object.keys(audioCache).length === 0 ? 0.6 : 1, flex: 2 }}>
               {merging ? '⏳ 合并中...' : `🔗 合并导出 (${Object.keys(audioCache).length}段)`}
             </button>
           </div>
@@ -954,7 +953,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               { icon: '⏸️', label: '停顿' },
             ].map(t => (
               <button key={t.label} disabled title="即将上线"
-                style={{ padding: '3px 8px', fontSize: 10, border: `1px dashed ${C.line}`, borderRadius: 4, background: 'transparent', color: C.muted, cursor: 'default', fontFamily: 'inherit', opacity: 0.5 }}>
+                style={{ padding: '3px 8px', fontSize: 10, border: `1px dashed ${C.line}`, borderRadius: 4, background: 'transparent', color: C.muted, cursor: 'default', opacity: 0.5 }}>
                 {t.icon} {t.label}
               </button>
             ))}
@@ -968,7 +967,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', padding: '0 0 8px', borderBottom: `1px solid ${C.line}` }}>
           {filterTabs.map(tab => (
             <button key={tab.id} onClick={() => { setFilterTab(tab.id); clearSelection() }}
-              style={{ padding: '4px 12px', borderRadius: 14, fontSize: 11, border: 'none', background: filterTab === tab.id ? C.pri : 'rgba(26,24,20,.04)', color: filterTab === tab.id ? '#fff' : C.muted, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', fontWeight: filterTab === tab.id ? 600 : 400 }}>
+              style={{ padding: '4px 12px', borderRadius: 14, fontSize: 11, border: 'none', background: filterTab === tab.id ? C.pri : 'rgba(26,24,20,.04)', color: filterTab === tab.id ? '#fff' : C.muted, cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: filterTab === tab.id ? 600 : 400 }}>
               {tab.label} ({tab.count})
             </button>
           ))}
@@ -976,25 +975,25 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
 
         {/* 导出按钮行 + 多选控制 */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={exportCurrentFilter} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button onClick={exportCurrentFilter} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', }}>
             📋 导出当前筛选
           </button>
-          <button onClick={exportAllByOrder} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button onClick={exportAllByOrder} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', }}>
             📋 按顺序导出全部
           </button>
-          <button onClick={selectAll} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button onClick={selectAll} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', }}>
             ☑️ 全选当前
           </button>
-          <button onClick={clearSelection} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button onClick={clearSelection} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', }}>
             取消全选
           </button>
           {selectedIds.size > 0 && (
-            <button onClick={exportSelected} style={{ padding: '4px 10px', fontSize: 11, border: 'none', borderRadius: 4, background: C.indigo, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
+            <button onClick={exportSelected} style={{ padding: '4px 10px', fontSize: 11, border: 'none', borderRadius: 4, background: C.indigo, color: '#fff', cursor: 'pointer', fontWeight: 500 }}>
               📋 导出选中 ({selectedIds.size})
             </button>
           )}
           <div style={{ flex: 1 }} />
-          <button onClick={() => setShowParamPanel(p => !p)} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${showParamPanel ? C.pri : C.line}`, borderRadius: 4, background: showParamPanel ? 'rgba(196,149,106,.12)' : C.card, color: showParamPanel ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button onClick={() => setShowParamPanel(p => !p)} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${showParamPanel ? C.pri : C.line}`, borderRadius: 4, background: showParamPanel ? 'rgba(196,149,106,.12)' : C.card, color: showParamPanel ? C.pri : C.muted, cursor: 'pointer', }}>
             ⚡ 调参
           </button>
         </div>
@@ -1030,7 +1029,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
 
                   {/* 类型切换 */}
                   <select value={seg.type} onChange={e => updateSegmentType(globalIdx, e.target.value as 'narration' | 'dialogue')}
-                    style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
+                    style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, color: C.ink, background: C.card }}>
                     <option value="narration">叙述</option>
                     <option value="dialogue">对话</option>
                   </select>
@@ -1042,7 +1041,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                   )}
 
                   {/* 情绪微调 */}
-                  <select value={seg.emotion} onChange={e => updateSegmentEmotion(globalIdx, e.target.value)} style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
+                  <select value={seg.emotion} onChange={e => updateSegmentEmotion(globalIdx, e.target.value)} style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, color: C.ink, background: C.card }}>
                     {EMOTION_PRESETS.map(em => <option key={em.id} value={em.id}>{em.label}</option>)}
                   </select>
 
@@ -1054,7 +1053,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                   />
                   <span style={{ fontSize: 10, color: C.ink, minWidth: 14, textAlign: 'center' }}>{seg.emotionIntensity}</span>
 
-                  <select value={seg.speed} onChange={e => updateSegmentSpeed(globalIdx, e.target.value as 'slow' | 'normal' | 'fast')} style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, fontFamily: 'inherit', color: C.ink, background: C.card }}>
+                  <select value={seg.speed} onChange={e => updateSegmentSpeed(globalIdx, e.target.value as 'slow' | 'normal' | 'fast')} style={{ padding: '1px 4px', border: `1px solid ${C.line}`, borderRadius: 3, fontSize: 10, color: C.ink, background: C.card }}>
                     <option value="slow">慢速</option>
                     <option value="normal">正常</option>
                     <option value="fast">快速</option>
@@ -1083,7 +1082,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                   style={{
                     width: '100%', fontSize: 13, lineHeight: 1.7, color: C.ink,
                     border: 'none', background: 'transparent', resize: 'vertical',
-                    fontFamily: 'inherit', padding: 0, outline: 'none',
+                    padding: 0, outline: 'none',
                   }}
                 />
                 
@@ -1112,11 +1111,11 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                     /* 已生成 → 重新生成 + 播放 + 导出 */
                     <>
                       <button onClick={() => generateOne(seg)} disabled={isGen || !!generatingId}
-                        style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: isGen ? C.pri : C.muted, cursor: isGen ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                        style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: isGen ? C.pri : C.muted, cursor: isGen ? 'default' : 'pointer', }}>
                         {isGen ? '⏳...' : '🔄 重新生成'}
                       </button>
                       <button onClick={() => playBase64(audio.audioBase64, segKey)}
-                        style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${isPlaying ? C.pri : C.line}`, borderRadius: 4, background: isPlaying ? 'rgba(196,149,106,.12)' : C.card, color: isPlaying ? C.pri : C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${isPlaying ? C.pri : C.line}`, borderRadius: 4, background: isPlaying ? 'rgba(196,149,106,.12)' : C.card, color: isPlaying ? C.pri : C.muted, cursor: 'pointer', }}>
                         {isPlaying ? '⏸' : '▶ 播放'}
                       </button>
                       <button onClick={() => {
@@ -1132,14 +1131,14 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                         a.href = url; a.download = `${chapter.title || '段落'}-${seg.index + 1}.${ext}`; a.click()
                         URL.revokeObjectURL(url)
                       }}
-                        style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', }}>
                         📥 导出
                       </button>
                     </>
                   ) : (
                     /* 未生成 → 生成按钮 */
                     <button onClick={() => generateOne(seg)} disabled={isGen || !!generatingId}
-                      style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: isGen ? C.pri : C.muted, cursor: isGen ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                      style={{ padding: '2px 8px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: isGen ? C.pri : C.muted, cursor: isGen ? 'default' : 'pointer', }}>
                       {isGen ? '⏳...' : '🎵 生成'}
                     </button>
                   )}
@@ -1164,7 +1163,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 12, color: C.muted }}>🏃 语速</span>
               <select value={paramSpeed} onChange={e => setParamSpeed(e.target.value as 'slow' | 'normal' | 'fast')}
-                style={{ padding: '4px 8px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 12, fontFamily: 'inherit' }}>
+                style={{ padding: '4px 8px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 12, }}>
                 <option value="slow">慢速</option>
                 <option value="normal">正常</option>
                 <option value="fast">快速</option>
@@ -1193,7 +1192,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                     }
                     return s
                   }))
-                }} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', fontFamily: 'inherit' }}>
+                }} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', }}>
                   {sec}s
                 </button>
               ))}
@@ -1203,7 +1202,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               {selectedIds.size > 0 ? `→ ${selectedIds.size} 个选中段落` : '请先勾选段落'}
             </span>
             <button onClick={() => { setParamSpeed('normal'); setParamIntensity(5) }}
-              style={{ padding: '6px 14px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={{ padding: '6px 14px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer', }}>
               默认
             </button>
             <button onClick={() => {
@@ -1214,7 +1213,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                 updateSegmentIntensity(s.index, paramIntensity)
               }
               setShowParamPanel(false)
-            }} style={{ padding: '6px 18px', fontSize: 12, border: 'none', borderRadius: 4, background: C.pri, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
+            }} style={{ padding: '6px 18px', fontSize: 12, border: 'none', borderRadius: 4, background: C.pri, color: '#fff', cursor: 'pointer', fontWeight: 500 }}>
               ✓ 应用
             </button>
           </div>

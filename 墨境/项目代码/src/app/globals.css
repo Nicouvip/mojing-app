@@ -111,6 +111,10 @@
     letter-spacing: 0.01em;
     -webkit-font-smoothing: antialiased;
   }
+  /* 表单元素默认继承父级字体 */
+  button, select, input, textarea, optgroup {
+    font-family: inherit;
+  }
 }
 
 /* ===== 纸张纹理（按需启用：给容器加 .paper-texture 类） ===== */
