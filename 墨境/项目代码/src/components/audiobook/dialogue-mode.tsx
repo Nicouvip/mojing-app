@@ -14,6 +14,7 @@ import {
   EMOTION_PRESETS,
 } from '@/lib/audiobook/prompts'
 import { parseBracketDialogue, parseTextToSegments, extractCharacters } from '@/lib/audiobook/text-parser'
+import { EmotionChart } from '@/components/audiobook/emotion-chart'
 
 /* ── 颜色系统 ── */
 const C = {
@@ -768,6 +769,9 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
             )}
           </div>
         )}
+
+        {/* 情绪曲线 */}
+        <EmotionChart segments={segments} />
 
         {/* 旁白 */}
         <div style={{ padding: 10, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius, marginBottom: 10 }}>
