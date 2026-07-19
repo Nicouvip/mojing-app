@@ -344,6 +344,9 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
     pushUndo()
     setEditedSegments(prev => prev.map((s, i) => i === index ? { ...s, type, characterName: type === 'narration' ? undefined : (characterName || s.characterName) } : s))
   }
+  const updateSegmentField = (index: number, field: string, value: string | boolean) => {
+    setEditedSegments(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s))
+  }
 
   /* ── Step 3: 生成单段 ── */
   const generateOne = async (seg: SegmentAnalysis) => {
@@ -776,6 +779,27 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
         {/* 情绪曲线 */}
         <EmotionChart segments={segments} />
 
+        {/* TTS 引擎选择 */}
+        <EngineSelector value={ttsEngine} onChange={(eng) => {
+          setAudioCache({})
+          clearDialogueAudioCache(chapter.projectId, chapter.id)
+          try { localStorage.setItem('mojing_tts_engine', eng) } catch {}
+        }} />
+
+        {/* 角色关系图 */}
+        {editedCharacters.length > 0 && (
+          <CharacterGraph
+            characters={editedCharacters.map(c => ({
+              name: c.name,
+              gender: c.gender as 'male' | 'female',
+              age: c.age as 'child' | 'young' | 'adult' | 'elderly',
+              recommendedVoice: c.recommendedVoice || defaultVoice,
+              recommendedEmotion: c.recommendedEmotion || '平静',
+            }))}
+            segments={segments}
+          />
+        )}
+
         {/* 旁白 */}
         <div style={{ padding: 10, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius, marginBottom: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: C.ink, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1060,6 +1084,25 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                     width: '100%', fontSize: 13, lineHeight: 1.7, color: C.ink,
                     border: 'none', background: 'transparent', resize: 'vertical',
                     fontFamily: 'inherit', padding: 0, outline: 'none',
+                  }}
+                />
+                
+                {/* 演播指导 */}
+                <ContextEditor
+                  segmentIndex={seg.index}
+                  segmentText={seg.text}
+                  emotion={seg.emotion}
+                  characterName={seg.characterName}
+                  previousSummary={editedSegments[globalIdx === 0 ? 0 : globalIdx - 1]?.specialNote || ''}
+                  context={{
+                    summary: seg.specialNote || '',
+                    note: '',
+                    direction: '',
+                    cotTag: (seg.type === 'dialogue' ? '' : '全程保持匀速'),
+                  }}
+                  onChange={(ctx) => {
+                    // Store the context summary in specialNote for now
+                    updateSegmentField(globalIdx, 'specialNote', ctx.summary)
                   }}
                 />
 
