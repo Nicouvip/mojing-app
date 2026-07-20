@@ -278,6 +278,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
         setAnalysisResult({ ...data, segments: processed.segments, characters: processed.characters })
         setEditedCharacters(loadVoiceBindings(processed.characters || []))
         setEditedSegments(processed.segments || [])
+        applyRecommendedEmotions(processed.characters || [])
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch { /* quota exceeded */ }
         // 题材自动识别（异步，不阻塞主流程）
         setGenreLoading(true)
@@ -882,6 +883,22 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               {extraVoices.map(v => <option key={v.id} value={v.id}>{v.name} ({v.type === 'clone' ? '克隆' : '设计'})</option>)}
             </optgroup>}
           </select>
+          {/* 旁白语速 */}
+          <div style={{ marginTop: 6 }}>
+            <div style={{ fontSize: 10, color: C.muted, marginBottom: 3, fontWeight: 500 }}>
+              语速: {narrationSpeed.toFixed(1)}x
+            </div>
+            <input type="range" min="5" max="20"
+              value={Math.round(narrationSpeed * 10)}
+              onChange={e => setNarrationSpeed(Number(e.target.value) / 10)}
+              style={{ width: '100%', height: 4, accentColor: C.pri, cursor: 'pointer' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: C.muted, marginTop: 2 }}>
+              <span>0.5x 慢</span>
+              <span>1.0x 正常</span>
+              <span>2.0x 快</span>
+            </div>
+          </div>
         </div>
 
         {/* 角色列表 */}
@@ -933,20 +950,49 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
               {extraVoices.length > 0 && <optgroup label="🎨 自定义音色">
                 {extraVoices.map(v => <option key={v.id} value={v.id}>{v.name} ({v.type === 'clone' ? '克隆' : '设计'})</option>)}
               </optgroup>}
+              <optgroup label="────────────────">
+                <option value="__clone__">🎤 克隆新音色...</option>
+              </optgroup>
             </select>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <select value={EMOTION_PRESETS.some(em => em.id === ch.recommendedEmotion) ? ch.recommendedEmotion : '__custom__'} onChange={e => { if (e.target.value !== '__custom__') updateCharacterEmotion(ch.name, e.target.value) }}
-                style={{ flex: 1, padding: '4px 6px', border: `1px solid ${C.line}`, borderRadius: 4, fontSize: 11, }}>
-                {EMOTION_PRESETS.map(em => <option key={em.id} value={em.id}>{em.label}</option>)}
-                <option value="__custom__">自定义...</option>
-              </select>
-              {!EMOTION_PRESETS.some(em => em.id === ch.recommendedEmotion) && (
-                <input
-                  value={ch.recommendedEmotion}
-                  onChange={e => updateCharacterEmotion(ch.name, e.target.value)}
-                  placeholder="自定义情绪"
-                  style={{ flex: 1, padding: '4px 6px', border: `1px solid ${C.pri}`, borderRadius: 4, fontSize: 11, color: C.pri, background: C.card }}
-                />
+            {/* ── 情绪强度滑动条 ── */}
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ fontSize: 10, color: C.muted, marginBottom: 4, fontWeight: 500 }}>情绪强度</div>
+              {['平静', '喜悦', '悲伤', '愤怒', '惊讶'].map(em => {
+                const charEmotions = emotionIntensities[ch.name] || {}
+                const recEmotions = recommendedEmotions[ch.name] || {}
+                const val = charEmotions[em] ?? recEmotions[em] ?? 5
+                const isRecommended = recEmotions[em] !== undefined && val === recEmotions[em]
+                return (
+                  <div key={em} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                    <span style={{ fontSize: 10, width: 36, color: C.ink, flexShrink: 0 }}>{em}</span>
+                    <input
+                      type="range"
+                      min="1" max="10"
+                      value={val}
+                      onChange={e => {
+                        const newVal = Number(e.target.value)
+                        setEmotionIntensities(prev => ({
+                          ...prev,
+                          [ch.name]: { ...prev[ch.name], [em]: newVal }
+                        }))
+                      }}
+                      style={{ flex: 1, height: 4, accentColor: C.pri, cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: 10, width: 20, color: isRecommended ? C.pri : C.muted, fontWeight: isRecommended ? 600 : 400, textAlign: 'right' }}>
+                      {val}
+                      {isRecommended ? ' ★' : ''}
+                    </span>
+                  </div>
+                )
+              })}
+              {/* 恢复推荐值 */}
+              {recommendedEmotions[ch.name] && Object.keys(recommendedEmotions[ch.name]).length > 0 && (
+                <button
+                  onClick={() => resetEmotionsForChar(ch.name)}
+                  style={{ marginTop: 4, padding: '2px 8px', fontSize: 10, border: `1px solid ${C.pri}`, borderRadius: 4, background: 'transparent', color: C.pri, cursor: 'pointer' }}
+                >
+                  恢复推荐值
+                </button>
               )}
             </div>
           </div>
