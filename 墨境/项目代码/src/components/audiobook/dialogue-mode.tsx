@@ -751,13 +751,21 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
 
         {/* 分析错误 */}
         {analyzing && (
-          <p style={{ fontSize: 11, color: C.muted, marginTop: 12, textAlign: 'center' }}>
-            DeepSeek V4 Flash 正在分析章节文本，预计 30-60 秒，请耐心等待…
-          </p>
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            <img src="/assets/brand/processed/小墨团-想想-120.png" alt="分析中"
+              style={{ width: 64, height: 64, animation: 'spin 2s linear infinite', margin: '0 auto' }} />
+            <p style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>
+              DeepSeek V4 Flash 正在分析章节文本，预计 30-60 秒，请耐心等待…
+            </p>
+          </div>
         )}
         {analyzeError && (
-          <div style={{ marginTop: 12, padding: 12, background: 'rgba(181,69,74,.08)', borderRadius: 8, fontSize: 12, color: C.crimson, maxWidth: 400, margin: '12px auto 0' }}>
-            ❌ {analyzeError}
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            <img src="/assets/brand/processed/小墨团-尴尬挠头-120.png" alt="出错了"
+              style={{ width: 64, height: 64, margin: '0 auto' }} />
+            <p style={{ marginTop: 8, padding: 12, background: 'rgba(181,69,74,.08)', borderRadius: 8, fontSize: 12, color: C.crimson, maxWidth: 400, display: 'inline-block' }}>
+              ❌ {analyzeError}
+            </p>
           </div>
         )}
       </div>
@@ -1332,6 +1340,53 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           </div>
         </div>
       )}
+      </div>
+
+      {/* ═══ Step 5：导出面板 ═══ */}
+      {workflowStep >= 4 && (
+        <div className="flex items-center gap-4 px-4 py-2 bg-card/50 border-t border-border flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">格式:</span>
+            <select defaultValue="wav"
+              className="px-2 py-1 border border-border rounded text-[11px] bg-card text-foreground">
+              <option value="wav">WAV 无损</option>
+              <option value="mp3">MP3 压缩</option>
+              <option value="m4b">M4B 有声书</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">比特率:</span>
+            <select defaultValue="192" className="px-2 py-1 border border-border rounded text-[11px] bg-card text-foreground">
+              {[64,96,128,160,192,224,256,320].map(br => <option key={br} value={br}>{br} kbps</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">采样率:</span>
+            <select defaultValue="24000" className="px-2 py-1 border border-border rounded text-[11px] bg-card text-foreground">
+              {['8000','16000','22050','24000','44100','48000'].map(sr => <option key={sr} value={sr}>{Number(sr).toLocaleString()} Hz</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">位深:</span>
+            <select defaultValue="16" className="px-2 py-1 border border-border rounded text-[11px] bg-card text-foreground">
+              {[8,16,24,32].map(bd => <option key={bd} value={bd}>{bd}-bit</option>)}
+            </select>
+          </div>
+          <div className="flex-1" />
+          <button onClick={handleMergeExport}
+            disabled={merging || Object.keys(audioCache).length === 0}
+            style={{ padding: '6px 18px', fontSize: 12, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: merging || Object.keys(audioCache).length === 0 ? 'default' : 'pointer', opacity: merging || Object.keys(audioCache).length === 0 ? 0.6 : 1, fontWeight: 500 }}>
+            {merging ? '⏳ 合并中...' : `🔗 合并导出 (${Object.keys(audioCache).length}段)`}
+          </button>
+        </div>
+      )}
+
+      {/* ═══ 底部状态栏 ═══ */}
+      <div className="flex items-center justify-between px-4 py-1 bg-card/30 border-t border-border flex-shrink-0">
+        <span className="text-[10px] text-muted-foreground">步骤 {workflowStep + 1}/6 · Ctrl+Z 撤回 · Ctrl+Enter 生成</span>
+        <span className="text-[10px]" style={{ color: C.pri }}>
+          {segments.length > 0 ? `${segments.length}段 · ${Object.keys(audioCache).length}已生成 · ${characters.length}角色` : '请先导入文本'}
+        </span>
       </div>
     </div>
   )
