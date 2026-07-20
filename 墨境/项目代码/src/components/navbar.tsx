@@ -18,6 +18,8 @@ export interface NavbarProps {
   extraRight?: React.ReactNode
   /** 隐藏主题切换按钮 */
   hideThemeToggle?: boolean
+  /** 首页落地页模式（显示写作引擎/创作流程/方案价格等锚点链接） */
+  landing?: boolean
 }
 
 const NAV_ITEMS_LOGGED_OUT = [
@@ -34,6 +36,12 @@ const NAV_ITEMS_LOGGED_IN = [
   { href: '/desk', label: '书桌' },
 ] as const
 
+const NAV_ITEMS_LANDING = [
+  { href: '#features', label: '写作引擎' },
+  { href: '#pipeline', label: '创作流程' },
+  { href: '#pricing', label: '方案价格' },
+] as const
+
 type ThemeKey = 'light' | 'warm' | 'dark' | 'cool'
 
 const themeIcons: Record<ThemeKey, React.ReactNode> = {
@@ -43,7 +51,7 @@ const themeIcons: Record<ThemeKey, React.ReactNode> = {
   cool: <Snowflake className="w-3.5 h-3.5" />,
 }
 
-export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProps) {
+export default function Navbar({ tall, extraRight, hideThemeToggle, landing }: NavbarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { isLoggedIn, user, logout } = useAuth()
@@ -75,7 +83,7 @@ export default function Navbar({ tall, extraRight, hideThemeToggle }: NavbarProp
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
-  const navItems = !mounted ? NAV_ITEMS_LOGGED_OUT : (isLoggedIn ? NAV_ITEMS_LOGGED_IN : NAV_ITEMS_LOGGED_OUT)
+  const navItems = landing ? NAV_ITEMS_LANDING : (!mounted ? NAV_ITEMS_LOGGED_OUT : (isLoggedIn ? NAV_ITEMS_LOGGED_IN : NAV_ITEMS_LOGGED_OUT))
 
   const handleLogout = () => {
     logout()

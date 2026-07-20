@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/db/auth-context'
+import Navbar from '@/components/navbar'
 
 export default function HomePage() {
   const router = useRouter()
@@ -22,29 +23,7 @@ export default function HomePage() {
       style={{ background: 'url(/bg-desk.jpg) center/cover no-repeat fixed, linear-gradient(170deg, #f5f2ed 0%, #ece5d8 30%, #e8dfce 60%, #f0ebe2 100%)' }}>
 
       {/* ═══════════ 顶栏 ═══════════ */}
-      <header className="sticky top-0 z-40 flex items-center justify-between px-[clamp(16px,4vw,32px)] h-[52px] bg-background/80 backdrop-blur-md border-b border-border">
-        <Link href="/" className="flex items-center gap-1.5 text-[17px] font-bold tracking-wide text-foreground no-underline">
-          <span className="w-[7px] h-[7px] rounded-full bg-primary" />
-          墨境写作
-        </Link>
-        <nav className="flex items-center gap-1">
-          <Link href="#features" className="text-xs text-muted-foreground px-3 py-2 rounded-md hover:text-foreground hover:bg-primary-light transition-colors no-underline">
-            写作引擎
-          </Link>
-          <Link href="#pipeline" className="text-xs text-muted-foreground px-3 py-2 rounded-md hover:text-foreground hover:bg-primary-light transition-colors no-underline">
-            创作流程
-          </Link>
-          <Link href="#pricing" className="text-xs text-muted-foreground px-3 py-2 rounded-md hover:text-foreground hover:bg-primary-light transition-colors no-underline">
-            方案价格
-          </Link>
-          <Link href="/login" className="ml-2 text-xs font-medium text-primary border border-primary rounded-lg px-3 py-1.5 hover:bg-primary hover:text-white transition-colors no-underline">
-            会员登录
-          </Link>
-          <Link href="/desk" className="ml-1.5 text-xs font-semibold text-white bg-primary rounded-lg px-[18px] py-1.5 hover:bg-primary-hover transition-colors no-underline">
-            打开书卷
-          </Link>
-        </nav>
-      </header>
+      <Navbar tall landing hideThemeToggle />
 
       {/* ═══════════ 首屏 ═══════════ */}
       <section className="relative z-1 flex flex-col items-center text-center px-6 pt-[clamp(80px,12vh,140px)] pb-[clamp(40px,6vh,60px)] max-w-[720px] mx-auto">
