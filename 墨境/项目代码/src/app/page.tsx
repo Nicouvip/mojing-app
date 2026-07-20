@@ -88,7 +88,7 @@ export default function HomePage() {
       </div>
 
       {/* ═══════════ 创作流程 ═══════════ */}
-      <section id="pipeline" className="relative z-1 max-w-[880px] mx-auto mb-16 px-6">
+      <section id="pipeline" className="relative z-1 max-w-[880px] mx-auto mb-32 px-6 pt-20">
         <h2 className="text-center text-[clamp(18px,2.5vw,24px)] font-bold mb-7">一条线：从脑洞到完稿</h2>
         <div className="flex items-start justify-center gap-0 flex-wrap max-md:flex-col max-md:items-center max-md:gap-3">
           {[
@@ -108,10 +108,15 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+        <div className="text-center mt-10">
+          <Link href="/desk" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-white text-sm font-semibold shadow-[0_2px_10px_rgba(196,149,106,0.25)] hover:bg-primary-hover transition-all no-underline">
+            免费开始写作
+          </Link>
+        </div>
       </section>
 
       {/* ═══════════ 写作引擎 ═══════════ */}
-      <section id="features" className="relative z-1 max-w-[960px] mx-auto px-6 pb-16">
+      <section id="features" className="relative z-1 max-w-[960px] mx-auto px-6 pb-24 pt-20">
         <div className="text-center mb-9">
           <h2 className="text-[clamp(20px,3vw,28px)] font-bold mb-2">写的时候，引擎帮你看什么</h2>
           <p className="text-sm text-muted-foreground max-w-[500px] mx-auto">十版心法迭代，变成八个实时检查项。每写完一段，自动扫。</p>
@@ -130,10 +135,15 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+        <div className="text-center mt-10">
+          <Link href="/desk" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-white text-sm font-semibold shadow-[0_2px_10px_rgba(196,149,106,0.25)] hover:bg-primary-hover transition-all no-underline">
+            免费开始写作
+          </Link>
+        </div>
       </section>
 
       {/* ═══════════ 方案价格 ═══════════ */}
-      <section id="pricing" className="relative z-1 max-w-[960px] mx-auto px-6 pb-16 text-center">
+      <section id="pricing" className="relative z-1 max-w-[960px] mx-auto px-6 pb-24 pt-20 text-center">
         <h2 className="text-[clamp(20px,3vw,28px)] font-bold mb-2">所有方案都带完整引擎</h2>
         <p className="text-sm text-muted-foreground mb-8">差别只在 AI 调用次数。合规引擎、冷却矩阵、章末自检——全部方案标配。</p>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3 max-w-[800px] mx-auto">
