@@ -28,7 +28,7 @@ export default function HomePage() {
 
       {/* ═══════════ 首屏 ═══════════ */}
       <section className="relative z-1 flex flex-col items-center text-center px-6 pt-[clamp(80px,12vh,140px)] pb-[clamp(40px,6vh,60px)] max-w-[720px] mx-auto">
-        <Image src="/assets/brand/mojing-mascot.png" alt="小墨团" width={160} height={160} className="mb-4" />
+        <Image src="/assets/brand/mojing-mascot.png" alt="小墨团" width={220} height={220} className="mb-4" />
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary-light border border-primary/10 text-xs font-medium text-primary mb-6">
           <span className="w-[6px] h-[6px] rounded-full bg-primary animate-pulse" />
           已助 1,200+ 作者完成 4,600+ 章节
