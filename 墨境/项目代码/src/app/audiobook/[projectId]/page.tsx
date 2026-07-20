@@ -8,10 +8,8 @@ import Navbar from '@/components/navbar'
 import DeskSidebar from '@/components/desk-sidebar'
 import { getProject, getChapters } from '@/lib/db/store'
 import type { Project, Chapter } from '@/lib/db/types'
-import { DialogueMode } from '@/components/audiobook/dialogue-mode'
+import dynamic from 'next/dynamic'
 import { EngineSelector, type EngineType } from '@/components/audiobook/engine-selector'
-import { ArrangePanel } from '@/components/audiobook/arrange-panel'
-import { VoiceDesignModal } from '@/components/audiobook/voice-design-modal'
 import { BottomPlayer } from '@/components/audiobook/bottom-player'
 import { VoicesTab } from '@/components/audiobook/voices-tab'
 import { SettingsPanel } from '@/components/audiobook/settings-panel'
@@ -19,6 +17,10 @@ import { AudiobookSidebar } from '@/components/audiobook/audiobook-sidebar'
 import { generateSRT } from '@/lib/audiobook/srt-generator'
 import { loadGeneratedChapters, saveGeneratedChapter, clearGeneratedChapters } from '@/lib/audiobook/audio-persistence'
 import { encodeWAV } from '@/lib/audiobook/audio-utils'
+
+const DialogueMode = dynamic(() => import('@/components/audiobook/dialogue-mode').then(m => ({ default: m.DialogueMode })), { ssr: false })
+const ArrangePanel = dynamic(() => import('@/components/audiobook/arrange-panel').then(m => ({ default: m.ArrangePanel })), { ssr: false })
+const VoiceDesignModal = dynamic(() => import('@/components/audiobook/voice-design-modal').then(m => ({ default: m.VoiceDesignModal })), { ssr: false })
 
 /* ── 字幕行类型 ── */
 interface SubtitleLine {
