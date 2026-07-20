@@ -52,6 +52,9 @@ interface Props {
 }
 
 export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoices = [], ttsEngine = 'normal' }: Props) {
+  /* ── 工作流步骤 ── */
+  const [workflowStep, setWorkflowStep] = useState(0)
+  
   /* ── 状态 ── */
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
@@ -142,6 +145,34 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
   const [showParamPanel, setShowParamPanel] = useState(false)
   const [paramSpeed, setParamSpeed] = useState<'slow' | 'normal' | 'fast'>('normal')
   const [paramIntensity, setParamIntensity] = useState(5)
+
+  /* ── 情绪强度 + 推荐值 ── */
+  const [emotionIntensities, setEmotionIntensities] = useState<Record<string, Record<string, number>>>({})
+  const [recommendedEmotions, setRecommendedEmotions] = useState<Record<string, Record<string, number>>>({})
+  const [narrationSpeed, setNarrationSpeed] = useState(1.0)
+
+  /* ── 恢复角色情绪到推荐值 ── */
+  const resetEmotionsForChar = (charName: string) => {
+    if (recommendedEmotions[charName]) {
+      setEmotionIntensities(prev => ({
+        ...prev,
+        [charName]: { ...recommendedEmotions[charName] }
+      }))
+      toast.success(`${charName} 情绪已恢复推荐值`)
+    }
+  }
+
+  /* ── 设置 AI 推荐情绪 ── */
+  const applyRecommendedEmotions = (characters: { name: string; recommendedEmotion?: string }[]) => {
+    const rec: Record<string, Record<string, number>> = {}
+    characters.forEach(ch => {
+      if (ch.recommendedEmotion) {
+        rec[ch.name] = { [ch.recommendedEmotion]: 7 }
+      }
+    })
+    setRecommendedEmotions(rec)
+    setEmotionIntensities(rec)
+  }
 
   const segments = editedSegments.length > 0 ? editedSegments : []
   const characters = editedCharacters.length > 0 ? editedCharacters : []
@@ -736,11 +767,40 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
      UI：分析完成后 — 左角色列表 + 右段落列表
      ═══════════════════════════════════════════════════════════ */
   return (
-    <div style={{ display: 'flex', gap: 20, minHeight: 500 }} onKeyDown={e => {
+    <div className="flex flex-col gap-0" style={{ minHeight: 500 }} onKeyDown={e => {
       if (e.ctrlKey && e.key === 'z') { e.preventDefault(); handleUndo() }
       if (e.ctrlKey && e.key === 'y') { e.preventDefault(); handleRedo() }
     }}>
       <audio ref={audioRef} onEnded={() => setPlayingId(null)} />
+
+      {/* ═══ 6步工作流进度条 ═══ */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-card/50 overflow-x-auto flex-shrink-0">
+        {[
+          { step: 0, label: '导入' },
+          { step: 1, label: '分析' },
+          { step: 2, label: '方案' },
+          { step: 3, label: '引擎' },
+          { step: 4, label: '合成' },
+          { step: 5, label: '导出' },
+        ].map(({ step, label }) => (
+          <button
+            key={step}
+            onClick={() => setWorkflowStep(step)}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border-none cursor-pointer ${
+              workflowStep === step
+                ? 'bg-primary text-white'
+                : workflowStep > step
+                ? 'bg-primary/10 text-primary'
+                : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            {workflowStep > step ? '✓' : null}
+            {step + 1}. {label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 20, flex: 1, minHeight: 0 }}>
 
       {/* ═══ 左侧：角色列表 + 旁白 ═══ */}
       <div style={{ width: 260, flexShrink: 0 }}>
@@ -1219,6 +1279,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }
