@@ -217,7 +217,7 @@ function NavItem({ href, icon, label, active, badge, disabled }: NavItemProps) {
   }
 
   return (
-    <Link href={href} style={baseStyle} className="hover:opacity-80 transition-opacity" onClick={() => { /* 点击链接后关闭手机抽屉 */ const el = document.querySelector('.fixed.inset-0.z-40'); if (el) el.click(); }}>
+    <Link href={href} style={baseStyle} className="hover:opacity-80 transition-opacity">
       {inner}
     </Link>
   )
