@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAuth } from '@/lib/db/auth-context'
 import { useTheme } from '@/lib/utils/theme-context'
+import { signOut } from 'next-auth/react'
 import { isAdminEmail } from '@/lib/admin-auth'
 import { getUserSubscription } from '@/lib/db/store'
 
@@ -87,6 +88,7 @@ export default function Navbar({ tall, extraRight, hideThemeToggle, landing }: N
 
   const handleLogout = () => {
     logout()
+    signOut({ redirect: false })
     router.push('/')
   }
 
