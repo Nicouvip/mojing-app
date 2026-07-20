@@ -46,6 +46,7 @@ export default function AudiobookProjectPage() {
   /* ── 项目数据 ── */
   const [project, setProject] = useState<Project | null>(null)
   const [chapters, setChapters] = useState<Chapter[]>([])
+  const [notFound, setNotFound] = useState(false)
   /* ── 选择 & 设置 ── */
   const [defaultVoice, setDefaultVoice] = useState('冰糖')
   const [defaultEmotion, setDefaultEmotion] = useState('平静')
@@ -164,6 +165,9 @@ export default function AudiobookProjectPage() {
     if (p) {
       setProject(p)
       setChapters(getChapters(projectId))
+      setNotFound(false)
+    } else {
+      setNotFound(true)
     }
     loadGeneratedChapters(projectId).then(map => {
       if (map.size > 0) setGeneratedChapters(map)
@@ -449,6 +453,22 @@ export default function AudiobookProjectPage() {
 
   const totalDuration = Array.from(generatedChapters.values()).reduce((s, g) => s + g.duration, 0)
   const activeChapters = chapters.filter(c => !c.deletedAt)
+
+  // 项目不存在时的兜底页面
+  if (notFound) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-sm">
+          <div className="text-6xl mb-4">📖</div>
+          <h1 className="text-xl font-bold text-foreground mb-2">作品不存在</h1>
+          <p className="text-sm text-muted-foreground mb-6">该有声书项目可能已被删除或链接有误</p>
+          <Link href="/audiobook" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold no-underline hover:bg-primary-hover transition-colors">
+            ← 返回有声书列表
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
