@@ -3,35 +3,22 @@ import { toast } from 'sonner'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Headphones, Mic, Music, Settings, Play, Sparkles, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Headphones, Mic, Music, Settings, MessageCircle } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import DeskSidebar from '@/components/desk-sidebar'
 import { getProject, getChapters } from '@/lib/db/store'
 import type { Project, Chapter } from '@/lib/db/types'
 import { DialogueMode } from '@/components/audiobook/dialogue-mode'
-import { VoiceSelector } from '@/components/audiobook/voice-selector'
 import { EngineSelector, type EngineType } from '@/components/audiobook/engine-selector'
 import { ArrangePanel } from '@/components/audiobook/arrange-panel'
-import { EmotionPicker } from '@/components/audiobook/emotion-picker'
 import { VoiceDesignModal } from '@/components/audiobook/voice-design-modal'
 import { BottomPlayer } from '@/components/audiobook/bottom-player'
+import { VoicesTab } from '@/components/audiobook/voices-tab'
+import { SettingsPanel } from '@/components/audiobook/settings-panel'
+import { AudiobookSidebar } from '@/components/audiobook/audiobook-sidebar'
 import { generateSRT } from '@/lib/audiobook/srt-generator'
 import { loadGeneratedChapters, saveGeneratedChapter, clearGeneratedChapters } from '@/lib/audiobook/audio-persistence'
 import { encodeWAV } from '@/lib/audiobook/audio-utils'
-
-/* ── 预置音色（MiMo V2.5） ── */
-const PRESET_VOICES = [
-  { id: '冰糖', name: '冰糖', gender: 'female', desc: '甜美女声·旁白', icon: '🎤' },
-  { id: '茉莉', name: '茉莉', gender: 'female', desc: '温柔女声·对话', icon: '🗣️' },
-  { id: '苏打', name: '苏打', gender: 'male', desc: '阳光男声·青年', icon: '🎤' },
-  { id: '白桦', name: '白桦', gender: 'male', desc: '沉稳男声·中年', icon: '🗣️' },
-  { id: 'Mia', name: 'Mia', gender: 'female', desc: 'English Female', icon: '🎤' },
-  { id: 'Chloe', name: 'Chloe', gender: 'female', desc: 'English Gentle', icon: '🗣️' },
-  { id: 'Milo', name: 'Milo', gender: 'male', desc: 'English Male', icon: '🎤' },
-  { id: 'Dean', name: 'Dean', gender: 'male', desc: 'English Deep', icon: '🗣️' },
-] as const
-
-const EMOTIONS = ['平静', '开心', '悲伤', '愤怒', '温柔', '严肃', '恐惧', '惊讶', '冷漠']
 
 /* ── 字幕行类型 ── */
 interface SubtitleLine {
@@ -363,9 +350,18 @@ export default function AudiobookProjectPage() {
 
   /* ── 所有可用音色 ── */
   const allVoices = [
-    ...PRESET_VOICES.map(v => ({ id: v.id, name: v.name, desc: v.desc, source: 'preset' })),
-    ...designedVoices.map(v => ({ id: v.id, name: v.name, desc: v.desc, source: 'designed' })),
-    ...clonedVoices.map(v => ({ id: v.id, name: v.name, desc: `克隆自 ${v.sampleName}`, source: 'cloned' })),
+    ...([
+      { id: '冰糖', name: '冰糖', desc: '甜美女声·旁白' },
+      { id: '茉莉', name: '茉莉', desc: '温柔女声·对话' },
+      { id: '苏打', name: '苏打', desc: '阳光男声·青年' },
+      { id: '白桦', name: '白桦', desc: '沉稳男声·中年' },
+      { id: 'Mia', name: 'Mia', desc: 'English Female' },
+      { id: 'Chloe', name: 'Chloe', desc: 'English Gentle' },
+      { id: 'Milo', name: 'Milo', desc: 'English Male' },
+      { id: 'Dean', name: 'Dean', desc: 'English Deep' },
+    ] as const).map(v => ({ id: v.id, name: v.name, desc: v.desc, source: 'preset' as const })),
+    ...designedVoices.map(v => ({ id: v.id, name: v.name, desc: v.desc, source: 'designed' as const })),
+    ...clonedVoices.map(v => ({ id: v.id, name: v.name, desc: `克隆自 ${v.sampleName}`, source: 'cloned' as const })),
   ]
 
   /* P0-1: Persist generated chapters to IndexedDB */
@@ -512,131 +508,25 @@ export default function AudiobookProjectPage() {
 
                 {/* ═══ 音色管理 ═══ */}
                 {activeTab === 'voices' && (
-                  <div>
-                    <p className="text-xs text-muted-foreground m-0 mb-4">选择默认音色，或设计/克隆自定义音色</p>
-                    <h3 className="text-xs font-semibold text-card-foreground m-0 mb-2.5">预置音色</h3>
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2.5 mb-5">
-                      {PRESET_VOICES.map(v => (
-                        <div key={v.id} onClick={() => setDefaultVoice(v.id)} className={`p-3 bg-card border-2 rounded-lg cursor-pointer transition-all hover:shadow-card ${
-                          defaultVoice === v.id ? 'border-primary' : 'border-border'
-                        }`}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-lg">{v.icon}</span>
-                            <div>
-                              <div className="text-xs font-semibold text-card-foreground">{v.name}</div>
-                              <div className="text-[10px] text-muted-foreground">{v.desc}</div>
-                            </div>
-                          </div>
-                          <button onClick={(e) => { e.stopPropagation(); handlePreviewVoice(v.id) }} className={`w-full py-1 border-none rounded text-[11px] cursor-pointer font-inherit transition-colors ${
-                            defaultVoice === v.id ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                          }`}>
-                            <Play className="inline h-3 w-3 mr-1" />试听
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    {designedVoices.length + clonedVoices.length > 0 && (
-                      <>
-                        <h3 className="text-xs font-semibold text-card-foreground m-0 mb-2.5">我的自定义音色</h3>
-                        <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2.5">
-                          {[...designedVoices, ...clonedVoices.map(v => ({ id: v.id, name: v.name, desc: v.sampleName, audioBase64: v.audioBase64 }))].map(v => (
-                            <div key={v.id} onClick={() => setDefaultVoice(v.id)} className={`p-3 bg-card border-2 rounded-lg cursor-pointer transition-all hover:shadow-card ${
-                              defaultVoice === v.id ? 'border-primary' : 'border-border'
-                            }`}>
-                              <div className="text-xs font-semibold text-card-foreground mb-1">{v.name}</div>
-                              <div className="text-[10px] text-muted-foreground mb-2">{v.desc}</div>
-                              <button onClick={(e) => { e.stopPropagation(); playBase64Audio((v as { audioBase64: string }).audioBase64, 'audio/wav') }} className="w-full py-1 bg-primary/10 border-none rounded text-[11px] text-primary cursor-pointer font-inherit transition-colors">
-                                <Play className="inline h-3 w-3 mr-1" />试听
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <VoicesTab
+                    defaultVoice={defaultVoice}
+                    onDefaultVoiceChange={setDefaultVoice}
+                    designedVoices={designedVoices}
+                    clonedVoices={clonedVoices}
+                    onPreviewVoice={handlePreviewVoice}
+                    onPlayAudio={playBase64Audio}
+                  />
                 )}
 
                 {/* ═══ 生成设置 ═══ */}
                 {activeTab === 'settings' && (
-                  <div className="max-w-xl">
-                    <div className="flex flex-col gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-card-foreground mb-1.5">默认旁白音色</label>
-                        <select value={defaultVoice} onChange={e => setDefaultVoice(e.target.value)} className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground bg-card font-inherit">
-                          {allVoices.map(v => <option key={v.id} value={v.id}>{v.name} — {v.desc}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-card-foreground mb-1.5">默认情绪</label>
-                        <EmotionPicker selected={defaultEmotion} onSelect={setDefaultEmotion} />
-                      </div>
-                      <div className="p-4 bg-muted/50 border border-border rounded-lg">
-                        <h3 className="text-[13px] font-semibold text-card-foreground m-0 mb-3">
-                          <Settings className="inline h-4 w-4 mr-1" />音频质量
-                        </h3>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[11px] font-medium text-muted-foreground mb-1">采样率</label>
-                            <select defaultValue="24000" className="w-full px-2.5 py-1.5 border border-border rounded-md text-xs text-card-foreground bg-card font-inherit">
-                              <option value="8000">8,000 Hz（电话音质）</option>
-                              <option value="16000">16,000 Hz（语音识别）</option>
-                              <option value="22050">22,050 Hz（FM 广播）</option>
-                              <option value="24000">24,000 Hz（标准，推荐）</option>
-                              <option value="44100">44,100 Hz（CD 音质）</option>
-                              <option value="48000">48,000 Hz（专业音频）</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-medium text-muted-foreground mb-1">位深度</label>
-                            <select defaultValue="16" className="w-full px-2.5 py-1.5 border border-border rounded-md text-xs text-card-foreground bg-card font-inherit">
-                              <option value="8">8-bit（低质量，文件小）</option>
-                              <option value="16">16-bit（标准，推荐）</option>
-                              <option value="24">24-bit（高质量）</option>
-                              <option value="32">32-bit（录音室级别）</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <label className="block text-[11px] font-medium text-muted-foreground mb-1">比特率（MP3 导出时生效）</label>
-                          <div className="flex gap-1.5 flex-wrap">
-                            {[64, 96, 128, 160, 192, 224, 256, 320].map(br => (
-                              <button key={br} className={`px-2.5 py-1 rounded-full text-[11px] font-inherit cursor-pointer transition-colors ${
-                                br === 192
-                                  ? 'border border-primary bg-primary/10 text-primary font-semibold'
-                                  : 'border border-border bg-card text-muted-foreground font-normal'
-                              }`}>{br} kbps</button>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <label className="block text-[11px] font-medium text-muted-foreground mb-1">导出格式</label>
-                          <div className="flex gap-1.5">
-                            {[
-                              { key: 'wav', label: 'WAV（无损）' },
-                              { key: 'mp3-128', label: 'MP3 128k' },
-                              { key: 'mp3-192', label: 'MP3 192k' },
-                              { key: 'mp3-320', label: 'MP3 320k' },
-                            ].map(f => (
-                              <button key={f.key} className={`px-2.5 py-1 rounded-full text-[11px] font-inherit cursor-pointer transition-colors ${
-                                f.key === 'wav'
-                                  ? 'border border-primary bg-primary/10 text-primary font-semibold'
-                                  : 'border border-border bg-card text-muted-foreground font-normal'
-                              }`}>{f.label}</button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-card-foreground mb-1.5">对话间隔</label>
-                        <select defaultValue="500" className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground bg-card font-inherit">
-                          <option value="300">0.3 秒（紧凑）</option>
-                          <option value="500">0.5 秒（正常）</option>
-                          <option value="800">0.8 秒（舒缓）</option>
-                          <option value="1000">1.0 秒（缓慢）</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
+                  <SettingsPanel
+                    defaultVoice={defaultVoice}
+                    onDefaultVoiceChange={setDefaultVoice}
+                    defaultEmotion={defaultEmotion}
+                    onDefaultEmotionChange={setDefaultEmotion}
+                    allVoices={allVoices}
+                  />
                 )}
 
                 {/* ═══ 多轨编排 ═══ */}
@@ -647,43 +537,18 @@ export default function AudiobookProjectPage() {
             </div>
 
             {/* ── 右栏：音色/情绪/生成控制 ── */}
-            <aside className="w-64 border-l border-border flex flex-col flex-shrink-0 overflow-hidden">
-              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-
-                {/* 快捷音色选择 */}
-                <div>
-                  <h3 className="text-xs font-semibold text-card-foreground m-0 mb-2">音色</h3>
-                  <VoiceSelector
-                    defaultVoice={defaultVoice}
-                    onVoiceChange={setDefaultVoice}
-                    designedVoices={designedVoices}
-                    clonedVoices={clonedVoices.map(v => ({ id: v.id, name: v.name, desc: v.sampleName, audioBase64: v.audioBase64 }))}
-                    onPreview={handlePreviewVoice}
-                    onShowDesign={() => setShowDesign(true)}
-                    onShowClone={() => setShowClone(true)}
-                    onPlayCustom={(b64) => playBase64Audio(b64, 'audio/wav')}
-                  />
-                </div>
-
-                {/* 情绪选择 */}
-                <div>
-                  <h3 className="text-xs font-semibold text-card-foreground m-0 mb-2">情绪</h3>
-                  <EmotionPicker selected={defaultEmotion} onSelect={setDefaultEmotion} />
-                </div>
-
-                {/* 快捷操作 */}
-                <div className="space-y-2">
-                  <button onClick={() => setShowDesign(true)}
-                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-card border border-border rounded-lg text-xs text-card-foreground cursor-pointer font-inherit hover:bg-muted transition-colors">
-                    <Sparkles className="h-3.5 w-3.5" />设计音色
-                  </button>
-                  <button onClick={() => setShowClone(true)}
-                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground border-none rounded-lg text-xs font-medium cursor-pointer font-inherit hover:bg-primary-hover transition-colors">
-                    <Mic className="h-3.5 w-3.5" />克隆声音
-                  </button>
-                </div>
-              </div>
-            </aside>
+            <AudiobookSidebar
+              defaultVoice={defaultVoice}
+              onDefaultVoiceChange={setDefaultVoice}
+              defaultEmotion={defaultEmotion}
+              onDefaultEmotionChange={setDefaultEmotion}
+              designedVoices={designedVoices}
+              clonedVoices={clonedVoices}
+              onPreviewVoice={handlePreviewVoice}
+              onPlayCustom={playBase64Audio}
+              onShowDesign={() => setShowDesign(true)}
+              onShowClone={() => setShowClone(true)}
+            />
           </div>
         </main>
       </div>
