@@ -92,6 +92,8 @@ export default function DeskPage() {
   const [dlgPerspective, setDlgPerspective] = useState('第三人称')
   const [dlgLength, setDlgLength] = useState('长篇连载（>8万字）')
   const [dlgAudience, setDlgAudience] = useState('不限')
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   // P2-1: checkin persistence via localStorage
   const [checkinDone, setCheckinDone] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -364,7 +366,7 @@ export default function DeskPage() {
                 <div className="border border-border rounded-xl px-4 py-[18px] bg-card flex flex-col justify-between">
                   <div className="text-xs text-muted-foreground mb-2.5 flex items-center justify-between">
                     <span>每日打卡</span>
-                    <span className="text-[10px]">本周 {checkinDone ? 5 : 4}/7</span>
+                    <span className="text-[10px]">本周 {mounted && checkinDone ? 5 : 4}/7</span>
                   </div>
                   <div className="flex gap-2 mb-3.5">
                     {days.map((d, i) => {
