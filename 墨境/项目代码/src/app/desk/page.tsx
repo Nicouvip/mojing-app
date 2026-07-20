@@ -366,8 +366,9 @@ export default function DeskPage() {
                 <div className="border border-border rounded-xl px-4 py-[18px] bg-card flex flex-col justify-between">
                   <div className="text-xs text-muted-foreground mb-2.5 flex items-center justify-between">
                     <span>每日打卡</span>
-                    <span className="text-[10px]">本周 {mounted && checkinDone ? 5 : 4}/7</span>
+                    <span className="text-[10px]">本周 4/7</span>
                   </div>
+                  {mounted ? (<>
                   <div className="flex gap-2 mb-3.5">
                     {days.map((d, i) => {
                       const done = checkinDays[i] || (i === 3 && checkinDone)
@@ -390,6 +391,7 @@ export default function DeskPage() {
                   }} disabled={checkinDone} className="text-xs py-2 text-center cursor-pointer font-semibold font-inherit rounded-lg min-h-9" style={{ borderRadius: C.radius, cursor: checkinDone ? 'default' : 'pointer', border: `1px solid ${checkinDone ? C.line : C.pri}`, background: checkinDone ? C.line : C.pri, color: checkinDone ? C.muted : '#fff' }}>
                     {checkinDone ? '✔ 已打卡！' : '✔ 今日打卡 · 得20墨点'}
                   </button>
+                  </>) : null}
                 </div>
               </div>
             </section>
