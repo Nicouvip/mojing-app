@@ -67,7 +67,8 @@ function LoginForm() {
         <div className="absolute top-1/4 -left-12 w-48 h-48 rounded-full" style={{ background: 'radial-gradient(circle, rgba(196,149,106,0.20) 0%, transparent 70%)', filter: 'blur(40px)' }} />
         <div className="absolute bottom-1/3 -right-8 w-36 h-36 rounded-full" style={{ background: 'radial-gradient(circle, rgba(212,168,120,0.15) 0%, transparent 70%)', filter: 'blur(30px)' }} />
         <Image src="/assets/brand/mojing-logo-main.png" alt="墨境" width={200} height={100} priority />
-        <p className="text-muted-foreground text-sm text-center max-w-xs" style={{ color: 'rgba(80,60,40,0.85)' }}>沉浸式小说写作工具<br />安静、专业、有温度</p>
+        <Image src="/assets/brand/mojing-wave.png" alt="小墨团挥手" width={140} height={140} className="mt-2" />
+        <p className="text-muted-foreground text-sm text-center max-w-xs" style={{ color: 'rgba(80,60,40,0.85)' }}>欢迎回来</p>
       </div>
 
       {/* 右侧表单卡片 — 暖金色玻璃态 */}
