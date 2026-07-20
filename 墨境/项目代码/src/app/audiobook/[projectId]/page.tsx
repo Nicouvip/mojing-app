@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Headphones, Mic, Music, Settings, Play, Pause, X, Sparkles, FileText, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Headphones, Mic, Music, Settings, Play, Sparkles, MessageCircle } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import DeskSidebar from '@/components/desk-sidebar'
 import { getProject, getChapters } from '@/lib/db/store'
@@ -13,6 +13,8 @@ import { VoiceSelector } from '@/components/audiobook/voice-selector'
 import { EngineSelector, type EngineType } from '@/components/audiobook/engine-selector'
 import { ArrangePanel } from '@/components/audiobook/arrange-panel'
 import { EmotionPicker } from '@/components/audiobook/emotion-picker'
+import { VoiceDesignModal } from '@/components/audiobook/voice-design-modal'
+import { BottomPlayer } from '@/components/audiobook/bottom-player'
 import { generateSRT } from '@/lib/audiobook/srt-generator'
 import { loadGeneratedChapters, saveGeneratedChapter, clearGeneratedChapters } from '@/lib/audiobook/audio-persistence'
 import { encodeWAV } from '@/lib/audiobook/audio-utils'
@@ -68,12 +70,7 @@ export default function AudiobookProjectPage() {
 
   /* ── VoiceDesign 弹窗 ── */
   const [showDesign, setShowDesign] = useState(false)
-  const [designDesc, setDesignDesc] = useState('')
-  const [designText, setDesignText] = useState('你好，这是音色预览。')
-  const [designLoading, setDesignLoading] = useState(false)
   const [designedVoices, setDesignedVoices] = useState<Array<{ id: string; name: string; desc: string; audioBase64: string }>>([])
-  const [polishDescLoading, setPolishDescLoading] = useState(false)
-  const [originalDesc, setOriginalDesc] = useState('')
 
   /* ── VoiceClone 弹窗 ── */
   const [showClone, setShowClone] = useState(false)
@@ -323,55 +320,6 @@ export default function AudiobookProjectPage() {
     a.download = `${chapter?.title || chapterId}.lrc`
     a.click()
     URL.revokeObjectURL(url)
-  }
-
-  /* ── 润色音色描述 ── */
-  const handlePolishDesc = async () => {
-    if (!designDesc.trim()) { toast.error('请先输入音色描述'); return }
-    setOriginalDesc(designDesc)
-    setPolishDescLoading(true)
-    try {
-      const res = await fetch('/api/audiobook/voices/polish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: designDesc }),
-      })
-      const data = await res.json()
-      if (data.success && data.polished) {
-        setDesignDesc(data.polished)
-      } else {
-        toast.error('润色失败：' + (data.error || '未知错误'))
-      }
-    } catch (err) {
-      toast.error('润色失败：' + (err instanceof Error ? err.message : String(err)))
-    } finally {
-      setPolishDescLoading(false)
-    }
-  }
-
-  /* ── VoiceDesign 生成 ── */
-  const handleDesignVoice = async () => {
-    if (!designDesc.trim()) { toast.error('请输入音色描述'); return }
-    setDesignLoading(true)
-    try {
-      const res = await fetch('/api/audiobook/voices/design', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: designDesc, text: designText }),
-      })
-      const data = await res.json()
-      if (data.success && data.audio) {
-        const id = `design-${Date.now()}`
-        setDesignedVoices(prev => [...prev, { id, name: designDesc.slice(0, 20), desc: designDesc, audioBase64: data.audio }])
-        playBase64Audio(data.audio, 'audio/wav')
-      } else {
-        toast.error('设计失败：' + (data.error || '未知错误'))
-      }
-    } catch (err) {
-      toast.error('设计失败：' + (err instanceof Error ? err.message : String(err)))
-    } finally {
-      setDesignLoading(false)
-    }
   }
 
   /* ── VoiceClone 克隆 ── */
@@ -742,132 +690,29 @@ export default function AudiobookProjectPage() {
 
       {/* ── 底部播放器 ── */}
       {playingChapterId && (
-        <div className="fixed bottom-0 left-0 right-0 h-14 bg-card border-t border-border flex items-center px-4 gap-3 z-[100] shadow-[0_-2px_12px_rgba(0,0,0,.04)]">
-          <button onClick={() => handlePlay(playingChapterId)} className="w-8 h-8 rounded-full bg-primary border-none cursor-pointer flex items-center justify-center text-white shrink-0 hover:bg-primary-hover transition-colors">
-            {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-medium text-card-foreground">{chapters.find(c => c.id === playingChapterId)?.title || ''}</div>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] text-muted-foreground">{Math.floor(currentTime)}s / {Math.floor(duration)}s</span>
-              <div className="flex-1 h-[3px] bg-border rounded-sm cursor-pointer" onClick={(e) => {
-                if (!audioRef.current) return
-                const rect = e.currentTarget.getBoundingClientRect()
-                const ratio = (e.clientX - rect.left) / rect.width
-                audioRef.current.currentTime = ratio * duration
-              }}>
-                <div className="h-full bg-primary rounded-sm transition-[width] duration-100" style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }} />
-              </div>
-              <span className="text-[10px] text-muted-foreground">{defaultVoice}</span>
-            </div>
-          </div>
-          <button onClick={() => { audioRef.current?.pause(); setPlayingChapterId(null); setIsPlaying(false) }}
-            className="px-3 py-1.5 bg-transparent border border-border rounded-md text-[11px] text-muted-foreground cursor-pointer font-inherit hover:bg-muted transition-colors">关闭</button>
-        </div>
+        <BottomPlayer
+          playingChapterId={playingChapterId}
+          chapters={chapters}
+          isPlaying={isPlaying}
+          currentTime={currentTime}
+          duration={duration}
+          defaultVoice={defaultVoice}
+          audioRef={audioRef}
+          onTogglePlay={handlePlay}
+          onClose={() => { audioRef.current?.pause(); setPlayingChapterId(null); setIsPlaying(false) }}
+        />
       )}
 
       <audio ref={audioRef} />
 
       {/* ═══ VoiceDesign 弹窗 ═══ */}
-      {showDesign && (
-        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-[1000] modal-enter" onClick={() => setShowDesign(false)}>
-          <div className="w-full max-w-[560px] bg-card rounded-xl p-6 shadow-modal max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-[15px] font-semibold text-card-foreground m-0">
-                <Sparkles className="inline h-4 w-4 mr-1" />设计新音色
-              </h2>
-              <button onClick={() => setShowDesign(false)} className="bg-transparent border-none cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="flex flex-col gap-3">
-              {/* 快速模板 */}
-              <div>
-                <label className="block text-xs font-medium text-card-foreground mb-1.5">快速模板（点击填入）</label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[
-                    { icon: '👨', label: '青年男性', desc: '年轻男性，声音清亮，充满活力' },
-                    { icon: '👨', label: '中年男性', desc: '中年男性，声音低沉稳重，适合长辈' },
-                    { icon: '👨', label: '老年男性', desc: '老年男性，声音苍老但有力量，适合智者' },
-                    { icon: '👧', label: '青年女性', desc: '年轻女性，声音甜美，充满活力' },
-                    { icon: '👩', label: '中年女性', desc: '中年女性，声音温暖，有母性的光辉' },
-                    { icon: '👵', label: '老年女性', desc: '老年女性，声音慈祥，像是在讲睡前故事' },
-                    { icon: '👶', label: '儿童', desc: '八岁的小男孩，声音稚嫩，充满好奇心' },
-                    { icon: '🎙️', label: '旁白', desc: '专业旁白，声音沉稳，语速适中，适合有声书' },
-                  ].map(t => (
-                    <button key={t.label} onClick={() => setDesignDesc(t.desc)}
-                      className="p-2 border border-border rounded-md text-center cursor-pointer bg-card hover:bg-muted transition-colors">
-                      <div className="text-sm">{t.icon}</div>
-                      <div className="text-[10px] font-medium text-card-foreground">{t.label}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-card-foreground mb-1">音色描述（1-4句）</label>
-                <textarea value={designDesc} onChange={e => setDesignDesc(e.target.value)} placeholder="例：年轻女性，声音清亮，充满活力，适合旁白" className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit min-h-[70px] resize-y box-border" />
-                <button onClick={handlePolishDesc} disabled={polishDescLoading} className="mt-1.5 px-4 py-1.5 bg-[#8e63ce] border-none rounded-md text-xs font-medium text-white cursor-pointer font-inherit disabled:opacity-60 disabled:cursor-default transition-opacity">
-                  {polishDescLoading ? '⏳ 润色中...' : '✨ 润色描述'}
-                </button>
-              </div>
-
-              {/* 润色前后对比 */}
-              {originalDesc && originalDesc !== designDesc && (
-                <div className="p-3 bg-muted/50 rounded-lg text-[11px]">
-                  <p className="font-medium text-card-foreground mb-1.5">✨ 润色对比</p>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <p className="text-muted-foreground mb-0.5">原文：</p>
-                      <p className="text-foreground leading-relaxed">{originalDesc}</p>
-                    </div>
-                    <div className="w-px bg-border" />
-                    <div className="flex-1">
-                      <p className="text-primary mb-0.5">润色后：</p>
-                      <p className="text-foreground leading-relaxed">{designDesc}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-medium text-card-foreground mb-1">预览文本</label>
-                <input value={designText} onChange={e => setDesignText(e.target.value)} className="w-full px-3 py-2 border border-border rounded-md text-[13px] text-card-foreground font-inherit box-border" />
-              </div>
-              <button onClick={handleDesignVoice} disabled={designLoading} className="py-2.5 bg-primary border-none rounded-md text-[13px] font-medium text-white cursor-pointer font-inherit disabled:opacity-60 disabled:cursor-default hover:bg-primary-hover transition-all">
-                {designLoading ? '⏳ 生成中...' : '🎵 生成并试听'}
-              </button>
-
-              {/* 已设计音色列表 */}
-              {designedVoices.length > 0 && (
-                <div>
-                  <label className="block text-xs font-medium text-card-foreground mb-1.5">已设计音色（{designedVoices.length}）</label>
-                  <div className="space-y-1.5">
-                    {designedVoices.map(v => (
-                      <div key={v.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-card-foreground truncate">{v.name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{v.desc}</p>
-                        </div>
-                        <div className="flex gap-1 ml-2 shrink-0">
-                          <button onClick={() => playBase64Audio(v.audioBase64, 'audio/wav')}
-                            className="w-6 h-6 flex items-center justify-center rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer border-none">
-                            <Play className="w-3 h-3" />
-                          </button>
-                          <button onClick={() => setDefaultVoice(v.id)}
-                            className="px-2 py-0.5 text-[10px] rounded bg-primary text-white hover:bg-primary-hover transition-colors cursor-pointer border-none font-inherit">
-                            选用
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <VoiceDesignModal
+        open={showDesign}
+        onClose={() => setShowDesign(false)}
+        designedVoices={designedVoices}
+        onVoiceDesigned={(voice) => setDesignedVoices(prev => [...prev, voice])}
+        onUseVoice={(voiceId) => setDefaultVoice(voiceId)}
+      />
     </div>
   )
 }
