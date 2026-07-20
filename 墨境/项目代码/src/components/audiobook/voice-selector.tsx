@@ -124,6 +124,7 @@ export function VoiceSelector({
           return (
             <button
               key={v.id}
+              type="button"
               onClick={() => onVoiceChange(v.id)}
               className={`relative p-2.5 rounded-lg text-left transition-all border ${
                 isSelected
@@ -144,7 +145,9 @@ export function VoiceSelector({
 
               {/* 试听按钮 */}
               {(onPreview || onPlayCustom) && (
-                <button
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={e => {
                     e.stopPropagation()
                     if (isCustom && onPlayCustom) {
@@ -153,7 +156,18 @@ export function VoiceSelector({
                       handlePreview(v.id)
                     }
                   }}
-                  className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (isCustom && onPlayCustom) {
+                        onPlayCustom((v as CustomVoice).audioBase64)
+                      } else {
+                        handlePreview(v.id)
+                      }
+                    }
+                  }}
+                  className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
                     isPlaying
                       ? 'bg-primary text-white'
                       : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
@@ -162,7 +176,7 @@ export function VoiceSelector({
                   {isPlaying
                     ? <Pause className="w-2.5 h-2.5" />
                     : <Play className="w-2.5 h-2.5 ml-0.5" />}
-                </button>
+                </span>
               )}
 
               {/* 选中标记 */}
