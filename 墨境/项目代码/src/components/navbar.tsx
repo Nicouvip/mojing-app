@@ -195,27 +195,48 @@ export default function Navbar({ tall, extraRight, hideThemeToggle, landing }: N
               </>
             ) : (
               <div className="flex items-center gap-1">
-                <Link
-                  href="/login"
-                  className="text-sm text-muted-foreground/60 hover:text-muted-foreground px-2 py-1 rounded-lg hover:bg-secondary transition-colors"
-                >
-                  登录
-                </Link>
-                <Link
-                  href="/register"
-                  className="text-sm text-primary border border-primary/40 rounded-lg px-3 py-1 hover:bg-primary hover:text-white transition-all"
-                >
-                  注册
-                </Link>
+                {landing ? (
+                  <>
+                    <Link
+                      href="/login"
+                      className="text-sm text-primary border border-primary/40 rounded-lg px-4 py-1.5 hover:bg-primary hover:text-white transition-all"
+                    >
+                      会员登录
+                    </Link>
+                    <Link
+                      href="/desk"
+                      className="h-9 px-5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover hover:-translate-y-0.5 transition-all duration-300 shadow-card hover:shadow-hover flex items-center"
+                    >
+                      打开书卷
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      className="text-sm text-muted-foreground/60 hover:text-muted-foreground px-2 py-1 rounded-lg hover:bg-secondary transition-colors"
+                    >
+                      登录
+                    </Link>
+                    <Link
+                      href="/register"
+                      className="text-sm text-primary border border-primary/40 rounded-lg px-3 py-1 hover:bg-primary hover:text-white transition-all"
+                    >
+                      注册
+                    </Link>
+                  </>
+                )}
               </div>
             )}
 
-            <Link
-              href="/desk"
-              className="h-9 px-5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover hover:-translate-y-0.5 transition-all duration-300 shadow-card hover:shadow-hover flex items-center"
-            >
-              返回书桌
-            </Link>
+            {!landing && (
+              <Link
+                href="/desk"
+                className="h-9 px-5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover hover:-translate-y-0.5 transition-all duration-300 shadow-card hover:shadow-hover flex items-center"
+              >
+                返回书桌
+              </Link>
+            )}
 
             {extraRight}
           </div>
@@ -321,18 +342,18 @@ export default function Navbar({ tall, extraRight, hideThemeToggle, landing }: N
             ) : (
               <>
                 <Link
-                  href="/login"
+                  href={landing ? "/login" : "/login"}
                   onClick={() => setMobileOpen(false)}
-                  className="px-4 py-3 rounded-xl text-left text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                  className="px-4 py-3 rounded-xl text-left text-sm text-primary font-medium hover:bg-primary/5 transition-colors"
                 >
-                  登录
+                  {landing ? "会员登录" : "登录"}
                 </Link>
                 <Link
-                  href="/register"
+                  href={landing ? "/desk" : "/register"}
                   onClick={() => setMobileOpen(false)}
-                  className="px-4 py-3 rounded-xl text-left text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                  className="px-4 py-3 rounded-xl text-left text-sm bg-primary text-white hover:bg-primary-hover transition-colors text-center"
                 >
-                  注册
+                  {landing ? "打开书卷" : "注册"}
                 </Link>
               </>
             )}
