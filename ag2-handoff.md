@@ -32,13 +32,22 @@ pnpm dev
 ## ⚠️ 已知问题（需修复）
 
 ### 1. ~~`/audiobook/[projectId]` — Turbopack 编译崩溃~~ ✅ **已修复**
-**历史根因**：Next.js 16.2.9-16.2.10 的 Turbopack 在 Windows 上的 Rust panic——对该页面 873 行的超大 `'use client'` 组件做内部代码生成时，多字节字符（中/emoji）导致 UTF-8 字节边界越界
+
+**真正根因（2026-07-21 通过 Rust panic 日志确认）**：
+```
+turbopack-core/src/ident.rs:354
+start byte index 8 is not a char boundary; inside '项' (bytes 7..10)
+of `墨境_项目代码__next-internal_server_app_audiobook_[projectId]_page_actions...`
+```
+Turbopack **用项目目录名 `墨境_项目代码`（含中文）做内部 Rust 标识符**，随后做字节切片时碰到 UTF-8 中文多字节字符 → Rust panic。
+**❌ 不是文件内容大小导致**（之前多次拆分组件没用就是这个原因）
+**❌ 不是文件内中文字符导致**（是目录名，不是文件内容）
 
 **修复方式（2026-07-21）**：
-- 将页面拆分为小组件：`VoiceDesignModal`（音色设计弹窗，194 行）、`BottomPlayer`（底部播放条，67 行）
-- `page.tsx` 从 872 → 717 行，降低 Turbopack 触发阈值
-- `tsc --noEmit` 零错误通过
-- **当前状态**：本地开发 ✅ 应该正常（首次编译验证）
+- `package.json`：`"dev": "next dev --webpack"` — Next.js 16 显式 webpack 开关，绕过 Turbopack
+- `next` 从 16.2.9 升级到 16.2.10
+- 同时将 `page.tsx` 从 872 → 582 行，拆出 5 个小组件（组件拆分本身工作正常，但不是必需要素）
+- ✅ **验证通过**：`curl /audiobook/test-project` → HTTP 200
 
 ### 2. `mojing-logo-nav.png` 等 Logo 曾误删
 已从 Git 恢复。检查 `public/assets/brand/` 下文件是否完整。
