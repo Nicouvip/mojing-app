@@ -789,3 +789,19 @@ h1 + p, h2 + p { text-indent: 0; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── 有声工坊水印暗纹 ── */
+.watermark-bg {
+  position: relative;
+}
+.watermark-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.04;
+  background-image: url('/assets/brand/processed/小墨团-戴上耳机-120.png');
+  background-repeat: repeat;
+  background-size: 120px 120px;
+}

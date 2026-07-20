@@ -804,6 +804,13 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
 
       {/* ═══ 左侧：角色列表 + 旁白 ═══ */}
       <div style={{ width: 260, flexShrink: 0 }}>
+        <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border/50">
+          <img src="/assets/brand/processed/小墨团-戴上耳机-120.png" alt="有声工坊" className="w-10 h-10 rounded-full" />
+          <div>
+            <div className="text-xs font-semibold" style={{ color: C.ink }}>有声工坊</div>
+            <div className="text-[10px]" style={{ color: C.muted }}>{chapter.title}</div>
+          </div>
+        </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: C.ink, margin: 0 }}>🎭 角色音色</h3>
           <div style={{ display: 'flex', gap: 4 }}>

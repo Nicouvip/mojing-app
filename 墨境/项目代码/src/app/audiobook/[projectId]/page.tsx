@@ -11,15 +11,12 @@ import type { Project, Chapter } from '@/lib/db/types'
 import dynamic from 'next/dynamic'
 import { EngineSelector, type EngineType } from '@/components/audiobook/engine-selector'
 import { BottomPlayer } from '@/components/audiobook/bottom-player'
-import { VoicesTab } from '@/components/audiobook/voices-tab'
-import { SettingsPanel } from '@/components/audiobook/settings-panel'
 import { AudiobookSidebar } from '@/components/audiobook/audiobook-sidebar'
 import { generateSRT } from '@/lib/audiobook/srt-generator'
 import { loadGeneratedChapters, saveGeneratedChapter, clearGeneratedChapters } from '@/lib/audiobook/audio-persistence'
 import { encodeWAV } from '@/lib/audiobook/audio-utils'
 
 const DialogueMode = dynamic(() => import('@/components/audiobook/dialogue-mode').then(m => ({ default: m.DialogueMode })), { ssr: false })
-const ArrangePanel = dynamic(() => import('@/components/audiobook/arrange-panel').then(m => ({ default: m.ArrangePanel })), { ssr: false })
 const VoiceDesignModal = dynamic(() => import('@/components/audiobook/voice-design-modal').then(m => ({ default: m.VoiceDesignModal })), { ssr: false })
 
 /* ── 字幕行类型 ── */
@@ -454,86 +451,38 @@ export default function AudiobookProjectPage() {
             {/* ── 中栏：Tab + 内容 ── */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-              {/* Tab 切换 */}
-              <div className="flex border-b border-border px-4 flex-shrink-0">
-                {([
-                  { key: 'dialogue' as const, label: '对话模式', icon: MessageCircle },
-                  { key: 'voices' as const, label: '音色管理', icon: Mic },
-                  { key: 'settings' as const, label: '生成设置', icon: Settings },
-                  { key: 'arrange' as const, label: '多轨编排', icon: Music },
-                ]).map(tab => (
-                  <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs border-none bg-transparent cursor-pointer transition-colors ${
-                      activeTab === tab.key
-                        ? 'font-semibold text-primary border-b-2 border-primary'
-                        : 'font-normal text-muted-foreground border-b-2 border-transparent hover:text-foreground'
-                    }`}>
-                    <tab.icon className="h-3.5 w-3.5" />{tab.label}
-                  </button>
-                ))}
+              {/* ── 简易顶栏：章节选择 ── */}
+              <div className="flex items-center gap-3 px-4 py-1.5 border-b border-border flex-shrink-0 bg-background">
+                <select value={dialogueChapterId} onChange={e => setDialogueChapterId(e.target.value)}
+                  className="px-3 py-1.5 border border-border rounded-md text-xs text-card-foreground bg-card font-inherit">
+                  <option value="">选择章节...</option>
+                  {activeChapters.map((ch, ci) => <option key={`${ch.id}-${ci}`} value={ch.id}>{ch.title}</option>)}
+                </select>
+                {dialogueChapterId && (
+                  <span className="text-[11px] text-muted-foreground">
+                    AI自动识别对话/叙述 → 为角色分配音色 → 逐句生成
+                  </span>
+                )}
               </div>
 
-              {/* Tab 内容 */}
-              <div className="flex-1 overflow-auto px-4 py-4">
-
-                {/* ═══ 对话模式 ═══ */}
-                {activeTab === 'dialogue' && (
-                  <div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <EngineSelector value={ttsEngine} onChange={setTtsEngine} />
-                      <select value={dialogueChapterId} onChange={e => setDialogueChapterId(e.target.value)}
-                        className="px-3 py-1.5 border border-border rounded-md text-xs text-card-foreground bg-card font-inherit flex-shrink-0">
-                        <option value="">选择章节...</option>
-                        {activeChapters.map((ch, ci) => <option key={`${ch.id}-${ci}`} value={ch.id}>{ch.title}</option>)}
-                      </select>
-                      <p className="text-xs text-muted-foreground m-0 flex-1">选择章节 → AI自动识别对话/叙述 → 为角色分配音色 → 逐句生成</p>
-                    </div>
-                    {dialogueChapterId ? (
-                      <DialogueMode
-                        chapter={chapters.find(c => c.id === dialogueChapterId)!}
-                        defaultVoice={defaultVoice}
-                        defaultEmotion={defaultEmotion}
-                        ttsEngine={ttsEngine}
-                        extraVoices={[
-                          ...designedVoices.map(v => ({ id: v.id, name: `🎨 ${v.name}`, type: 'design' as const })),
-                          ...clonedVoices.map(v => ({ id: v.id, name: `🔴 ${v.name}`, type: 'clone' as const })),
-                        ]}
-                      />
-                    ) : (
-                      <div className="text-center py-16 text-muted-foreground">
-                        <MessageCircle className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                        <p className="text-[13px] m-0">请先选择一个章节，系统会自动识别对话和角色</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ═══ 音色管理 ═══ */}
-                {activeTab === 'voices' && (
-                  <VoicesTab
+              {/* ── 对话模式工作区 ── */}
+              <div className="flex-1 overflow-auto">
+                {dialogueChapterId ? (
+                  <DialogueMode
+                    chapter={chapters.find(c => c.id === dialogueChapterId)!}
                     defaultVoice={defaultVoice}
-                    onDefaultVoiceChange={setDefaultVoice}
-                    designedVoices={designedVoices}
-                    clonedVoices={clonedVoices}
-                    onPreviewVoice={handlePreviewVoice}
-                    onPlayAudio={playBase64Audio}
-                  />
-                )}
-
-                {/* ═══ 生成设置 ═══ */}
-                {activeTab === 'settings' && (
-                  <SettingsPanel
-                    defaultVoice={defaultVoice}
-                    onDefaultVoiceChange={setDefaultVoice}
                     defaultEmotion={defaultEmotion}
-                    onDefaultEmotionChange={setDefaultEmotion}
-                    allVoices={allVoices}
+                    ttsEngine={ttsEngine}
+                    extraVoices={[
+                      ...designedVoices.map(v => ({ id: v.id, name: `🎨 ${v.name}`, type: 'design' as const })),
+                      ...clonedVoices.map(v => ({ id: v.id, name: `🔴 ${v.name}`, type: 'clone' as const })),
+                    ]}
                   />
-                )}
-
-                {/* ═══ 多轨编排 ═══ */}
-                {activeTab === 'arrange' && (
-                  <ArrangePanel chapterTitle={project.name} chapterContent={chapters.find(c => c.id === dialogueChapterId)?.content || ''} />
+                ) : (
+                  <div className="text-center py-16 text-muted-foreground">
+                    <MessageCircle className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="text-[13px] m-0">请先选择一个章节，系统会自动识别对话和角色</p>
+                  </div>
                 )}
               </div>
             </div>
