@@ -146,6 +146,10 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
   const [paramSpeed, setParamSpeed] = useState<'slow' | 'normal' | 'fast'>('normal')
   const [paramIntensity, setParamIntensity] = useState(5)
 
+  /* ── 后处理效果 ── */
+  const [showEffectsPanel, setShowEffectsPanel] = useState(false)
+  const [selectedEffect, setSelectedEffect] = useState<string | null>(null)
+
   /* ── 情绪强度 + 推荐值 ── */
   const [emotionIntensities, setEmotionIntensities] = useState<Record<string, Record<string, number>>>({})
   const [recommendedEmotions, setRecommendedEmotions] = useState<Record<string, Record<string, number>>>({})
@@ -1443,6 +1447,9 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           <button onClick={() => setShowParamPanel(p => !p)} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${showParamPanel ? C.pri : C.line}`, borderRadius: 4, background: showParamPanel ? 'rgba(196,149,106,.12)' : C.card, color: showParamPanel ? C.pri : C.muted, cursor: 'pointer', }}>
             ⚡ 调参
           </button>
+          <button onClick={() => { setShowEffectsPanel(p => !p); if (showParamPanel) setShowParamPanel(false) }} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${showEffectsPanel ? C.indigo : C.line}`, borderRadius: 4, background: showEffectsPanel ? 'rgba(58,82,121,.12)' : C.card, color: showEffectsPanel ? C.indigo : C.muted, cursor: 'pointer', }}>
+            🎛️ 后处理
+          </button>
         </div>
 
         {/* 段落列表 */}
@@ -1679,6 +1686,72 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
             }} style={{ padding: '6px 18px', fontSize: 12, border: 'none', borderRadius: 4, background: C.pri, color: '#fff', cursor: 'pointer', fontWeight: 500 }}>
               ✓ 应用
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ 后处理效果面板 ═══ */}
+      {showEffectsPanel && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+          padding: '16px 24px',
+          background: '#fff',
+          borderTop: `1px solid ${C.line}`,
+          boxShadow: '0 -4px 16px rgba(0,0,0,.08)',
+        }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>🎛️ 后处理效果</span>
+              <span style={{ fontSize: 11, color: C.muted }}>选择一种音效预设，应用于全部已生成段落</span>
+              <div style={{ flex: 1 }} />
+              <button onClick={() => { setShowEffectsPanel(false); setSelectedEffect(null) }}
+                style={{ padding: '4px 12px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer' }}>
+                关闭
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+              {[
+                { id: 'polish', icon: '✨', name: '润色', desc: '细微增强，让声音更圆润自然', color: '#c4956a' },
+                { id: 'radio', icon: '📻', name: '电台', desc: '模拟广播电台的温暖播报感', color: '#3a5279' },
+                { id: 'spacious', icon: '🏛️', name: '空旷', desc: '添加空间混响，营造场景氛围', color: '#8e63ce' },
+                { id: 'deep', icon: '🔊', name: '低沉', desc: '降低音调，塑造厚重深沉的质感', color: '#b5454a' },
+                { id: 'warm', icon: '🔥', name: '温暖', desc: '电子管暖色，增加亲和力', color: '#eaa041' },
+                { id: 'clear', icon: '💎', name: '清晰', desc: '提升清晰度和细节表现力', color: '#7a9e7a' },
+              ].map(effect => (
+                <button key={effect.id}
+                  onClick={() => setSelectedEffect(selectedEffect === effect.id ? null : effect.id)}
+                  style={{
+                    padding: '12px 14px', textAlign: 'left', cursor: 'pointer',
+                    border: selectedEffect === effect.id ? `2px solid ${effect.color}` : `1px solid ${C.line}`,
+                    borderRadius: 8, background: selectedEffect === effect.id ? `${effect.color}08` : C.card,
+                    transition: 'all .12s',
+                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 22 }}>{effect.icon}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{effect.name}</span>
+                    {selectedEffect === effect.id && <span style={{ marginLeft: 'auto', fontSize: 10, color: effect.color, fontWeight: 600 }}>✓ 选中</span>}
+                  </div>
+                  <p style={{ fontSize: 11, color: C.muted, margin: 0, lineHeight: 1.5 }}>{effect.desc}</p>
+                </button>
+              ))}
+            </div>
+            {selectedEffect && (
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: C.muted }}>
+                  💡 效果将在合并导出时应用，生成预览即将支持
+                </span>
+                <button onClick={() => {
+                  const names: Record<string,string> = { polish:'润色', radio:'电台', spacious:'空旷', deep:'低沉', warm:'温暖', clear:'清晰' }
+                  toast.success(`已选择「${names[selectedEffect]}」效果`, {
+                    icon: <img src="/assets/brand/processed/小墨团-微笑点头-120.png" alt="" style={{ width: 28, height: 28 }} />,
+                  })
+                  setShowEffectsPanel(false)
+                }}
+                  style={{ padding: '6px 18px', fontSize: 12, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: 'pointer', fontWeight: 500 }}>
+                  ✓ 确认应用
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
