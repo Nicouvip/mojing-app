@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/db/auth-context'
 import Navbar from '@/components/navbar'
-import Image from 'next/image'
 
 export default function HomePage() {
   const router = useRouter()
@@ -26,64 +25,81 @@ export default function HomePage() {
       {/* ═══════════ 顶栏 ═══════════ */}
       <Navbar tall landing hideThemeToggle />
 
-      {/* ═══════════ Hero：背景图 + 左文 ═══════════ */}
+      {/* ═══════════ 首屏 ═══════════ */}
       <section style={{
-        position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center',
-        background: "url('/logo/坐高凳、戴耳机.png') center/cover no-repeat",
-        overflow: 'hidden',
+        position: 'relative', display: 'flex', alignItems: 'center', minHeight: '100vh', overflow: 'hidden',
       }}>
-        <div style={{ position: 'relative', zIndex: 2, maxWidth: 1200, width: '100%', margin: '0 auto', padding: '40px 60px 160px' }}>
-          <div style={{ maxWidth: 600 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 14px', borderRadius: 20, background: 'rgba(255,255,255,.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,.12)', fontSize: 11, fontWeight: 500, color: '#c4956a', marginBottom: 20 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#c4956a' }} />
+        {/* 坐高凳戴耳机图作为背景层 */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: "url('/logo/坐高凳、戴耳机.png') center/cover no-repeat",
+          maskImage: 'linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%)',
+          pointerEvents: 'none',
+        }} />
+        <div className="relative z-1 px-6" style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '60px 80px 120px' }}>
+          <div style={{ maxWidth: 500 }}>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary-light border border-primary/10 text-xs font-medium text-primary mb-6">
+              <span className="w-[6px] h-[6px] rounded-full bg-primary animate-pulse" />
               已助 1,200+ 作者完成 4,600+ 章节
             </div>
-            <h1 style={{ fontSize: 'clamp(32px,5.5vw,56px)', fontWeight: 800, lineHeight: 1.1, color: '#f5f0eb', marginBottom: 12, textShadow: '0 2px 24px rgba(0,0,0,.4)' }}>
-              写网文，<em style={{ fontStyle: 'normal', color: '#c4956a' }}>AI 帮你</em>不卡文
+            <h1 className="text-[clamp(32px,5.5vw,56px)] font-extrabold leading-tight mb-4">
+              写网文，<em className="not-italic text-primary">AI 帮你</em>不卡文
             </h1>
-            <p style={{ fontSize: 'clamp(14px,1.8vw,17px)', color: 'rgba(245,240,235,.7)', lineHeight: 1.65, marginBottom: 20, maxWidth: 420 }}>
+            <p className="text-[clamp(14px,1.8vw,17px)] text-muted-foreground max-w-[520px] leading-relaxed mb-8">
               灵感→大纲→正文，一气呵成。卡住了续写，太薄了扩写，写完了引擎扫一眼质量。十版心法，一个按钮。
             </p>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 36 }}>
-              <Link href="/desk" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '12px 28px', borderRadius: 10, background: '#c4956a', color: '#fff', fontSize: 14, fontWeight: 600, textDecoration: 'none', boxShadow: '0 2px 20px rgba(196,149,106,.35)' }}>
+            <div className="flex gap-2.5 flex-wrap justify-start">
+              <Link href="/desk" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-white text-sm font-semibold shadow-[0_2px_10px_rgba(196,149,106,0.25)] hover:bg-primary-hover hover:-translate-y-px hover:shadow-[0_4px_18px_rgba(196,149,106,0.35)] transition-all no-underline">
                 免费开始写作
               </Link>
-              <a href="#pipeline" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '12px 28px', borderRadius: 10, border: '1px solid rgba(196,149,106,.25)', color: '#f5f0eb', background: 'rgba(0,0,0,.15)', backdropFilter: 'blur(4px)', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
+              <a href="#pipeline" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-primary/25 text-foreground text-sm font-semibold hover:bg-primary/5 hover:border-primary transition-all no-underline">
                 看完整创作流程
               </a>
             </div>
+          </div>
+        </div>
+      </section>
 
-            {/* 编辑器预览 — 放在 CTA 下面 */}
-            <div style={{ border: '1px solid rgba(255,255,255,.1)', borderRadius: 12, overflow: 'hidden', background: 'rgba(26,24,20,.45)', backdropFilter: 'blur(12px)', maxWidth: 600 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#d4a0a0' }} />
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#c4b888' }} />
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#90b090' }} />
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.5)', marginLeft: 4 }}>长安不良人 · 第七章 归途</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 140px', fontSize: 10 }}>
-                <div style={{ padding: '6px 8px', borderRight: '1px solid rgba(255,255,255,.08)', color: 'rgba(255,255,255,.4)' }}>
-                  {['楔子','第一章·夜雨','第二章·暗桩','第七章·归途'].map((ch,i) => (
-                    <div key={i} style={{ padding: '2px 3px', borderRadius: 3, background: i===3?'rgba(196,149,106,.15)':'transparent', color: i===3?'#c4956a':'rgba(255,255,255,.4)', fontWeight: i===3?600:400, marginBottom: 1 }}>
-                      {i+1}. {ch}
-                    </div>
-                  ))}
+      {/* ═══════════ 编辑器预览 ═══════════ */}
+      <div className="relative z-1 max-w-[960px] mx-auto mb-12 px-6">
+        <div className="border border-border rounded-xl overflow-hidden bg-card/55 shadow-[0_2px_16px_rgba(26,24,20,0.03)]">
+          {/* 窗口顶栏 */}
+          <div className="flex items-center gap-[7px] px-3.5 py-2.5 border-b border-border bg-foreground/[0.01]">
+            <div className="flex items-center gap-[7px]">
+              <span className="w-2 h-2 rounded-full bg-[#d4a0a0]" />
+              <span className="w-2 h-2 rounded-full bg-[#c4b888]" />
+              <span className="w-2 h-2 rounded-full bg-[#90b090]" />
+            </div>
+            <span className="text-[11px] text-muted-foreground ml-1.5 truncate">长安不良人 · 第七章 归途</span>
+          </div>
+          {/* 编辑器布局 */}
+          <div className="grid grid-cols-[160px_1fr_180px] max-md:grid-cols-1">
+            {/* 左侧章节目录 */}
+            <div className="p-2.5 border-r border-border text-[11px] text-muted-foreground max-md:hidden">
+              {['长安不良人 · 楔子', '第一章 · 夜雨', '第二章 · 暗桩', '第七章 · 归途'].map((ch, i) => (
+                <div key={i} className={`flex items-center gap-1.5 px-1.5 py-1 rounded cursor-pointer truncate ${i === 3 ? 'bg-primary-light text-primary font-semibold' : ''}`}>
+                  <span className={`w-3.5 h-3.5 rounded text-[9px] inline-flex items-center justify-center ${i === 3 ? 'bg-primary text-white' : 'bg-foreground/5'}`}>{i + 1}</span>
+                  {ch}
                 </div>
-                <div style={{ padding: 8, color: 'rgba(255,255,255,.55)', fontStyle: 'italic', lineHeight: 1.7 }}>
-                  她没敲门。门虚掩着。推开时带进一阵走廊的风，桌上的纸被掀起一角，又落回去。「你来了。」他说得很轻，像怕惊动什么。
-                </div>
-                <div style={{ padding: '6px 8px', borderLeft: '1px solid rgba(255,255,255,.08)', color: 'rgba(255,255,255,.4)' }}>
-                  {[['动作描写占比','41%'],['重复用词','1处'],['章节字数','2,847'],['待回收伏笔','3条']].map(([l,v],i) => (
-                    <div key={i} style={{ marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'rgba(255,255,255,.35)' }}>{l}</span><span style={{ color: 'rgba(255,255,255,.6)' }}>{v}</span></div>
-                  ))}
-                </div>
-              </div>
+              ))}
+            </div>
+            {/* 中间正文 */}
+            <div className="p-3.5 text-[13px] leading-relaxed text-foreground/65 font-serif">
+              她没敲门。门虚掩着。推开时带进一阵走廊的风，桌上的纸被掀起一角，又落回去。「你来了。」他说得很轻，像怕惊动什么。
+            </div>
+            {/* 右侧质量面板 */}
+            <div className="p-2.5 border-l border-border text-[10px] max-md:hidden">
+              <div className="flex justify-between mb-2"><span className="text-muted-foreground">动作描写占比</span><span className="font-semibold">41%</span></div>
+              <div className="h-[2px] rounded bg-foreground/5 mb-1.5 overflow-hidden"><div className="h-full w-[41%] bg-[#7a9e7a] rounded" /></div>
+              <div className="flex justify-between mb-2"><span className="text-muted-foreground">重复用词</span><span className="font-semibold">1处</span></div>
+              <div className="h-[2px] rounded bg-foreground/5 mb-1.5 overflow-hidden"><div className="h-full w-[8%] bg-[#c4a848] rounded" /></div>
+              <div className="flex justify-between mb-1"><span className="text-muted-foreground">章节字数</span><span className="font-semibold">2,847</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">待回收伏笔</span><span className="font-semibold">3条</span></div>
             </div>
           </div>
         </div>
-        {/* 底部渐变过渡 */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 160, background: 'linear-gradient(to bottom, transparent, #f5f2ed 80%)', pointerEvents: 'none' }} />
-      </section>
+      </div>
 
       {/* ═══════════ 创作流程 ═══════════ */}
       <section id="pipeline" className="relative z-1 max-w-[880px] mx-auto mb-32 px-6 pt-20">
