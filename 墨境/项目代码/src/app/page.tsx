@@ -32,7 +32,7 @@ export default function HomePage() {
         {/* 坐高凳戴耳机图作为背景层 */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: "url('/logo/坐高凳、戴耳机.png') center/cover no-repeat",
+          background: "url('/assets/brand/hero-bg.png') center/cover no-repeat",
           maskImage: 'linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%)',
           WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%)',
           pointerEvents: 'none',
