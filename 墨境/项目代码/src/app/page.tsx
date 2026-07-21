@@ -20,7 +20,8 @@ export default function HomePage() {
   if (isLoggedIn) return null
 
   return (
-    <div className="min-h-screen text-foreground font-sans antialiased overflow-x-hidden" style={{ background: '#f5f2ed' }}>
+    <div className="min-h-screen text-foreground font-sans antialiased overflow-x-hidden"
+      style={{ background: 'url(/bg-desk.jpg) center/cover no-repeat fixed, linear-gradient(170deg, #f5f2ed 0%, #ece5d8 30%, #e8dfce 60%, #f0ebe2 100%)' }}>
 
       {/* ═══════════ 顶栏 ═══════════ */}
       <Navbar tall landing hideThemeToggle />
@@ -31,6 +32,8 @@ export default function HomePage() {
         background: "url('/logo/坐高凳、戴耳机.png') center/cover no-repeat",
         overflow: 'hidden',
       }}>
+        {/* 左侧微暗遮罩：让字可读 */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(10,8,6,.35) 0%, rgba(10,8,6,.1) 35%, transparent 60%)', pointerEvents: 'none', zIndex: 1 }} />
         <div style={{ position: 'relative', zIndex: 2, maxWidth: 1200, width: '100%', margin: '0 auto', padding: '40px 60px 120px' }}>
           <div style={{ maxWidth: 440 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 14px', borderRadius: 20, background: 'rgba(255,255,255,.08)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.1)', fontSize: 11, fontWeight: 500, color: '#c4956a', marginBottom: 20 }}>
