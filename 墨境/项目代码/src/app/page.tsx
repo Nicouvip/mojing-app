@@ -20,33 +20,41 @@ export default function HomePage() {
   if (isLoggedIn) return null
 
   return (
-    <div className="min-h-screen text-foreground font-sans antialiased overflow-x-hidden"
-      style={{ background: 'url(/bg-desk.jpg) center/cover no-repeat fixed, linear-gradient(170deg, #f5f2ed 0%, #ece5d8 30%, #e8dfce 60%, #f0ebe2 100%)' }}>
+    <div className="min-h-screen text-foreground font-sans antialiased overflow-x-hidden" style={{ background: '#f5f2ed' }}>
 
       {/* ═══════════ 顶栏 ═══════════ */}
       <Navbar tall landing hideThemeToggle />
 
-      {/* ═══════════ 首屏 ═══════════ */}
-      <section className="relative z-1 flex flex-col items-center text-center px-6 pt-[clamp(80px,12vh,140px)] pb-[clamp(40px,6vh,60px)] max-w-[720px] mx-auto">
-        <Image src="/assets/brand/mojing-mascot.png" alt="小墨团" width={220} height={220} className="mb-4" />
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary-light border border-primary/10 text-xs font-medium text-primary mb-6">
-          <span className="w-[6px] h-[6px] rounded-full bg-primary animate-pulse" />
-          已助 1,200+ 作者完成 4,600+ 章节
+      {/* ═══════════ Hero：背景图 + 左文 ═══════════ */}
+      <section style={{
+        position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center',
+        background: "url('/logo/坐高凳、戴耳机.png') center/cover no-repeat",
+        overflow: 'hidden',
+      }}>
+        <div style={{ position: 'relative', zIndex: 2, maxWidth: 1200, width: '100%', margin: '0 auto', padding: '40px 60px 120px' }}>
+          <div style={{ maxWidth: 440 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 14px', borderRadius: 20, background: 'rgba(255,255,255,.08)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.1)', fontSize: 11, fontWeight: 500, color: '#c4956a', marginBottom: 20 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#c4956a' }} />
+              已助 1,200+ 作者完成 4,600+ 章节
+            </div>
+            <h1 style={{ fontSize: 'clamp(34px,6vw,54px)', fontWeight: 800, lineHeight: 1.08, color: '#f5f0eb', marginBottom: 12, textShadow: '0 2px 20px rgba(0,0,0,.3)' }}>
+              写网文，<em style={{ fontStyle: 'normal', color: '#c4956a' }}>AI 帮你</em>不卡文
+            </h1>
+            <p style={{ fontSize: 15, color: 'rgba(245,240,235,.6)', lineHeight: 1.6, marginBottom: 24, maxWidth: 360, textShadow: '0 1px 8px rgba(0,0,0,.2)' }}>
+              灵感→大纲→正文，一气呵成。卡住了续写，太薄了扩写，写完了引擎扫一眼质量。十版心法，一个按钮。
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <Link href="/desk" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '12px 28px', borderRadius: 10, background: '#c4956a', color: '#fff', fontSize: 14, fontWeight: 600, textDecoration: 'none', boxShadow: '0 2px 20px rgba(196,149,106,.35)' }}>
+                免费开始写作
+              </Link>
+              <a href="#pipeline" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '12px 28px', borderRadius: 10, border: '1px solid rgba(196,149,106,.3)', color: '#f5f0eb', background: 'rgba(0,0,0,.2)', backdropFilter: 'blur(4px)', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
+                看完整创作流程
+              </a>
+            </div>
+          </div>
         </div>
-        <h1 className="text-[clamp(32px,5.5vw,56px)] font-extrabold leading-tight mb-4">
-          写网文，<em className="not-italic text-primary">AI 帮你</em>不卡文
-        </h1>
-        <p className="text-[clamp(14px,1.8vw,17px)] text-muted-foreground max-w-[520px] leading-relaxed mb-8">
-          灵感→大纲→正文，一气呵成。卡住了续写，太薄了扩写，写完了引擎扫一眼质量。十版心法，一个按钮。
-        </p>
-        <div className="flex gap-2.5 flex-wrap justify-center">
-          <Link href="/desk" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-white text-sm font-semibold shadow-[0_2px_10px_rgba(196,149,106,0.25)] hover:bg-primary-hover hover:-translate-y-px hover:shadow-[0_4px_18px_rgba(196,149,106,0.35)] transition-all no-underline">
-            免费开始写作
-          </Link>
-          <a href="#pipeline" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-primary/25 text-foreground text-sm font-semibold hover:bg-primary/5 hover:border-primary transition-all no-underline">
-            看完整创作流程
-          </a>
-        </div>
+        {/* 底部渐变过渡 */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 140, background: 'linear-gradient(to bottom, transparent, #f5f2ed)', pointerEvents: 'none' }} />
       </section>
 
       {/* ═══════════ 编辑器预览 ═══════════ */}
