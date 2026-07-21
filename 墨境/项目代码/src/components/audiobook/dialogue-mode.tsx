@@ -261,6 +261,35 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
     exportText(sel, '选中段落')
   }
 
+  /* ── 导出全部音频为单独文件 ── */
+  const handleExportAllIndividual = () => {
+    const keys = Object.keys(audioCache)
+    if (keys.length === 0) { toast.error('请先生成音频'); return }
+    let exported = 0
+    keys.forEach(k => {
+      const audio = audioCache[k]
+      if (!audio) return
+      const segIdx = parseInt(k.replace('seg-', ''))
+      const seg = segments.find(s => s.index === segIdx)
+      const bin = atob(audio.audioBase64)
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const mime = exportFormat === 'mp3' ? 'audio/mpeg' : 'audio/wav'
+      const ext = exportFormat === 'mp3' ? 'mp3' : 'wav'
+      const blob = new Blob([bytes], { type: mime })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${chapter.title || '段落'}-${segIdx + 1}${seg ? '-' + (seg.characterName || '旁白') : ''}.${ext}`
+      a.click()
+      URL.revokeObjectURL(url)
+      exported++
+    })
+    toast.success(`已导出 ${exported} 个单独文件`, {
+      icon: <img src="/assets/brand/processed/小墨团-微笑点头-120.png" alt="" style={{ width: 28, height: 28 }} />,
+    })
+  }
+
   /* ── Step 1: AI 分析 ── */
   const handleAnalyze = async () => {
     if (!chapter.content) { toast.error('该章节暂无内容'); return }
@@ -438,6 +467,12 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
       await generateOne(todo[i])
     }
     setBatchGenerating(false)
+    const generated = segments.filter(s => audioCache[`seg-${s.index}`])
+    if (generated.length > 0) {
+      toast.success(`🎉 全部生成完成！共 ${generated.length} 段`, {
+        icon: <img src="/assets/brand/processed/小墨团-加油-120.png" alt="" style={{ width: 28, height: 28 }} />,
+      })
+    }
   }
 
   /* ── 合并全部并导出 ── */
@@ -464,11 +499,18 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
         const a = document.createElement('a')
         a.href = url; a.download = `${chapter.title || '有声书'}.${ext}`; a.click()
         URL.revokeObjectURL(url)
+        toast.success('导出成功！文件已下载', {
+          icon: <img src="/assets/brand/processed/小墨团-微笑点头-120.png" alt="" style={{ width: 28, height: 28 }} />,
+        })
       } else {
-        toast.error('合并失败：' + (data.error || '未知错误'))
+        toast.error('合并失败：' + (data.error || '未知错误'), {
+          icon: <img src="/assets/brand/processed/小墨团-担心-120.png" alt="" style={{ width: 28, height: 28 }} />,
+        })
       }
     } catch (err) {
-      toast.error('合并失败：' + (err instanceof Error ? err.message : String(err)))
+      toast.error('合并失败：' + (err instanceof Error ? err.message : String(err)), {
+        icon: <img src="/assets/brand/processed/小墨团-担心-120.png" alt="" style={{ width: 28, height: 28 }} />,
+      })
     } finally {
       setMerging(false)
     }
@@ -510,7 +552,9 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
     setDesignedVoices(prev => [...prev, ...newVoices])
     setGeneratingPersonas(false)
     if (newVoices.length > 0) {
-      toast.error(`已为 ${newVoices.length} 个角色生成专属音色：${newVoices.map(v => v.name).join('、')}`)
+      toast.success(`已为 ${newVoices.length} 个角色生成专属音色：${newVoices.map(v => v.name).join('、')}`, {
+        icon: <img src="/assets/brand/processed/小墨团-戴上耳机-120.png" alt="" style={{ width: 28, height: 28 }} />,
+      })
     } else {
       toast.error('音色生成失败，请检查 API 连接后重试')
     }
@@ -1379,6 +1423,11 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
           <button onClick={exportAllByOrder} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', }}>
             📋 按顺序导出全部
           </button>
+          {Object.keys(audioCache).length > 0 && (
+            <button onClick={handleExportAllIndividual} style={{ padding: '4px 10px', fontSize: 11, border: 'none', borderRadius: 4, background: C.green, color: '#fff', cursor: 'pointer', fontWeight: 500 }}>
+              📥 导出全部为单独文件 ({Object.keys(audioCache).length})
+            </button>
+          )}
           <button onClick={selectAll} style={{ padding: '4px 10px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer', }}>
             ☑️ 全选当前
           </button>
@@ -1398,7 +1447,21 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
 
         {/* 段落列表 */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, overflow: 'auto' }}>
-          {filteredSegments.map((seg) => {
+          {segments.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 12 }}>
+              <img src="/assets/brand/processed/小墨团-委屈-120.png" alt="空" style={{ width: 72, height: 72, opacity: 0.6 }} />
+              <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>暂无段落，请先导入文本</p>
+              <button onClick={() => setWorkflowStep(0)} style={{ padding: '6px 16px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.ink, cursor: 'pointer' }}>
+                ← 返回导入
+              </button>
+            </div>
+          ) : filteredSegments.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 12 }}>
+              <img src="/assets/brand/processed/小墨团-歪头好奇-120.png" alt="空筛选" style={{ width: 72, height: 72, opacity: 0.6 }} />
+              <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>当前筛选无结果，试试切换筛选项</p>
+            </div>
+          ) : (
+          filteredSegments.map((seg) => {
             const globalIdx = segments.findIndex(s => s.index === seg.index)
             const isDialogue = seg.type === 'dialogue'
             const color = isDialogue && seg.characterName ? getCharColor(seg.characterName) : SEGMENT_COLORS.narration
@@ -1543,7 +1606,8 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
                 </div>
               </div>
             )
-          })}
+          })
+          )}
         </div>
         </>)}
       </div>
