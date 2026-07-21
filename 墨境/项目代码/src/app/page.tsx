@@ -32,18 +32,16 @@ export default function HomePage() {
         background: "url('/logo/坐高凳、戴耳机.png') center/cover no-repeat",
         overflow: 'hidden',
       }}>
-        {/* 左侧微暗遮罩：让字可读 */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(10,8,6,.35) 0%, rgba(10,8,6,.1) 35%, transparent 60%)', pointerEvents: 'none', zIndex: 1 }} />
         <div style={{ position: 'relative', zIndex: 2, maxWidth: 1200, width: '100%', margin: '0 auto', padding: '40px 60px 120px' }}>
-          <div style={{ maxWidth: 440 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 14px', borderRadius: 20, background: 'rgba(255,255,255,.08)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.1)', fontSize: 11, fontWeight: 500, color: '#c4956a', marginBottom: 20 }}>
+          <div style={{ maxWidth: 480 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 16px', borderRadius: 20, background: 'rgba(255,255,255,.12)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,.15)', fontSize: 11, fontWeight: 600, color: '#c4956a', marginBottom: 20, letterSpacing: '.3px' }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#c4956a' }} />
               已助 1,200+ 作者完成 4,600+ 章节
             </div>
-            <h1 style={{ fontSize: 'clamp(34px,6vw,54px)', fontWeight: 800, lineHeight: 1.08, color: '#f5f0eb', marginBottom: 12, textShadow: '0 2px 20px rgba(0,0,0,.3)' }}>
+            <h1 style={{ fontSize: 'clamp(38px,7vw,60px)', fontWeight: 900, lineHeight: 1.05, color: '#ffffff', marginBottom: 14, textShadow: '0 2px 30px rgba(0,0,0,.5), 0 1px 4px rgba(0,0,0,.3)', letterSpacing: '-0.5px' }}>
               写网文，<em style={{ fontStyle: 'normal', color: '#c4956a' }}>AI 帮你</em>不卡文
             </h1>
-            <p style={{ fontSize: 15, color: 'rgba(245,240,235,.6)', lineHeight: 1.6, marginBottom: 24, maxWidth: 360, textShadow: '0 1px 8px rgba(0,0,0,.2)' }}>
+            <p style={{ fontSize: 'clamp(15px,2vw,18px)', color: 'rgba(255,255,255,.75)', fontWeight: 500, lineHeight: 1.65, marginBottom: 24, maxWidth: 400, textShadow: '0 1px 12px rgba(0,0,0,.4)' }}>
               灵感→大纲→正文，一气呵成。卡住了续写，太薄了扩写，写完了引擎扫一眼质量。十版心法，一个按钮。
             </p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
