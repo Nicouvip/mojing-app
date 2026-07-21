@@ -43,6 +43,30 @@
 - 故障诊断必须触发 `mojing-diagnose` 技能包
 - 严格遵循该技能包的 SKILL.md 流程
 
+### 🚫 墨境项目 — 配置禁区（任何 Agent 绝对不能动）
+
+以下配置已在正式环境稳定运行，**任何 Agent（包括 Reasonix、kun等）一律禁止修改、新增、删除：**
+
+**1. Google Cloud Console（禁止进入）**
+- OAuth 客户端 `mojing` 的重定向 URI 和 JavaScript 来源已配好
+- 如需更新域名 → 问张总，张总亲自操作
+
+**2. Vercel 项目（禁止操作）**
+- 项目名称：`mojing-vip`（唯一主用项目）
+- 环境变量（14个）：已配好，不要改
+- 域名绑定（`600c.net`、`www.600c.net`）：已配好，不要动
+- 部署命令：`cd 墨境/项目代码 && npx vercel --cwd . --prod --yes`
+- 其他 Vercel 项目已全部删除
+
+**3. next.config.ts（禁止修改 `allowedDevOrigins`）**
+- `allowedDevOrigins: ['600c.net', 'v.600c.net']` — 已有，不要加
+
+**4. 域名 DNS（禁止操作）**
+- Nameservers：`ns1.vercel-dns.com` / `ns2.vercel-dns.com`
+- 花生壳后台：张总自己管
+
+违反以上规则导致线上故障的，后果自负。
+
 ### 如果发现我（Codex）没有遵守以上纪律
 - 张总：直接说"你读一下AGENTS.md"
 - 我会重新加载并纠正行为
