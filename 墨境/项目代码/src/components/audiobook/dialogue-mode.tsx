@@ -279,6 +279,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
         setEditedCharacters(loadVoiceBindings(processed.characters || []))
         setEditedSegments(processed.segments || [])
         applyRecommendedEmotions(processed.characters || [])
+        setWorkflowStep(2) // 自动推进到方案设计
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)) } catch { /* quota exceeded */ }
         // 题材自动识别（异步，不阻塞主流程）
         setGenreLoading(true)
@@ -330,6 +331,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
     setEditedSegments(newSegments)
     setUndoStack([])
     setRedoStack([])
+    setWorkflowStep(4) // 手动模式跳过分析，直接到合成
   }
 
   /* ── Step 2: 用户微调角色音色 ── */
@@ -1082,8 +1084,283 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
         </div>
       </div>
 
-      {/* ═══ 右侧：筛选Tab + 导出 + 段落列表 ═══ */}
+      {/* ═══ 右侧：步骤内容面板 ═══ */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, overflow: 'hidden' }}>
+
+        {/* ═══════════ Step 0：导入 ═══════════ */}
+        {workflowStep === 0 && (
+          <div style={{ padding: 32, overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ maxWidth: 560, width: '100%' }}>
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <span style={{ fontSize: 36 }}>📄</span>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: '8px 0 4px' }}>已导入文本</h3>
+                <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
+                  {segments.length} 段 · {characters.filter(c => c.name !== '旁白').length} 角色 · {segments.filter(s => s.type === 'dialogue').length} 对话
+                </p>
+              </div>
+              {/* 文本预览 */}
+              <div style={{ padding: 16, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius, maxHeight: 200, overflow: 'auto', marginBottom: 16 }}>
+                <div style={{ fontSize: 12, lineHeight: 1.8, color: C.ink, whiteSpace: 'pre-wrap' }}>
+                  {segments.slice(0, 10).map((s, i) => (
+                    <span key={i}>
+                      {s.type === 'dialogue' && s.characterName ? (
+                        <span style={{ color: getCharColor(s.characterName), fontWeight: 600 }}>【{s.characterName}】</span>
+                      ) : null}
+                      {s.text.slice(0, 60)}{s.text.length > 60 ? '...' : ''}
+                      <br />
+                    </span>
+                  ))}
+                  {segments.length > 10 && <span style={{ color: C.muted }}>... 共 {segments.length} 段</span>}
+                </div>
+              </div>
+              {/* 角色总览 */}
+              {characters.length > 0 && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                  {characters.map(ch => (
+                    <div key={ch.name} style={{ padding: '6px 12px', background: `${getCharColor(ch.name)}10`, border: `1px solid ${C.line}`, borderRadius: 16, fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: getCharColor(ch.name) }} />
+                      <span style={{ color: C.ink, fontWeight: 500 }}>{ch.name}</span>
+                      <span style={{ color: C.muted }}>({ch.gender === 'male' ? '男' : '女'}·{ch.recommendedVoice ? AVAILABLE_VOICES.find(v => v.id === ch.recommendedVoice)?.name?.split('—')[0] || '未选' : '未选'})</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                <button onClick={() => setWorkflowStep(1)}
+                  style={{ padding: '10px 28px', fontSize: 13, fontWeight: 600, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: 'pointer' }}>
+                  下一步：AI 分析 →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════ Step 1：分析 ═══════════ */}
+        {workflowStep === 1 && (
+          <div style={{ padding: 32, overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ maxWidth: 560, width: '100%' }}>
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <span style={{ fontSize: 36 }}>{analyzing ? '🤔' : '🔍'}</span>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: '8px 0 4px' }}>AI 文本分析</h3>
+                <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
+                  {analyzing ? `分析中... ${analyzingElapsed}s` : analyzeError ? '分析出错' : genre ? '分析完成' : '待分析'}
+                </p>
+              </div>
+
+              {/* 题材标签 */}
+              {(genre || genreLoading) && (
+                <div style={{ padding: '10px 14px', marginBottom: 16, background: 'rgba(26,24,20,.02)', border: `1px solid ${C.line}`, borderRadius: C.radius, fontSize: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {genreLoading ? (
+                    <span style={{ color: C.muted }}>🔍 题材识别中...</span>
+                  ) : genre && (
+                    <>
+                      <span style={{ padding: '2px 12px', background: `${C.pri}18`, borderRadius: 12, color: C.pri, fontWeight: 600, fontSize: 12 }}>{genre.genre}</span>
+                      <span style={{ color: C.ink }}>{genre.suggestedStyle}</span>
+                      <span style={{ color: C.muted, fontSize: 11 }}>({genre.suggestedPacing === 'slow' ? '慢速' : genre.suggestedPacing === 'fast' ? '快速' : '中速'})</span>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* 分析统计 */}
+              {!analyzing && segments.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
+                  {[
+                    { label: '段落', value: segments.length },
+                    { label: '角色', value: characters.filter(c => c.name !== '旁白').length },
+                    { label: '对话', value: segments.filter(s => s.type === 'dialogue').length },
+                    { label: '旁白', value: segments.filter(s => s.type === 'narration').length },
+                    { label: '情绪类型', value: new Set(segments.map(s => s.emotion)).size },
+                    { label: '已缓存', value: Object.keys(audioCache).length },
+                  ].map(stat => (
+                    <div key={stat.label} style={{ padding: '12px 10px', background: C.card, border: `1px solid ${C.line}`, borderRadius: C.radius, textAlign: 'center' }}>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: C.ink }}>{stat.value}</div>
+                      <div style={{ fontSize: 10, color: C.muted }}>{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 错误 */}
+              {analyzeError && (
+                <div style={{ padding: 12, marginBottom: 16, background: '#fff0f0', border: `1px solid #ecc`, borderRadius: C.radius, fontSize: 12, color: C.crimson }}>
+                  ⚠️ {analyzeError}
+                </div>
+              )}
+
+              {/* 操作按钮 */}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button onClick={() => setWorkflowStep(0)}
+                  style={{ padding: '10px 20px', fontSize: 12, fontWeight: 500, border: `1px solid ${C.line}`, borderRadius: 6, background: C.card, color: C.muted, cursor: 'pointer' }}>
+                  ← 返回导入
+                </button>
+                <button onClick={handleAnalyze} disabled={analyzing}
+                  style={{ padding: '10px 28px', fontSize: 13, fontWeight: 600, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: analyzing ? 'default' : 'pointer', opacity: analyzing ? 0.6 : 1 }}>
+                  {analyzing ? `分析中... ${analyzingElapsed}s` : '🔍 开始 AI 分析'}
+                </button>
+                {!analyzing && (genre || segments.length > 0) && (
+                  <button onClick={() => setWorkflowStep(2)}
+                    style={{ padding: '10px 28px', fontSize: 13, fontWeight: 600, border: 'none', borderRadius: 6, background: C.indigo, color: '#fff', cursor: 'pointer' }}>
+                    下一步：方案设计 →
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════ Step 2：方案设计 ═══════════ */}
+        {workflowStep === 2 && (
+          <div style={{ padding: 24, overflow: 'auto' }}>
+            <div style={{ marginBottom: 16 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: C.ink, margin: '0 0 4px' }}>🎬 演播方案设计</h3>
+              <p style={{ fontSize: 11, color: C.muted, margin: 0 }}>为每段配置三层上下文：前情摘要 · 剧本笔记 · 表演指导</p>
+            </div>
+            {/* 整体风格提示 */}
+            {genre && (
+              <div style={{ padding: '8px 12px', marginBottom: 16, background: `${C.pri}08`, border: `1px solid ${C.pri}22`, borderRadius: C.radius, fontSize: 11, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 600, color: C.pri }}>{genre.genre}</span>
+                <span style={{ color: C.muted }}>→</span>
+                <span style={{ color: C.ink }}>{genre.suggestedStyle}</span>
+                <span style={{ color: C.muted }}>· {genre.suggestedPacing === 'slow' ? '慢速' : genre.suggestedPacing === 'fast' ? '快速' : '中速'}</span>
+              </div>
+            )}
+            {/* 段落方案列表 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 'calc(100vh - 340px)', overflow: 'auto' }}>
+              {segments.map((seg) => {
+                const color = seg.type === 'dialogue' && seg.characterName ? getCharColor(seg.characterName) : SEGMENT_COLORS.narration
+                return (
+                  <div key={seg.index} style={{
+                    padding: '12px 14px', background: C.card, border: `1px solid ${C.line}`, borderLeft: `3px solid ${color}`, borderRadius: C.radius,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontSize: 10, color: C.muted }}>#{seg.index + 1}</span>
+                      {seg.type === 'dialogue' && seg.characterName ? (
+                        <span style={{ fontSize: 10, padding: '1px 8px', background: `${color}18`, borderRadius: 8, color, fontWeight: 600 }}>{seg.characterName}</span>
+                      ) : (
+                        <span style={{ fontSize: 10, padding: '1px 8px', background: 'rgba(26,24,20,.06)', borderRadius: 8, color: C.muted }}>旁白</span>
+                      )}
+                      <span style={{ fontSize: 10, color: C.muted }}>{seg.emotion} · 强度{seg.emotionIntensity}</span>
+                      <div style={{ flex: 1 }} />
+                    </div>
+                    <div style={{ fontSize: 12, lineHeight: 1.6, color: C.ink, marginBottom: 8 }}>
+                      {seg.type === 'dialogue' ? `「${seg.text.slice(0, 80)}${seg.text.length > 80 ? '...' : ''}」` : seg.text.slice(0, 80) + (seg.text.length > 80 ? '...' : '')}
+                    </div>
+                    <ContextEditor
+                      segmentIndex={seg.index}
+                      segmentText={seg.text}
+                      emotion={seg.emotion}
+                      characterName={seg.characterName}
+                      previousSummary={segments[seg.index === 0 ? 0 : seg.index - 1]?.specialNote || ''}
+                      context={{
+                        summary: seg.specialNote || '',
+                        note: '',
+                        direction: '',
+                        cotTag: (seg.type === 'dialogue' ? '' : '全程保持匀速'),
+                      }}
+                      onChange={(ctx) => {
+                        const globalIdx = segments.findIndex(s => s.index === seg.index)
+                        updateSegmentField(globalIdx, 'specialNote', ctx.summary)
+                      }}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            {/* 导航按钮 */}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16 }}>
+              <button onClick={() => setWorkflowStep(1)}
+                style={{ padding: '10px 20px', fontSize: 12, fontWeight: 500, border: `1px solid ${C.line}`, borderRadius: 6, background: C.card, color: C.muted, cursor: 'pointer' }}>
+                ← 返回分析
+              </button>
+              <button onClick={() => setWorkflowStep(3)}
+                style={{ padding: '10px 28px', fontSize: 13, fontWeight: 600, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: 'pointer' }}>
+                下一步：引擎选择 →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════ Step 3：引擎选择 ═══════════ */}
+        {workflowStep === 3 && (
+          <div style={{ padding: 32, overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ maxWidth: 600, width: '100%' }}>
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <span style={{ fontSize: 36 }}>🔊</span>
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: '8px 0 4px' }}>选择 TTS 引擎</h3>
+                <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>引擎影响音色库、生成速度和费用</p>
+              </div>
+              {/* 引擎对比卡片 */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 24 }}>
+                {[
+                  { id: 'normal', name: '标准版', desc: 'MiMo + 豆包', voices: AVAILABLE_VOICES.length, price: '基础', color: C.pri },
+                  { id: 'vip', name: '专业版', desc: '讯飞高品质', voices: XFYUN_VOICES.length, price: '进阶', color: C.indigo },
+                  { id: 'doubao', name: '豆包', desc: 'Expressive 版', voices: '3', price: '高级', color: C.crimson },
+                ].map(eng => (
+                  <button key={eng.id} onClick={() => {
+                    if (eng.id === 'normal' || eng.id === 'vip') {
+                      try { localStorage.setItem('mojing_tts_engine', eng.id) } catch {}
+                      toast.success(`已切换到 ${eng.name}`)
+                    } else {
+                      toast.error('豆包引擎即将上线')
+                    }
+                  }}
+                    style={{
+                      padding: '16px 14px', textAlign: 'left',
+                      border: ttsEngine === eng.id ? `2px solid ${eng.color}` : `1px solid ${C.line}`,
+                      borderRadius: 10, background: ttsEngine === eng.id ? `${eng.color}08` : C.card,
+                      cursor: eng.id === 'doubao' ? 'default' : 'pointer',
+                      opacity: eng.id === 'doubao' ? 0.5 : 1,
+                    }}>
+                    <div style={{ fontSize: 20, marginBottom: 6 }}>{eng.id === 'normal' ? '🎙️' : eng.id === 'vip' ? '⚡' : '🚀'}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 2 }}>{eng.name}</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>{eng.desc}</div>
+                    <div style={{ fontSize: 10, color: C.muted }}>
+                      <span>{eng.voices} 音色 · {eng.price}</span>
+                    </div>
+                    {ttsEngine === eng.id && <div style={{ marginTop: 6, fontSize: 10, color: eng.color, fontWeight: 600 }}>✓ 当前</div>}
+                  </button>
+                ))}
+              </div>
+              {/* 导航 */}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                <button onClick={() => setWorkflowStep(2)}
+                  style={{ padding: '10px 20px', fontSize: 12, fontWeight: 500, border: `1px solid ${C.line}`, borderRadius: 6, background: C.card, color: C.muted, cursor: 'pointer' }}>
+                  ← 返回方案
+                </button>
+                <button onClick={() => setWorkflowStep(4)}
+                  style={{ padding: '10px 28px', fontSize: 13, fontWeight: 600, border: 'none', borderRadius: 6, background: C.pri, color: '#fff', cursor: 'pointer' }}>
+                  下一步：开始合成 →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════ Step 5：导出（详情） ═══════════ */}
+        {workflowStep === 5 && (
+          <div style={{ padding: '16px 20px', background: `${C.indigo}06`, borderBottom: `1px solid ${C.indigo}22`, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: C.indigo }}>📥 导出</span>
+                <span style={{ fontSize: 11, color: C.muted }}>
+                  {Object.keys(audioCache).length}/{segments.length} 段已生成
+                </span>
+              </div>
+              <div style={{ flex: 1 }} />
+              <span style={{ fontSize: 11, color: C.muted }}>
+                💡 在底部工具栏选择格式参数 → 点击合并导出
+              </span>
+              <button onClick={() => setWorkflowStep(4)}
+                style={{ padding: '6px 14px', fontSize: 11, border: `1px solid ${C.line}`, borderRadius: 4, background: C.card, color: C.muted, cursor: 'pointer' }}>
+                ← 返回合成
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════ Step 4+：合成（段落列表） ═══════════ */}
+        {workflowStep >= 4 && (<>
         {/* 筛选 Tab 栏 */}
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', padding: '0 0 8px', borderBottom: `1px solid ${C.line}` }}>
           {filterTabs.map(tab => (
@@ -1268,6 +1545,7 @@ export function DialogueMode({ chapter, defaultVoice, defaultEmotion, extraVoice
             )
           })}
         </div>
+        </>)}
       </div>
 
       {/* ═══ 底部参数面板（参考讯飞局部变速） ═══ */}
